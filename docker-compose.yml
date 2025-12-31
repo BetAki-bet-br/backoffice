@@ -1,0 +1,64 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: betaki_app
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    environment:
+      APP_ENV: local
+    depends_on:
+      - db
+      - redis
+
+  web:
+    image: nginx:1.27-alpine
+    container_name: betaki_web
+    ports:
+      - "8080:80"   # APP_URL -> http://localhost:8080
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+
+  db:
+    image: postgres:16-alpine
+    container_name: betaki_db
+    environment:
+      POSTGRES_DB: betaki
+      POSTGRES_USER: betaki
+      POSTGRES_PASSWORD: betaki
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: betaki_redis
+    ports:
+      - "6379:6379"
+
+  horizon:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: betaki_horizon
+    command: php artisan horizon
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      - app
+      - redis
+      - db
+    environment:
+      APP_ENV: local
+
+volumes:
+  pgdata:
