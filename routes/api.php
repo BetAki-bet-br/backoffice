@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\PermissionController;
 
 // Banners
 use App\Http\Controllers\Api\V1\BannerController;
+use App\Http\Controllers\Api\V1\CarouselController;
 
 // Casino
 use App\Http\Controllers\Api\V1\SlotController;
@@ -52,6 +53,12 @@ Route::prefix('v1')->group(function () {
 
     Route::get('settings/public', [SettingController::class, 'publicIndex'])
         ->name('settings.public');
+
+    Route::get('carousels/casino', [CarouselController::class, 'casino'])
+        ->name('carousels.casino');
+
+    Route::get('carousels/live', [CarouselController::class, 'live'])
+        ->name('carousels.live');
 
     /*
     |--------------------------------------------------------------------------
@@ -187,5 +194,16 @@ Route::prefix('v1')->group(function () {
 
         Route::post('portal-games/sync', [\App\Http\Controllers\Api\V1\PortalGamesSyncController::class, 'sync'])
             ->name('portalgames.sync');
+
+        // Portal Games
+        Route::get('portal-games', [\App\Http\Controllers\Api\V1\PortalGamesController::class, 'index'])
+            ->name('portalgames.index');
+
+        Route::get('portal-games/overview', [\App\Http\Controllers\Api\V1\PortalGamesOverviewController::class, 'index'])
+            ->name('portalgames.overview');
+
+        // Pré-cadastro de Slots a partir de portal_games
+        Route::post('slots/sync-from-portal', [\App\Http\Controllers\Api\V1\PortalSlotsSyncController::class, 'sync'])
+            ->name('slots.syncFromPortal');
     });
 });

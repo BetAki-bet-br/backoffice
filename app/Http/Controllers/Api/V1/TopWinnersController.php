@@ -7,6 +7,7 @@ use App\Http\Requests\Casino\TopWinnerBatchRequest;
 use App\Http\Requests\Casino\TopWinnerResultsSyncRequest;
 use App\Models\Domain\Casino\TopWinnerBatch;
 use App\Models\Domain\Casino\TopWinner;
+use App\Models\Domain\Casino\PortalGame;
 use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 
@@ -60,7 +61,12 @@ class TopWinnersController extends Controller
      * ) */
     public function show(TopWinnerBatch $batch)
     {
-        return response()->json($batch->load(['winners']));
+        $batch->load(['winners']);
+        $gameMains = $this->resolveGameMains($batch->winners);
+
+        return response()->json(array_merge($batch->toArray(), [
+            'gameMains' => $gameMains,
+        ]));
     }
 
     /** @OA\Put(
@@ -132,7 +138,12 @@ class TopWinnersController extends Controller
             $batch->update(['status' => 'review']);
         });
 
-        return response()->json($batch->load('winners'));
+        $batch->load('winners');
+        $gameMains = $this->resolveGameMains($batch->winners);
+
+        return response()->json(array_merge($batch->toArray(), [
+            'gameMains' => $gameMains,
+        ]));
     }
 
     /** @OA\Post(
@@ -152,7 +163,12 @@ class TopWinnersController extends Controller
             'published_by' => $request->user()->id,
         ]);
 
-        return response()->json($batch->refresh()->load('winners'));
+        $batch->refresh()->load('winners');
+        $gameMains = $this->resolveGameMains($batch->winners);
+
+        return response()->json(array_merge($batch->toArray(), [
+            'gameMains' => $gameMains,
+        ]));
     }
 
     /** @OA\Post(
@@ -169,5 +185,56 @@ class TopWinnersController extends Controller
         $batch->update(['status' => 'archived']);
 
         return response()->json($batch->refresh());
+    }
+
+    private function resolveGameMains($winners): array
+    {
+        $externalIds = collect($winners)
+            ->map(function (TopWinner $winner) {
+                return $this->extractExternalId($winner->meta);
+            })
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($externalIds->isEmpty()) {
+            return [];
+        }
+
+        $portalGames = PortalGame::query()
+            ->whereIn('external_id', $externalIds)
+            ->get(['external_id', 'payload'])
+            ->keyBy('external_id');
+
+        return $externalIds
+            ->map(fn($id) => $portalGames->get($id)?->payload)
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function extractExternalId(?array $meta): ?string
+    {
+        if (!$meta) return null;
+
+        $keys = [
+            'externalId',
+            'external_id',
+            'gameId',
+            'game_id',
+            'provider_game_id',
+            'game.externalId',
+            'game.external_id',
+            'game.id',
+        ];
+
+        foreach ($keys as $key) {
+            $value = data_get($meta, $key);
+            if ($value !== null && $value !== '') {
+                return (string) $value;
+            }
+        }
+
+        return null;
     }
 }

@@ -37,6 +37,6 @@ class Slot extends Model
 
     public function extra()
     {
-        return $this->hasOne(GameExtra::class, 'external_id', 'provider_game_id');
+        return $this->hasOne(GameExtra::class, 'external_id', 'external_id');
     }
 }

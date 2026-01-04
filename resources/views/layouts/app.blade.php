@@ -372,6 +372,11 @@
                 <span>Categorias</span>
             </a>
 
+            <a href="{{ route('menus.ui') }}" class="sidebar-link {{ request()->routeIs('menus.ui') ? 'active' : '' }}">
+                <span class="sidebar-link-icon">🧭</span>
+                <span>Menus</span>
+            </a>
+
             <a href="{{ route('showcases.ui') }}" class="sidebar-link {{ request()->routeIs('showcases.ui') ? 'active' : '' }}">
                 <span class="sidebar-link-icon">🧩</span>
                 <span>Showcases</span>

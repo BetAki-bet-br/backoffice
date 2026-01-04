@@ -22,7 +22,6 @@ class Handler extends ExceptionHandler
      */
     public function register(): void
     {
-        // Você pode adicionar reportables aqui se quiser enviar para Sentry/NewRelic/etc.
         $this->reportable(function (Throwable $e) {
             //
         });

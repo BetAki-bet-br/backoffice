@@ -222,6 +222,7 @@
           <td>${badge(item.status)}</td>
           <td class="text-end">
             <div class="d-flex justify-content-end gap-2">
+              <button class="btn btn-sm btn-outline-primary" data-action="copy" data-id="${item.id}">Copiar link</button>
               <button class="btn btn-sm btn-outline-secondary" data-action="edit" data-id="${item.id}">Editar</button>
               <button class="btn btn-sm btn-outline-success" data-action="publish" data-id="${item.id}">Publicar</button>
               <button class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${item.id}">Excluir</button>
@@ -457,6 +458,28 @@
     await load(null);
   }
 
+  async function copyLink(id) {
+    const item = cacheById.get(String(id));
+    if (!item) return toast('Banner nao encontrado.', 'danger');
+
+    const media = item.media || {};
+    const link = item.link_url || media.desktop || media.mobile || '';
+    if (!link) return toast('Sem link para copiar.', 'secondary');
+
+    try {
+      await navigator.clipboard.writeText(link);
+      toast('Link copiado.');
+    } catch {
+      const tmp = document.createElement('input');
+      tmp.value = link;
+      document.body.appendChild(tmp);
+      tmp.select();
+      document.execCommand('copy');
+      tmp.remove();
+      toast('Link copiado.');
+    }
+  }
+
   // UI events
   document.getElementById('btnNew').addEventListener('click', openNew);
   document.getElementById('btnReload').addEventListener('click', () => load(null));
@@ -488,6 +511,7 @@
     const id = btn.getAttribute('data-id');
 
     if (action === 'edit') openEdit(id);
+    if (action === 'copy') copyLink(id);
     if (action === 'publish') publish(id);
     if (action === 'delete') destroy(id);
   });

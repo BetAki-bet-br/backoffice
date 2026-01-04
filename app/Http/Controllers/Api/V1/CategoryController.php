@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Casino\CategoryRequest;
 use App\Http\Requests\Casino\CategorySlotsSyncRequest;
 use App\Models\Domain\Casino\Category;
+use App\Models\Domain\Casino\PortalGame;
 use App\Models\Domain\Casino\Slot;
 use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
@@ -31,6 +32,43 @@ class CategoryController extends Controller
                 $qq->where('status', $request->status))
             ->orderBy('position')
             ->orderBy('name');
+
+        if ($request->get('format') === 'sublevel') {
+            $categories = $q->with('slots')->get();
+
+            $externalIds = $categories
+                ->flatMap(fn($cat) => $cat->slots->pluck('provider_game_id'))
+                ->filter()
+                ->unique()
+                ->values();
+
+            $portalGames = PortalGame::query()
+                ->whereIn('external_id', $externalIds)
+                ->get(['external_id', 'payload'])
+                ->keyBy('external_id');
+
+            $items = $categories->map(function (Category $cat) use ($portalGames) {
+                $gameMains = $cat->slots
+                    ->map(function (Slot $slot) use ($portalGames) {
+                        $portal = $portalGames->get($slot->provider_game_id);
+                        return $portal?->payload;
+                    })
+                    ->filter()
+                    ->values();
+
+                return [
+                    'id' => $cat->id,
+                    'parentId' => null,
+                    'name' => $cat->name,
+                    'gameName' => null,
+                    'subLevel' => [],
+                    'gameMains' => $gameMains,
+                    'levelType' => 'category',
+                ];
+            });
+
+            return response()->json($items);
+        }
 
         return response()->json($q->cursorPaginate(20));
     }
