@@ -72,10 +72,13 @@ class PortalSlotsSyncController extends Controller
                     'cover_url'  => null,
                     'status'     => $defaultStatus,
                     'tags'       => [],
-                    'position'   => null,
                     'updated_by' => $user->id,
                     'updated_at' => $now,
                 ];
+                $position = is_array($g->payload) ? ($g->payload['position'] ?? null) : null;
+                if ($position !== null) {
+                    $data['position'] = (int) $position;
+                }
 
                 $existing = Slot::query()->where($key)->first();
 
