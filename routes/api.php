@@ -60,6 +60,63 @@ Route::prefix('v1')->group(function () {
     Route::get('carousels/live', [CarouselController::class, 'live'])
         ->name('carousels.live');
 
+    // Banners
+    Route::apiResource('banners', BannerController::class)
+        ->only(['index', 'show'])
+        ->parameters(['banners' => 'banner'])
+        ->names('banners');
+
+    // Slots
+    Route::apiResource('slots', SlotController::class)
+        ->only(['index', 'show'])
+        ->parameters(['slots' => 'slot'])
+        ->names('slots');
+
+    // Categories
+    Route::apiResource('categories', CategoryController::class)
+        ->only(['index', 'show'])
+        ->parameters(['categories' => 'category'])
+        ->names('categories');
+
+    // Showcases
+    Route::apiResource('showcases', ShowcaseController::class)
+        ->only(['index', 'show'])
+        ->parameters(['showcases' => 'showcase'])
+        ->names('showcases');
+
+    // Menus
+    Route::apiResource('menus', MenuController::class)
+        ->only(['index', 'show'])
+        ->parameters(['menus' => 'menu'])
+        ->names('menus');
+
+    Route::get('menus/{menu}/items', [MenuItemController::class, 'index'])->name('menus.items.index');
+    Route::get('menus/{menu}/items/{item}', [MenuItemController::class, 'show'])->name('menus.items.show');
+
+    // Top Lists
+    Route::apiResource('top-lists', TopListController::class)
+        ->only(['index', 'show'])
+        ->parameters(['top-lists' => 'top_list'])
+        ->names('toplists');
+
+    // Awarded
+    Route::prefix('awards')->group(function () {
+        Route::get('batches',         [AwardedController::class, 'index']);
+        Route::get('batches/{batch}', [AwardedController::class, 'show']);
+    });
+
+    // Top Winners
+    Route::prefix('winners')->group(function () {
+        Route::get('batches',         [TopWinnersController::class, 'index']);
+        Route::get('batches/{batch}', [TopWinnersController::class, 'show']);
+    });
+
+    // Footers
+    Route::apiResource('footers', FooterController::class)
+        ->only(['index', 'show'])
+        ->parameters(['footers' => 'footer'])
+        ->names('footers');
+
     /*
     |--------------------------------------------------------------------------
     | Authenticated
@@ -86,6 +143,7 @@ Route::prefix('v1')->group(function () {
             ->name('banners.publish');
 
         Route::apiResource('banners', BannerController::class)
+            ->except(['index', 'show'])
             ->parameters(['banners' => 'banner'])
             ->names('banners');
 
@@ -101,11 +159,13 @@ Route::prefix('v1')->group(function () {
 
         // Slots
         Route::apiResource('slots', SlotController::class)
+            ->except(['index', 'show'])
             ->parameters(['slots' => 'slot'])
             ->names('slots');
 
         // Categories
         Route::apiResource('categories', CategoryController::class)
+            ->except(['index', 'show'])
             ->parameters(['categories' => 'category'])
             ->names('categories');
 
@@ -114,6 +174,7 @@ Route::prefix('v1')->group(function () {
 
         // Showcases
         Route::apiResource('showcases', ShowcaseController::class)
+            ->except(['index', 'show'])
             ->parameters(['showcases' => 'showcase'])
             ->names('showcases');
 
@@ -122,12 +183,11 @@ Route::prefix('v1')->group(function () {
 
         // Menus and Menu Items
         Route::apiResource('menus', MenuController::class)
+            ->except(['index', 'show'])
             ->parameters(['menus' => 'menu'])
             ->names('menus');
 
-        Route::get('menus/{menu}/items', [MenuItemController::class, 'index'])->name('menus.items.index');
         Route::post('menus/{menu}/items', [MenuItemController::class, 'store'])->name('menus.items.store');
-        Route::get('menus/{menu}/items/{item}', [MenuItemController::class, 'show'])->name('menus.items.show');
         Route::put('menus/{menu}/items/{item}', [MenuItemController::class, 'update'])->name('menus.items.update');
         Route::delete('menus/{menu}/items/{item}', [MenuItemController::class, 'destroy'])->name('menus.items.destroy');
 
@@ -135,6 +195,7 @@ Route::prefix('v1')->group(function () {
 
         // Top Lists
         Route::apiResource('top-lists', TopListController::class)
+            ->except(['index', 'show'])
             ->parameters(['top-lists' => 'top_list'])
             ->names('toplists');
 
@@ -146,9 +207,7 @@ Route::prefix('v1')->group(function () {
 
         // Awarded
         Route::prefix('awards')->group(function () {
-            Route::get('batches',           [AwardedController::class, 'index']);
             Route::post('batches',          [AwardedController::class, 'store']);
-            Route::get('batches/{batch}',   [AwardedController::class, 'show']);
             Route::put('batches/{batch}',   [AwardedController::class, 'update']);
             Route::delete('batches/{batch}',[AwardedController::class, 'destroy']);
 
@@ -159,9 +218,7 @@ Route::prefix('v1')->group(function () {
 
         // Top Winners
         Route::prefix('winners')->group(function () {
-            Route::get('batches',            [TopWinnersController::class, 'index']);
             Route::post('batches',           [TopWinnersController::class, 'store']);
-            Route::get('batches/{batch}',    [TopWinnersController::class, 'show']);
             Route::put('batches/{batch}',    [TopWinnersController::class, 'update']);
             Route::delete('batches/{batch}', [TopWinnersController::class, 'destroy']);
 
@@ -178,6 +235,7 @@ Route::prefix('v1')->group(function () {
             ->name('footers.links.sync');
 
         Route::apiResource('footers', FooterController::class)
+            ->except(['index', 'show'])
             ->parameters(['footers' => 'footer'])
             ->names('footers');
 
