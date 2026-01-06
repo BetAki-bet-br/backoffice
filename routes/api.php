@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\PermissionController;
 // Banners
 use App\Http\Controllers\Api\V1\BannerController;
 use App\Http\Controllers\Api\V1\CarouselController;
+use App\Http\Controllers\Api\V1\LobbyLayoutController;
 
 // Casino
 use App\Http\Controllers\Api\V1\SlotController;
@@ -59,6 +60,12 @@ Route::prefix('v1')->group(function () {
 
     Route::get('carousels/live', [CarouselController::class, 'live'])
         ->name('carousels.live');
+
+    Route::get('lobbies/casino', [LobbyLayoutController::class, 'casino'])
+        ->name('lobbies.casino');
+
+    Route::get('lobbies/live', [LobbyLayoutController::class, 'live'])
+        ->name('lobbies.live');
 
     // Banners
     Route::apiResource('banners', BannerController::class)

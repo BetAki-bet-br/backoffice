@@ -1283,6 +1283,70 @@
                 ]
             }
         },
+        "/api/v1/game-extras/overview": {
+            "get": {
+                "tags": [
+                    "Game Extras"
+                ],
+                "summary": "Listar Game Extras com status de match na base (portal_games)",
+                "operationId": "213a197b1592eeb4119d85b1423e0b9a",
+                "parameters": [
+                    {
+                        "name": "portal_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/lobbies/casino": {
+            "get": {
+                "tags": [
+                    "Lobbies"
+                ],
+                "summary": "Layout do lobby de cassino (slots)",
+                "operationId": "a4e8457ac558554fb76a2d89f25bd022",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/api/v1/lobbies/live": {
+            "get": {
+                "tags": [
+                    "Lobbies"
+                ],
+                "summary": "Layout do lobby de cassino ao vivo",
+                "operationId": "d0e5db166ae97710e11f4b4e9a1fd3a3",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
         "/api/v1/menus": {
             "get": {
                 "tags": [
@@ -1387,6 +1451,171 @@
                 ],
                 "summary": "Listar permissões",
                 "operationId": "c8e60e1cdfb99866cdca9b2d3737f847",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/portal-games": {
+            "get": {
+                "tags": [
+                    "Portal Games"
+                ],
+                "summary": "Listar jogos do portal (portal_games) enriquecidos com RTP/Volatilidade/Aposta mínima",
+                "operationId": "4dab3015dc9e38f3caa52db990a1222b",
+                "parameters": [
+                    {
+                        "name": "portal_id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "example": "Roulette"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/portal-games/overview": {
+            "get": {
+                "tags": [
+                    "Portal Games"
+                ],
+                "summary": "Listar portal_games com RTP/Volatilidade/Aposta mínima (cursor paginate)",
+                "operationId": "f9243b53ac0339a0fe774ad99f4174a8",
+                "parameters": [
+                    {
+                        "name": "portal_id",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 1
+                        }
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "example": "Roulette"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "example": 50
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/portal-games/sync": {
+            "post": {
+                "tags": [
+                    "Portal Games"
+                ],
+                "summary": "Sincronizar jogos da API base (portal_games) pelo PortalId",
+                "operationId": "cead8fabef75bc5a0517ad5b9459ab6b",
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "portal_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/slots/sync-from-portal": {
+            "post": {
+                "tags": [
+                    "Slots"
+                ],
+                "summary": "Pré-cadastrar (upsert) slots a partir de portal_games",
+                "operationId": "f15c8c434dcdbc1b8744c49cf68ef37e",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "portal_id"
+                                ],
+                                "properties": {
+                                    "portal_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "active",
+                                            "inactive"
+                                        ],
+                                        "example": "active"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "OK"
@@ -2413,7 +2642,7 @@
                                     "password": {
                                         "type": "string",
                                         "format": "password",
-                                        "example": "Trocar@123"
+                                        "example": "Betaki@123"
                                     }
                                 },
                                 "type": "object"
@@ -2738,6 +2967,14 @@
             "description": "Categories"
         },
         {
+            "name": "Game Extras",
+            "description": "Game Extras"
+        },
+        {
+            "name": "Lobbies",
+            "description": "Lobbies"
+        },
+        {
             "name": "Menus",
             "description": "Menus"
         },
@@ -2746,16 +2983,20 @@
             "description": "RBAC"
         },
         {
+            "name": "Portal Games",
+            "description": "Portal Games"
+        },
+        {
+            "name": "Slots",
+            "description": "Slots"
+        },
+        {
             "name": "Settings",
             "description": "Settings"
         },
         {
             "name": "Showcases",
             "description": "Showcases"
-        },
-        {
-            "name": "Slots",
-            "description": "Slots"
         },
         {
             "name": "TopLists",
