@@ -11,6 +11,7 @@
   </div>
 
   <div class="d-flex gap-2">
+    <button class="btn btn-outline-primary" id="btnSaveOrder" disabled>Salvar Ordem</button>
     <button class="btn btn-primary" id="btnNew">Novo menu</button>
     <button class="btn btn-outline-secondary" id="btnReload">Atualizar</button>
   </div>
@@ -46,15 +47,16 @@
     <table class="table table-hover mb-0 align-middle">
       <thead>
         <tr>
+          <th style="width: 40px;"></th>
           <th style="width: 90px;">ID</th>
           <th>Menu</th>
-          <th style="width: 110px;">Posicao</th>
+          <th style="width: 120px;" class="text-center">Ordem</th>
           <th style="width: 140px;">Status</th>
           <th style="width: 220px;" class="text-end">Acoes</th>
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="5" class="text-muted p-4">Carregando...</td></tr>
+        <tr><td colspan="6" class="text-muted p-4">Carregando...</td></tr>
       </tbody>
     </table>
   </div>
@@ -121,9 +123,11 @@
 </div>
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script>
   const tbody = document.getElementById('tbody');
   const info = document.getElementById('paginationInfo');
+  const btnSaveOrder = document.getElementById('btnSaveOrder');
 
   const modal = new bootstrap.Modal(document.getElementById('editModal'));
   const editTitle = document.getElementById('editTitle');
@@ -133,6 +137,7 @@
   let prevCursor = null;
 
   let editingId = null;
+  let menuSortable = null;
 
   function badge(status) {
     const s = (status || '').toLowerCase();
@@ -146,18 +151,28 @@
 
   function render(rows) {
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="5" class="text-muted p-4">Nenhum registro.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="text-muted p-4">Nenhum registro.</td></tr>`;
+      if (btnSaveOrder) btnSaveOrder.disabled = true;
       return;
     }
 
     tbody.innerHTML = rows.map(item => `
-      <tr>
+      <tr data-menu-id="${item.id}" data-position="${item.position ?? 0}">
+        <td class="text-center align-middle handle-menu" style="cursor: grab; width: 40px; color: #aaa;">
+           <span class="fs-5">≡</span>
+        </td>
         <td class="text-muted">#${item.id}</td>
         <td>
           <div class="fw-semibold">${item.name || '-'}</div>
           <div class="text-muted small">${item.slug || ''}</div>
         </td>
-        <td class="text-muted">${item.position ?? '-'}</td>
+        <td class="align-middle text-center">
+           <div class="d-flex align-items-center justify-content-center gap-1">
+             <button class="btn btn-sm btn-light border py-0 px-1" type="button" data-move-menu-up data-menu-id="${item.id}" title="Mover para cima">▲</button>
+             <span class="badge bg-light text-dark border" style="min-width: 32px;" data-pos-display>${item.position ?? '-'}</span>
+             <button class="btn btn-sm btn-light border py-0 px-1" type="button" data-move-menu-down data-menu-id="${item.id}" title="Mover para baixo">▼</button>
+           </div>
+        </td>
         <td>${badge(item.status)}</td>
         <td class="text-end">
           <div class="d-flex justify-content-end gap-2">
@@ -167,6 +182,74 @@
         </td>
       </tr>
     `).join('');
+
+    initMenuSortable();
+    if (btnSaveOrder) btnSaveOrder.disabled = true;
+  }
+
+  function initMenuSortable() {
+    if (menuSortable) return;
+    menuSortable = new Sortable(tbody, {
+      handle: '.handle-menu',
+      animation: 150,
+      ghostClass: 'bg-light',
+      onEnd: function() {
+        if (btnSaveOrder) btnSaveOrder.disabled = false;
+        updateMenuPositionsVisual();
+      }
+    });
+  }
+
+  function updateMenuPositionsVisual() {
+      const rows = tbody.querySelectorAll('tr[data-menu-id]');
+      const positions = Array.from(rows).map(r => Number(r.getAttribute('data-position'))).sort((a,b) => a-b);
+      rows.forEach((row, i) => {
+         const newPos = positions[i];
+         row.querySelector('[data-pos-display]').textContent = newPos;
+         row.setAttribute('data-position', newPos);
+      });
+  }
+
+  function moveMenu(id, direction) {
+      const rows = Array.from(tbody.querySelectorAll('tr[data-menu-id]'));
+      const idx = rows.findIndex(r => r.getAttribute('data-menu-id') === String(id));
+      if (idx === -1) return;
+      
+      const newIdx = idx + direction;
+      if (newIdx < 0 || newIdx >= rows.length) return;
+      
+      const row = rows[idx];
+      const target = rows[newIdx];
+      
+      if (direction > 0) {
+          target.after(row);
+      } else {
+          target.before(row);
+      }
+      
+      if (btnSaveOrder) btnSaveOrder.disabled = false;
+      updateMenuPositionsVisual();
+  }
+
+  async function saveOrder() {
+      const rows = tbody.querySelectorAll('tr[data-menu-id]');
+      const items = Array.from(rows).map(row => ({
+          id: Number(row.getAttribute('data-menu-id')),
+          position: Number(row.getAttribute('data-position'))
+      }));
+      
+      const res = await apiFetch('/api/v1/menus/reorder', {
+          method: 'PUT',
+          body: JSON.stringify({ items })
+      });
+      
+      if (!res.ok) {
+          toast('Erro ao salvar ordem.', 'danger');
+          return;
+      }
+      
+      toast('Ordem salva com sucesso.');
+      if (btnSaveOrder) btnSaveOrder.disabled = true;
   }
 
   function getFilters() {
@@ -177,7 +260,7 @@
   }
 
   async function load(cursor = null) {
-    tbody.innerHTML = `<tr><td colspan="5" class="text-muted p-4">Carregando...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="text-muted p-4">Carregando...</td></tr>`;
 
     const params = new URLSearchParams();
     if (cursor) params.set('cursor', cursor);
@@ -189,7 +272,7 @@
     const res = await apiFetch('/api/v1/menus?' + params.toString());
     if (!res.ok) {
       toast('Falha ao carregar menus (' + res.status + ')', 'danger');
-      tbody.innerHTML = `<tr><td colspan="5" class="text-danger p-4">Erro ao carregar.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="text-danger p-4">Erro ao carregar.</td></tr>`;
       return;
     }
 
@@ -324,7 +407,22 @@
 
   document.getElementById('btnSave').addEventListener('click', save);
 
+  if (btnSaveOrder) btnSaveOrder.addEventListener('click', saveOrder);
+
   tbody.addEventListener('click', (e) => {
+    // Menu sorting arrows
+    const btnUp = e.target.closest('button[data-move-menu-up]');
+    if (btnUp) {
+        moveMenu(btnUp.getAttribute('data-menu-id'), -1);
+        return;
+    }
+    
+    const btnDown = e.target.closest('button[data-move-menu-down]');
+    if (btnDown) {
+        moveMenu(btnDown.getAttribute('data-menu-id'), 1);
+        return;
+    }
+
     const btn = e.target.closest('button[data-action]');
     if (!btn) return;
     const action = btn.getAttribute('data-action');

@@ -11,6 +11,7 @@
   </div>
 
   <div class="d-flex gap-2">
+    <button class="btn btn-outline-primary" id="btnSaveOrder" disabled>Salvar Ordem</button>
     <button class="btn btn-primary" id="btnNew">Nova categoria</button>
     <button class="btn btn-outline-secondary" id="btnReload">Atualizar</button>
   </div>
@@ -46,16 +47,17 @@
     <table class="table table-hover mb-0 align-middle">
       <thead>
         <tr>
+          <th style="width: 40px;"></th>
           <th style="width: 90px;">ID</th>
           <th>Categoria</th>
-          <th style="width: 110px;">Posição</th>
+          <th style="width: 120px;" class="text-center">Ordem</th>
           <th style="width: 140px;">Status</th>
           <th style="width: 120px;">Slots</th>
           <th style="width: 320px;" class="text-end">Ações</th>
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="6" class="text-muted p-4">Carregando…</td></tr>
+        <tr><td colspan="7" class="text-muted p-4">Carregando…</td></tr>
       </tbody>
     </table>
   </div>
@@ -148,12 +150,11 @@
                   <thead>
                     <tr>
                       <th>Resultado</th>
-                      <th style="width: 110px;">Posição</th>
                       <th style="width: 90px;" class="text-end">Add</th>
                     </tr>
                   </thead>
                   <tbody id="slotResults">
-                    <tr><td colspan="3" class="text-muted p-3">Faça uma busca para adicionar slots.</td></tr>
+                    <tr><td colspan="2" class="text-muted p-3">Faça uma busca para adicionar slots.</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -167,9 +168,10 @@
           <div class="col-12 col-lg-7">
             <div class="d-flex justify-content-between align-items-center">
               <label class="form-label mb-0">Slots vinculados</label>
-              <button class="btn btn-sm btn-outline-secondary" type="button" id="btnSortByPosition">
-                Ordenar por posição
-              </button>
+              <div class="d-flex gap-2">
+                {{-- Botão auxiliar para salvar apenas a ordem, se desejado, mas o Salvar Slots já faz isso --}}
+                <button class="btn btn-sm btn-outline-primary" type="button" id="btnSavePositions">Salvar Posicionamentos</button>
+              </div>
             </div>
 
             <div class="mt-2 table-soft">
@@ -177,13 +179,14 @@
                 <table class="table mb-0 align-middle">
                   <thead>
                     <tr>
+                      <th style="width: 40px;"></th>
                       <th>Slot</th>
-                      <th style="width: 140px;">Posição</th>
+                      <th style="width: 120px;" class="text-center">Ordem</th>
                       <th style="width: 90px;" class="text-end">Remover</th>
                     </tr>
                   </thead>
                   <tbody id="linkedSlots">
-                    <tr><td colspan="3" class="text-muted p-4">Carregando…</td></tr>
+                    <tr><td colspan="4" class="text-muted p-4">Carregando…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -203,10 +206,12 @@
 </div>
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script>
   // ====== Listagem / Cursor pagination ======
   const tbody = document.getElementById('tbody');
   const info = document.getElementById('paginationInfo');
+  const btnSaveOrder = document.getElementById('btnSaveOrder');
 
   const editModal = new bootstrap.Modal(document.getElementById('editModal'));
   const editTitle = document.getElementById('editTitle');
@@ -224,6 +229,7 @@
 
   let editingId = null;
   let managingCategoryId = null;
+  let categorySortable = null;
 
   // cache da lista (para editar rápido)
   const cacheById = new Map();
@@ -244,18 +250,28 @@
 
   function render(rows) {
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-muted p-4">Nenhum registro.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-muted p-4">Nenhum registro.</td></tr>`;
+      if (btnSaveOrder) btnSaveOrder.disabled = true;
       return;
     }
 
     tbody.innerHTML = rows.map(item => `
-      <tr>
+      <tr data-cat-id="${item.id}" data-position="${item.position ?? 0}">
+        <td class="text-center align-middle handle-cat" style="cursor: grab; width: 40px; color: #aaa;">
+           <span class="fs-5">≡</span>
+        </td>
         <td class="text-muted">#${item.id}</td>
         <td>
           <div class="fw-semibold">${item.name || '—'}</div>
           <div class="text-muted small">${item.slug || ''}</div>
         </td>
-        <td class="text-muted">${item.position ?? '—'}</td>
+        <td class="align-middle text-center">
+           <div class="d-flex align-items-center justify-content-center gap-1">
+             <button class="btn btn-sm btn-light border py-0 px-1" type="button" data-move-cat-up data-cat-id="${item.id}" title="Mover para cima">▲</button>
+             <span class="badge bg-light text-dark border" style="min-width: 32px;" data-pos-display>${item.position ?? '—'}</span>
+             <button class="btn btn-sm btn-light border py-0 px-1" type="button" data-move-cat-down data-cat-id="${item.id}" title="Mover para baixo">▼</button>
+           </div>
+        </td>
         <td>${badge(item.status)}</td>
         <td class="text-muted">${Array.isArray(item.slots) ? item.slots.length : (item.slots_count ?? '—')}</td>
         <td class="text-end">
@@ -267,6 +283,74 @@
         </td>
       </tr>
     `).join('');
+
+    initCategorySortable();
+    if (btnSaveOrder) btnSaveOrder.disabled = true;
+  }
+
+  function initCategorySortable() {
+    if (categorySortable) return;
+    categorySortable = new Sortable(tbody, {
+      handle: '.handle-cat',
+      animation: 150,
+      ghostClass: 'bg-light',
+      onEnd: function() {
+        if (btnSaveOrder) btnSaveOrder.disabled = false;
+        updateCategoryPositionsVisual();
+      }
+    });
+  }
+
+  function updateCategoryPositionsVisual() {
+      const rows = tbody.querySelectorAll('tr[data-cat-id]');
+      const positions = Array.from(rows).map(r => Number(r.getAttribute('data-position'))).sort((a,b) => a-b);
+      rows.forEach((row, i) => {
+         const newPos = positions[i];
+         row.querySelector('[data-pos-display]').textContent = newPos;
+         row.setAttribute('data-position', newPos);
+      });
+  }
+
+  function moveCategory(id, direction) {
+      const rows = Array.from(tbody.querySelectorAll('tr[data-cat-id]'));
+      const idx = rows.findIndex(r => r.getAttribute('data-cat-id') === String(id));
+      if (idx === -1) return;
+      
+      const newIdx = idx + direction;
+      if (newIdx < 0 || newIdx >= rows.length) return;
+      
+      const row = rows[idx];
+      const target = rows[newIdx];
+      
+      if (direction > 0) {
+          target.after(row);
+      } else {
+          target.before(row);
+      }
+      
+      if (btnSaveOrder) btnSaveOrder.disabled = false;
+      updateCategoryPositionsVisual();
+  }
+
+  async function saveOrder() {
+      const rows = tbody.querySelectorAll('tr[data-cat-id]');
+      const items = Array.from(rows).map(row => ({
+          id: Number(row.getAttribute('data-cat-id')),
+          position: Number(row.getAttribute('data-position'))
+      }));
+      
+      const res = await apiFetch('/api/v1/categories/reorder', {
+          method: 'PUT',
+          body: JSON.stringify({ items })
+      });
+      
+      if (!res.ok) {
+          toast('Erro ao salvar ordem.', 'danger');
+          return;
+      }
+      
+      toast('Ordem salva com sucesso.');
+      if (btnSaveOrder) btnSaveOrder.disabled = true;
   }
 
   function getFilters() {
@@ -277,7 +361,7 @@
   }
 
   async function load(cursor = null) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-muted p-4">Carregando…</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-muted p-4">Carregando…</td></tr>`;
 
     const params = new URLSearchParams();
     if (cursor) params.set('cursor', cursor);
@@ -289,7 +373,7 @@
     const res = await apiFetch('/api/v1/categories?' + params.toString());
     if (!res.ok) {
       toast('Falha ao carregar categorias (' + res.status + ')', 'danger');
-      tbody.innerHTML = `<tr><td colspan="6" class="text-danger p-4">Erro ao carregar.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-danger p-4">Erro ao carregar.</td></tr>`;
       return;
     }
 
@@ -407,27 +491,80 @@
   }
 
   // ====== Slots modal (sync) ======
+  let sortableInstance = null;
+
   function renderLinkedSlots() {
-    const items = Array.from(linkedMap.values());
+    // Ordena pelo position atual
+    const items = Array.from(linkedMap.values()).sort((a,b) => (a.position ?? 0) - (b.position ?? 0));
+    
     if (!items.length) {
-      linkedSlotsTbody.innerHTML = `<tr><td colspan="3" class="text-muted p-4">Nenhum slot vinculado.</td></tr>`;
+      linkedSlotsTbody.innerHTML = `<tr><td colspan="4" class="text-muted p-4">Nenhum slot vinculado.</td></tr>`;
       return;
     }
 
-    linkedSlotsTbody.innerHTML = items.map(it => `
-      <tr>
-        <td>
+    linkedSlotsTbody.innerHTML = items.map((it, idx) => `
+      <tr data-slot-id="${it.slot_id}">
+        <td class="text-center align-middle handle" style="cursor: grab; width: 40px; color: #aaa;">
+           <span class="fs-5">≡</span>
+        </td>
+        <td class="align-middle">
           <div class="fw-semibold">${it.slot?.title || ('Slot #' + it.slot_id)}</div>
           <div class="text-muted small">${it.slot?.provider || ''} ${it.slot?.provider_game_id ? '• '+it.slot.provider_game_id : ''}</div>
         </td>
-        <td>
-          <input type="number" min="0" class="form-control form-control-sm" data-pos data-slot-id="${it.slot_id}" value="${it.position ?? 0}">
+        <td class="align-middle text-center">
+           <div class="d-flex align-items-center justify-content-center gap-1">
+             <button class="btn btn-sm btn-light border py-0 px-1" type="button" data-move-up data-slot-id="${it.slot_id}" title="Mover para cima">▲</button>
+             <span class="badge bg-light text-dark border" style="min-width: 32px;">${idx + 1}</span>
+             <button class="btn btn-sm btn-light border py-0 px-1" type="button" data-move-down data-slot-id="${it.slot_id}" title="Mover para baixo">▼</button>
+           </div>
         </td>
-        <td class="text-end">
+        <td class="text-end align-middle">
           <button class="btn btn-sm btn-outline-danger" data-remove-slot data-slot-id="${it.slot_id}">Remover</button>
         </td>
       </tr>
     `).join('');
+  }
+
+  function updateMapPositions() {
+     const rows = linkedSlotsTbody.querySelectorAll('tr[data-slot-id]');
+     rows.forEach((row, idx) => {
+        const id = row.getAttribute('data-slot-id');
+        if (linkedMap.has(id)) {
+            linkedMap.get(id).position = idx;
+        }
+     });
+  }
+
+  function initSortable() {
+    if (sortableInstance) return;
+    sortableInstance = new Sortable(linkedSlotsTbody, {
+      handle: '.handle',
+      animation: 150,
+      ghostClass: 'bg-light',
+      onEnd: function() {
+        updateMapPositions();
+        renderLinkedSlots(); 
+      }
+    });
+  }
+
+  function moveItem(id, direction) {
+    const items = Array.from(linkedMap.values()).sort((a,b) => (a.position ?? 0) - (b.position ?? 0));
+    const idx = items.findIndex(it => String(it.slot_id) === String(id));
+    if (idx === -1) return;
+
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= items.length) return;
+
+    // Swap and re-index
+    const moved = items.splice(idx, 1)[0];
+    items.splice(newIdx, 0, moved);
+    
+    items.forEach((it, i) => {
+        linkedMap.get(String(it.slot_id)).position = i;
+    });
+    
+    renderLinkedSlots();
   }
 
   async function openSlotsModal(categoryId) {
@@ -435,7 +572,7 @@
     syncError.classList.add('d-none');
     syncError.textContent = '';
     linkedMap.clear();
-    linkedSlotsTbody.innerHTML = `<tr><td colspan="3" class="text-muted p-4">Carregando…</td></tr>`;
+    linkedSlotsTbody.innerHTML = `<tr><td colspan="4" class="text-muted p-4">Carregando…</td></tr>`;
 
     const res = await apiFetch('/api/v1/categories/' + categoryId);
     if (!res.ok) {
@@ -447,7 +584,6 @@
     slotsTitle.textContent = 'Slots da Categoria';
     slotsSubtitle.textContent = `${category.name} • ${category.slug || ''}`;
 
-    // category.slots vem com pivot.position
     (category.slots || []).forEach(s => {
       linkedMap.set(String(s.id), {
         slot_id: s.id,
@@ -457,7 +593,9 @@
     });
 
     renderLinkedSlots();
-    slotResultsTbody.innerHTML = `<tr><td colspan="3" class="text-muted p-3">Faça uma busca para adicionar slots.</td></tr>`;
+    initSortable();
+
+    slotResultsTbody.innerHTML = `<tr><td colspan="2" class="text-muted p-3">Faça uma busca para adicionar slots.</td></tr>`;
     document.getElementById('slotSearch').value = '';
 
     slotsModal.show();
@@ -466,17 +604,16 @@
   async function searchSlots() {
     const q = document.getElementById('slotSearch').value.trim();
     if (!q) {
-      slotResultsTbody.innerHTML = `<tr><td colspan="3" class="text-muted p-3">Digite algo para buscar.</td></tr>`;
+      slotResultsTbody.innerHTML = `<tr><td colspan="2" class="text-muted p-3">Digite algo para buscar.</td></tr>`;
       return;
     }
 
-    slotResultsTbody.innerHTML = `<tr><td colspan="3" class="text-muted p-3">Buscando…</td></tr>`;
+    slotResultsTbody.innerHTML = `<tr><td colspan="2" class="text-muted p-3">Buscando…</td></tr>`;
 
-    // SlotRequest suporta status active/inactive; aqui vamos buscar tudo que bate com q
     const params = new URLSearchParams({ q });
     const res = await apiFetch('/api/v1/slots?' + params.toString());
     if (!res.ok) {
-      slotResultsTbody.innerHTML = `<tr><td colspan="3" class="text-danger p-3">Erro ao buscar slots (${res.status}).</td></tr>`;
+      slotResultsTbody.innerHTML = `<tr><td colspan="2" class="text-danger p-3">Erro ao buscar slots (${res.status}).</td></tr>`;
       return;
     }
 
@@ -484,7 +621,7 @@
     const rows = data.data || [];
 
     if (!rows.length) {
-      slotResultsTbody.innerHTML = `<tr><td colspan="3" class="text-muted p-3">Nenhum slot encontrado.</td></tr>`;
+      slotResultsTbody.innerHTML = `<tr><td colspan="2" class="text-muted p-3">Nenhum slot encontrado.</td></tr>`;
       return;
     }
 
@@ -494,9 +631,6 @@
           <div class="fw-semibold">${s.title}</div>
           <div class="text-muted small">${s.provider} • ${s.provider_game_id} • ${s.status}</div>
         </td>
-        <td>
-          <input type="number" min="0" class="form-control form-control-sm" data-add-pos value="0">
-        </td>
         <td class="text-end">
           <button class="btn btn-sm btn-outline-primary" data-add-slot data-slot-id="${s.id}">Adicionar</button>
         </td>
@@ -504,15 +638,20 @@
     `).join('');
   }
 
-  function addSlotToLinked(slotId, position, slotObj = null) {
+  function addSlotToLinked(slotId, slotObj = null) {
     const key = String(slotId);
     if (linkedMap.has(key)) {
       toast('Esse slot já está vinculado.', 'secondary');
       return;
     }
+    
+    // Append to end
+    const items = Array.from(linkedMap.values());
+    const maxPos = items.length > 0 ? Math.max(...items.map(i => i.position ?? 0)) : -1;
+    
     linkedMap.set(key, {
       slot_id: Number(slotId),
-      position: Number(position) || 0,
+      position: maxPos + 1,
       slot: slotObj
     });
     renderLinkedSlots();
@@ -522,21 +661,16 @@
     syncError.classList.add('d-none');
     syncError.textContent = '';
 
-    // lê as posições atuais dos inputs
-    document.querySelectorAll('[data-pos]').forEach(inp => {
-      const slotId = inp.getAttribute('data-slot-id');
-      const it = linkedMap.get(String(slotId));
-      if (it) it.position = Number(inp.value || 0);
-    });
-
-    const items = Array.from(linkedMap.values()).map(it => ({
+    // Garante normalização 0..N antes de salvar
+    const items = Array.from(linkedMap.values()).sort((a,b) => (a.position ?? 0) - (b.position ?? 0));
+    const payloadItems = items.map((it, idx) => ({
       slot_id: it.slot_id,
-      position: it.position ?? 0,
+      position: idx,
     }));
 
     const res = await apiFetch(`/api/v1/categories/${managingCategoryId}/slots`, {
       method: 'PUT',
-      body: JSON.stringify({ items })
+      body: JSON.stringify({ items: payloadItems })
     });
 
     if (!res.ok) {
@@ -546,7 +680,7 @@
       return;
     }
 
-    toast('Slots sincronizados.');
+    toast('Slots sincronizados com sucesso.');
     slotsModal.hide();
     await load(null);
   }
@@ -573,7 +707,22 @@
 
   document.getElementById('btnSave').addEventListener('click', save);
 
+  if (btnSaveOrder) btnSaveOrder.addEventListener('click', saveOrder);
+
   tbody.addEventListener('click', (e) => {
+    // Category sorting arrows
+    const btnUp = e.target.closest('button[data-move-cat-up]');
+    if (btnUp) {
+        moveCategory(btnUp.getAttribute('data-cat-id'), -1);
+        return;
+    }
+    
+    const btnDown = e.target.closest('button[data-move-cat-down]');
+    if (btnDown) {
+        moveCategory(btnDown.getAttribute('data-cat-id'), 1);
+        return;
+    }
+
     const btn = e.target.closest('button[data-action]');
     if (!btn) return;
     const action = btn.getAttribute('data-action');
@@ -596,33 +745,38 @@
 
     const slotId = btn.getAttribute('data-slot-id');
     const row = btn.closest('tr');
-    const posInput = row.querySelector('[data-add-pos]');
-    const position = posInput ? posInput.value : 0;
-
-    // pega dados do texto (não perfeito, mas ajuda)
+    
     const title = row.querySelector('.fw-semibold')?.textContent?.trim() || '';
     const meta = row.querySelector('.text-muted')?.textContent?.trim() || '';
-    addSlotToLinked(slotId, position, { id: Number(slotId), title, provider: meta });
+    addSlotToLinked(slotId, { id: Number(slotId), title, provider: meta });
   });
 
   // remover/editar posições nos vinculados
   linkedSlotsTbody.addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-remove-slot]');
-    if (!btn) return;
-
-    const slotId = btn.getAttribute('data-slot-id');
-    linkedMap.delete(String(slotId));
-    renderLinkedSlots();
+    const btnRemove = e.target.closest('button[data-remove-slot]');
+    if (btnRemove) {
+        const slotId = btnRemove.getAttribute('data-slot-id');
+        linkedMap.delete(String(slotId));
+        renderLinkedSlots();
+        return;
+    }
+    
+    const btnUp = e.target.closest('button[data-move-up]');
+    if (btnUp) {
+        moveItem(btnUp.getAttribute('data-slot-id'), -1);
+        return;
+    }
+    
+    const btnDown = e.target.closest('button[data-move-down]');
+    if (btnDown) {
+        moveItem(btnDown.getAttribute('data-slot-id'), 1);
+        return;
+    }
   });
 
-  document.getElementById('btnSortByPosition').addEventListener('click', () => {
-    const arr = Array.from(linkedMap.values()).sort((a,b) => (a.position ?? 0) - (b.position ?? 0));
-    linkedMap.clear();
-    arr.forEach(it => linkedMap.set(String(it.slot_id), it));
-    renderLinkedSlots();
-  });
-
+  document.getElementById('btnSavePositions').addEventListener('click', syncSlots);
   document.getElementById('btnSyncSlots').addEventListener('click', syncSlots);
+
 
   // init
   load(null);

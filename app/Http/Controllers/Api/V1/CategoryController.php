@@ -73,6 +73,43 @@ class CategoryController extends Controller
         return response()->json($q->cursorPaginate(20));
     }
 
+    /** @OA\Put(
+     *  path="/api/v1/categories/reorder",
+     *  tags={"Categories"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Reordenar categorias",
+     *  @OA\RequestBody(
+     *    required=true,
+     *    @OA\JsonContent(
+     *      @OA\Property(property="items", type="array",
+     *        @OA\Items(
+     *          @OA\Property(property="id", type="integer", example=1),
+     *          @OA\Property(property="position", type="integer", example=0)
+     *        )
+     *      )
+     *    )
+     *  ),
+     *  @OA\Response(response=204, description="No Content")
+     * ) */
+    public function reorder(Request $request)
+    {
+        $request->validate([
+            'items' => 'required|array',
+            'items.*.id' => 'required|integer',
+            'items.*.position' => 'required|integer',
+        ]);
+
+        $items = $request->input('items');
+
+        \DB::transaction(function () use ($items) {
+            foreach ($items as $item) {
+                Category::where('id', $item['id'])->update(['position' => $item['position']]);
+            }
+        });
+
+        return response()->noContent();
+    }
+
     /** @OA\Post(
      *  path="/api/v1/categories",
      *  tags={"Categories"},

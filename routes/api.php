@@ -171,6 +171,9 @@ Route::prefix('v1')->group(function () {
             ->names('slots');
 
         // Categories
+        Route::put('categories/reorder', [CategoryController::class, 'reorder'])
+            ->name('categories.reorder');
+
         Route::apiResource('categories', CategoryController::class)
             ->except(['index', 'show'])
             ->parameters(['categories' => 'category'])
@@ -189,6 +192,8 @@ Route::prefix('v1')->group(function () {
             ->name('showcases.slots.sync');
 
         // Menus and Menu Items
+        Route::put('menus/reorder', [MenuController::class, 'reorder'])->name('menus.reorder');
+
         Route::apiResource('menus', MenuController::class)
             ->except(['index', 'show'])
             ->parameters(['menus' => 'menu'])
