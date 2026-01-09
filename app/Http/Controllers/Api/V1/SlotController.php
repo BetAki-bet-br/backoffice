@@ -68,6 +68,52 @@ class SlotController extends Controller
 
     /**
      * @OA\Post(
+     *   path="/api/v1/slots/by-ids",
+     *   tags={"Slots"},
+     *   security={{"bearerAuth": {}}},
+     *   summary="Listar slots por IDs externos",
+     *   @OA\RequestBody(
+     *     required=true,
+     *     @OA\JsonContent(
+     *       @OA\Property(property="externalIds", type="array", @OA\Items(type="string"))
+     *     )
+     *   ),
+     *   @OA\Response(response=200, description="OK")
+     * )
+     */
+    public function byIds(Request $request)
+    {
+        $request->validate([
+            'externalIds' => 'required|array',
+            'externalIds.*' => 'string',
+        ]);
+
+        $externalIds = $request->input('externalIds');
+
+        $slots = Slot::query()
+            ->whereIn('provider_game_id', $externalIds)
+            ->get();
+
+        $extrasByExternalId = GameExtra::query()
+            ->whereIn('external_id', $externalIds)
+            ->get()
+            ->keyBy('external_id');
+
+        $slots = $slots->map(function (Slot $slot) use ($extrasByExternalId) {
+            $extra = $extrasByExternalId->get($slot->provider_game_id);
+
+            $slot->setAttribute('rtp', $extra?->rtp);
+            $slot->setAttribute('volatility', $extra?->volatility);
+            $slot->setAttribute('min_bet', $extra?->min_bet);
+
+            return $slot;
+        });
+
+        return response()->json($slots);
+    }
+
+    /**
+     * @OA\Post(
      *   path="/api/v1/slots",
      *   tags={"Slots"},
      *   security={{"bearerAuth": {}}},

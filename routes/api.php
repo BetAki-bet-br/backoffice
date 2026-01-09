@@ -74,6 +74,7 @@ Route::prefix('v1')->group(function () {
         ->names('banners');
 
     // Slots
+    Route::post('slots/by-ids', [SlotController::class, 'byIds'])->name('slots.byIds');
     Route::apiResource('slots', SlotController::class)
         ->only(['index', 'show'])
         ->parameters(['slots' => 'slot'])
