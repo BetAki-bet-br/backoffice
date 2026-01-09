@@ -138,7 +138,29 @@ class CategoryController extends Controller
      * ) */
     public function show(Category $category)
     {
-        return response()->json($category->load(['slots']));
+        $category->load(['slots' => function ($query) {
+            $query->orderBy('category_slot.position');
+        }]);
+
+        $externalIds = $category->slots
+            ->pluck('provider_game_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($externalIds->isNotEmpty()) {
+            $portalGames = PortalGame::query()
+                ->whereIn('external_id', $externalIds)
+                ->get(['external_id', 'payload'])
+                ->keyBy('external_id');
+
+            $category->slots->each(function (Slot $slot) use ($portalGames) {
+                $portal = $portalGames->get($slot->provider_game_id);
+                $slot->setAttribute('game_data', $portal?->payload);
+            });
+        }
+
+        return response()->json($category);
     }
 
     /** @OA\Put(

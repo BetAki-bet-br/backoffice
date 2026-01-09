@@ -300,7 +300,7 @@ class LobbyLayoutController extends Controller
 
         return $this->makeGenericSection([], [
             'id' => $category->id,
-            'type' => $overrides['type'] ?? ($category->meta['original_type'] ?? 'game-list'),
+            'type' => $overrides['type'] ?? ($category->meta['type'] ?? ($category->meta['original_type'] ?? 'game-list')),
             'title' => $overrides['title'] ?? $category->name,
             'order' => (int) ($overrides['order'] ?? 0),
             'games' => $games,
