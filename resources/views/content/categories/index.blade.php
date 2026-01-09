@@ -13,6 +13,7 @@
   <div class="d-flex gap-2">
     <button class="btn btn-outline-primary" id="btnSaveOrder" disabled>Salvar Ordem</button>
     <button class="btn btn-primary" id="btnNew">Nova categoria</button>
+    <button class="btn btn-outline-dark" id="btnSync" title="Puxar categorias da API externa">Sincronizar</button>
     <button class="btn btn-outline-secondary" id="btnReload">Atualizar</button>
   </div>
 </div>
@@ -708,6 +709,42 @@
   document.getElementById('btnSave').addEventListener('click', save);
 
   if (btnSaveOrder) btnSaveOrder.addEventListener('click', saveOrder);
+
+  async function syncCategories() {
+    if (!confirm('Deseja sincronizar categorias da API externa? Isso pode criar novas categorias e atualizar nomes existentes.')) return;
+    
+    // Podemos permitir configurar o Portal ID, mas por padrão usaremos o do .env (ou input se necessário)
+    // const portalId = prompt('Portal ID (Desktop=5, Mobile=6):', '5');
+    // if (!portalId) return;
+
+    const btn = document.getElementById('btnSync');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Sincronizando...';
+
+    try {
+        const res = await apiFetch('/api/v1/categories/sync', { 
+            method: 'POST',
+            // body: JSON.stringify({ portal_id: portalId }) 
+        });
+
+        if (!res.ok) {
+            toast('Erro ao sincronizar.', 'danger');
+        } else {
+            const stats = await res.json();
+            toast(`Sincronização concluída! Criadas: ${stats.created}, Atualizadas: ${stats.updated}`);
+            await load(null);
+        }
+    } catch (e) {
+        console.error(e);
+        toast('Erro de conexão.', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+  }
+
+  document.getElementById('btnSync').addEventListener('click', syncCategories);
 
   tbody.addEventListener('click', (e) => {
     // Category sorting arrows

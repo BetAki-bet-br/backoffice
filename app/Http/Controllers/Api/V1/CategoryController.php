@@ -33,8 +33,9 @@ class CategoryController extends Controller
             ->orderBy('position')
             ->orderBy('name');
 
+            $categories = $q->has('slots', '>', 1)->with('slots')->get();
+            
         if ($request->get('format') === 'sublevel') {
-            $categories = $q->with('slots')->get();
 
             $externalIds = $categories
                 ->flatMap(fn($cat) => $cat->slots->pluck('provider_game_id'))
@@ -227,5 +228,27 @@ class CategoryController extends Controller
         });
 
         return response()->json($category->load('slots'));
+    }
+
+    /** @OA\Post(
+     *  path="/api/v1/categories/sync",
+     *  tags={"Categories"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Sincronizar categorias da API externa",
+     *  @OA\RequestBody(
+     *    required=false,
+     *    @OA\JsonContent(
+     *      @OA\Property(property="portal_id", type="integer", example=1)
+     *    )
+     *  ),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
+    public function sync(Request $request)
+    {
+        $portalId = (int) ($request->input('portal_id') ?? config('services.base_api.portal_id', 1));
+
+        $stats = \App\Services\BaseApi\CategorySyncService::make()->syncPortal($portalId);
+
+        return response()->json($stats);
     }
 }

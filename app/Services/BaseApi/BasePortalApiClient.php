@@ -42,4 +42,24 @@ class BasePortalApiClient
 
         return $response->json() ?? [];
     }
+
+    public function getGameCategories(int $portalId): array
+    {
+        $url = $this->baseUrl . "/portal/v1/prod-game/game-categories/{$portalId}";
+
+        $request = Http::acceptJson()
+            ->timeout($this->timeout);
+
+        if ($this->apiKey) {
+            $request = $request->withHeaders([
+                'x-api-key' => $this->apiKey,
+            ]);
+        }
+
+        $response = $request->get($url);
+
+        $response->throw();
+
+        return $response->json() ?? [];
+    }
 }

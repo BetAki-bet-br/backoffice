@@ -125,6 +125,13 @@ Route::prefix('v1')->group(function () {
         ->parameters(['footers' => 'footer'])
         ->names('footers');
 
+    // Portal Games Public
+    Route::get('public/portal-games/providers', [\App\Http\Controllers\Api\V1\PortalGamesPublicController::class, 'getProviders'])
+        ->name('public.portalgames.providers');
+
+    Route::get('public/portal-games/by-provider', [\App\Http\Controllers\Api\V1\PortalGamesPublicController::class, 'getGamesByProvider'])
+        ->name('public.portalgames.byProvider');
+
     /*
     |--------------------------------------------------------------------------
     | Authenticated
@@ -174,6 +181,9 @@ Route::prefix('v1')->group(function () {
         // Categories
         Route::put('categories/reorder', [CategoryController::class, 'reorder'])
             ->name('categories.reorder');
+
+        Route::post('categories/sync', [CategoryController::class, 'sync'])
+            ->name('categories.sync');
 
         Route::apiResource('categories', CategoryController::class)
             ->except(['index', 'show'])
