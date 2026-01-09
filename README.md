@@ -9,7 +9,7 @@ API RESTful para a **Dashboard Administrativa da Betaki**, desenvolvida com **La
 ### 1️⃣ Clonar e instalar dependências
 git clone <repo-url> backend-backoffice
 cd backend-backoffice
-composer install --optimize-autoloar --no-dev
+composer install
 
 ---
 
@@ -22,13 +22,7 @@ Ajuste os valores principais:
 APP_NAME="Betaki Admin API"
 APP_ENV=local
 APP_DEBUG=true
-APP_URL=http://localhost:8000
-
-# ===== API externa para dados de jogos ======
-BASE_API_URL=https://betaki.bet.br/api
-BASE_PORTAL_ID=5
-BASE_API_TIMEOUT=20
-BASE_API_KEY=""
+APP_URL=http://localhost:8080
 
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
@@ -72,9 +66,9 @@ php artisan l5-swagger:generate
 
 ### 5️⃣ Acessos
 
-API Base: http://localhost:8000/api/v1  
-Swagger UI: http://localhost:8000/api/documentation  
-Spec JSON: http://localhost:8000/api-docs/api-docs.json
+API Base: http://localhost:8080/api/v1  
+Swagger UI: http://localhost:8080/api/documentation  
+Spec JSON: http://localhost:8080/api-docs/api-docs.json
 
 ---
 
