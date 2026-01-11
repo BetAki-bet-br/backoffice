@@ -43,7 +43,7 @@ class LobbyLayoutController extends Controller
 
         if (empty($sectionsConfig)) {
             return [
-                'sections' => $this->buildDefaultSections(),
+                'sections' => $this->buildDefaultSections($vertical),
             ];
         }
 
@@ -78,12 +78,16 @@ class LobbyLayoutController extends Controller
         return is_array($value) ? $value : [];
     }
 
-    private function buildDefaultSections(): array
+    private function buildDefaultSections(string $vertical): array
     {
         $categories = Category::query()
             ->where('status', 'active')
+            ->forVertical($vertical)
+            ->where(function ($q) {
+                $q->where('type', '!=', 'game-list')
+                    ->orWhereHas('slots', null, '>', 1);
+            })
             ->with(['slots' => fn($q) => $q->where('status', 'active')])
-            ->orderBy('position')
             ->orderBy('name')
             ->get();
 
@@ -91,12 +95,13 @@ class LobbyLayoutController extends Controller
             $categories->flatMap(fn(Category $cat) => $cat->slots->pluck('provider_game_id'))
         );
 
+        $categoriesKeyed = $categories->keyBy('id');
+
         return $categories
-            ->map(function (Category $category, int $index) use ($portalGames) {
-                return $this->makeCategorySection($category, $portalGames, [
-                    'order' => $category->position ?? $index,
-                ]);
+            ->map(function (Category $category, int $index) use ($portalGames, $vertical, $categoriesKeyed) {
+                return $this->buildSection(['id' => $category->id], $vertical, $categoriesKeyed, $portalGames, $index);
             })
+            ->filter()
             ->values()
             ->all();
     }
@@ -108,7 +113,6 @@ class LobbyLayoutController extends Controller
             ->values();
 
         $categoryIds = $sectionsConfig
-            ->filter(fn($section) => ($section['type'] ?? null) === 'game-list')
             ->map(fn($section) => $this->resolveCategoryId($section))
             ->filter()
             ->unique()
@@ -119,6 +123,7 @@ class LobbyLayoutController extends Controller
             : Category::query()
                 ->whereIn('id', $categoryIds)
                 ->where('status', 'active')
+                ->forVertical($vertical)
                 ->with(['slots' => fn($q) => $q->where('status', 'active')])
                 ->get()
                 ->keyBy('id');
@@ -128,24 +133,37 @@ class LobbyLayoutController extends Controller
         );
 
         $sections = $sectionsConfig->map(function (array $section, int $index) use ($categories, $portalGames, $vertical) {
-            $type = $section['type'] ?? 'game-list';
-            $title = $section['title'] ?? null;
-            $order = (int) ($section['order'] ?? $index);
-            $metadata = $section['metadata'] ?? [];
-
-            return match ($type) {
-                'game-list' => $this->buildGameListSection($section, $categories, $portalGames, $order, $title, $metadata),
-                'top-10-list' => $this->buildTopListSection($section, $vertical, $order, $title, $metadata),
-                'mais-premiados' => $this->buildAwardedSection($section, $vertical, $order, $title, $metadata),
-                'winners-list' => $this->buildWinnersSection($section, $vertical, $order, $title, $metadata),
-                default => $this->buildGenericSection($section, $order, $title, $metadata),
-            };
+            return $this->buildSection($section, $vertical, $categories, $portalGames, $index);
         })
         ->filter()
         ->sortBy('order')
         ->values();
 
         return $sections->all();
+    }
+
+    private function buildSection(
+        array $section,
+        string $vertical,
+        Collection $categories,
+        Collection $portalGames,
+        int $index
+    ): ?array {
+        $categoryId = $this->resolveCategoryId($section);
+        $category = $categoryId ? $categories->get($categoryId) : null;
+
+        $type = $section['type'] ?? ($category?->type ?? 'game-list');
+        $title = $section['title'] ?? ($category?->name ?? null);
+        $order = (int) ($section['order'] ?? $index);
+        $metadata = $section['metadata'] ?? [];
+
+        return match ($type) {
+            'game-list' => $this->buildGameListSection($section, $categories, $portalGames, $order, $title, $metadata),
+            'top-10-list' => $this->buildTopListSection($section, $vertical, $order, $title, $metadata),
+            'mais-premiados' => $this->buildAwardedSection($section, $vertical, $order, $title, $metadata),
+            'winners-list' => $this->buildWinnersSection($section, $vertical, $order, $title, $metadata),
+            default => $this->buildGenericSection($section, $order, $title, $metadata),
+        };
     }
 
     private function buildGameListSection(
@@ -163,6 +181,10 @@ class LobbyLayoutController extends Controller
 
         $category = $categories->get($categoryId);
         if (!$category) {
+            return null;
+        }
+
+        if ($category->type === 'game-list' && $category->slots->count() <= 1) {
             return null;
         }
 
@@ -267,16 +289,12 @@ class LobbyLayoutController extends Controller
                 ->orderByDesc('id')
                 ->first();
 
-        if (!$batch) {
-            return null;
-        }
-
         return $this->makeGenericSection($section, [
-            'id' => $section['id'] ?? $batch->id,
+            'id' => $section['id'] ?? ($batch?->id ?? 'winners'),
             'type' => 'winners-list',
-            'title' => $title ?? $batch->title,
+            'title' => $title ?? ($batch?->title ?? 'Vencedores'),
             'order' => $order,
-            'metadata' => array_merge(['batchId' => $batch->id], $metadata),
+            'metadata' => array_merge(['batchId' => $batch?->id], $metadata),
         ]);
     }
 
@@ -300,7 +318,7 @@ class LobbyLayoutController extends Controller
 
         return $this->makeGenericSection([], [
             'id' => $category->id,
-            'type' => $overrides['type'] ?? ($category->meta['type'] ?? ($category->meta['original_type'] ?? 'game-list')),
+            'type' => $overrides['type'] ?? ($category->type ?? ($category->meta['type'] ?? ($category->meta['original_type'] ?? 'game-list'))),
             'title' => $overrides['title'] ?? $category->name,
             'order' => (int) ($overrides['order'] ?? 0),
             'games' => $games,

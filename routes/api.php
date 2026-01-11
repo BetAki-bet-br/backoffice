@@ -81,6 +81,8 @@ Route::prefix('v1')->group(function () {
         ->names('slots');
 
     // Categories
+    Route::get('categories/slots', [CategoryController::class, 'slots'])->name('categories.slots.public');
+    Route::get('categories/live', [CategoryController::class, 'live'])->name('categories.live.public');
     Route::apiResource('categories', CategoryController::class)
         ->only(['index', 'show'])
         ->parameters(['categories' => 'category'])
@@ -178,10 +180,16 @@ Route::prefix('v1')->group(function () {
             ->parameters(['slots' => 'slot'])
             ->names('slots');
 
-        // Categories
-        Route::put('categories/reorder', [CategoryController::class, 'reorder'])
-            ->name('categories.reorder');
+        // Lobbies (Configuração)
+        Route::get('lobbies/{vertical}/config', [\App\Http\Controllers\Api\V1\LobbyController::class, 'show'])
+            ->whereIn('vertical', ['slots', 'live'])
+            ->name('lobbies.config.show');
 
+        Route::put('lobbies/{vertical}/config', [\App\Http\Controllers\Api\V1\LobbyController::class, 'update'])
+            ->whereIn('vertical', ['slots', 'live'])
+            ->name('lobbies.config.update');
+
+        // Categories
         Route::post('categories/sync', [CategoryController::class, 'sync'])
             ->name('categories.sync');
 

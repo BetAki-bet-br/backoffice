@@ -372,6 +372,11 @@
                 <span>Categorias</span>
             </a>
 
+            <a href="{{ route('lobbies.ui') }}" class="sidebar-link {{ request()->routeIs('lobbies.ui') ? 'active' : '' }}">
+                <span class="sidebar-link-icon">🏰</span>
+                <span>Lobbies</span>
+            </a>
+
             <a href="{{ route('menus.ui') }}" class="sidebar-link {{ request()->routeIs('menus.ui') ? 'active' : '' }}">
                 <span class="sidebar-link-icon">🧭</span>
                 <span>Menus</span>

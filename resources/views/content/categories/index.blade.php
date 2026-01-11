@@ -11,7 +11,6 @@
   </div>
 
   <div class="d-flex gap-2">
-    <button class="btn btn-outline-primary" id="btnSaveOrder" disabled>Salvar Ordem</button>
     <button class="btn btn-primary" id="btnNew">Nova categoria</button>
     <button class="btn btn-outline-dark" id="btnSync" title="Puxar categorias da API externa">Sincronizar</button>
     <button class="btn btn-outline-secondary" id="btnReload">Atualizar</button>
@@ -24,6 +23,26 @@
       <div class="col-12 col-lg-6">
         <label class="form-label">Busca (nome/slug)</label>
         <input type="text" class="form-control" id="q" placeholder="Ex: cassino, slots, promocionais...">
+      </div>
+
+      <div class="col-6 col-lg-3">
+        <label class="form-label">Vertical</label>
+        <select class="form-select" id="vertical">
+          <option value="">Todos</option>
+          <option value="slots">Slots (Casino)</option>
+          <option value="live">Live Casino</option>
+        </select>
+      </div>
+
+      <div class="col-6 col-lg-3">
+        <label class="form-label">Tipo</label>
+        <select class="form-select" id="type">
+          <option value="">Todos</option>
+          <option value="game-list">Game List</option>
+          <option value="top-10-list">Top 10 List</option>
+          <option value="mais-premiados">Mais Premiados</option>
+          <option value="winners-list">Winners List</option>
+        </select>
       </div>
 
       <div class="col-6 col-lg-3">
@@ -48,10 +67,10 @@
     <table class="table table-hover mb-0 align-middle">
       <thead>
         <tr>
-          <th style="width: 40px;"></th>
           <th style="width: 90px;">ID</th>
           <th>Categoria</th>
-          <th style="width: 120px;" class="text-center">Ordem</th>
+          <th style="width: 150px;">Vertical(s)</th>
+          <th style="width: 120px;">Tipo</th>
           <th style="width: 140px;">Status</th>
           <th style="width: 120px;">Slots</th>
           <th style="width: 320px;" class="text-end">Ações</th>
@@ -91,6 +110,30 @@
           <div class="col-12 col-lg-6">
             <label class="form-label">Slug (opcional)</label>
             <input class="form-control" id="f_slug" placeholder="Deixe vazio para gerar automaticamente">
+          </div>
+
+          <div class="col-12 col-lg-4">
+            <label class="form-label d-block">Vertical(s)</label>
+            <div class="d-flex gap-3 pt-1">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="f_verticals" value="slots" id="v_slots">
+                <label class="form-check-label" for="v_slots">Slots (Casino)</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="f_verticals" value="live" id="v_live">
+                <label class="form-check-label" for="v_live">Live Casino</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-6 col-lg-4">
+            <label class="form-label">Tipo</label>
+            <select class="form-select" id="f_type">
+              <option value="game-list">Game List</option>
+              <option value="top-10-list">Top 10 List</option>
+              <option value="mais-premiados">Mais Premiados</option>
+              <option value="winners-list">Winners List</option>
+            </select>
           </div>
 
           <div class="col-6 col-lg-4">
@@ -212,7 +255,6 @@
   // ====== Listagem / Cursor pagination ======
   const tbody = document.getElementById('tbody');
   const info = document.getElementById('paginationInfo');
-  const btnSaveOrder = document.getElementById('btnSaveOrder');
 
   const editModal = new bootstrap.Modal(document.getElementById('editModal'));
   const editTitle = document.getElementById('editTitle');
@@ -230,7 +272,6 @@
 
   let editingId = null;
   let managingCategoryId = null;
-  let categorySortable = null;
 
   // cache da lista (para editar rápido)
   const cacheById = new Map();
@@ -243,7 +284,9 @@
     const s = (status || '').toLowerCase();
     const map = {
       active: 'bg-success-subtle text-success',
-      inactive: 'bg-secondary-subtle text-secondary'
+      inactive: 'bg-secondary-subtle text-secondary',
+      slots: 'bg-info-subtle text-info-emphasis',
+      live: 'bg-warning-subtle text-warning-emphasis'
     };
     const cls = map[s] || 'bg-light text-muted';
     return `<span class="badge badge-status ${cls}">${status || '—'}</span>`;
@@ -252,27 +295,18 @@
   function render(rows) {
     if (!rows.length) {
       tbody.innerHTML = `<tr><td colspan="7" class="text-muted p-4">Nenhum registro.</td></tr>`;
-      if (btnSaveOrder) btnSaveOrder.disabled = true;
       return;
     }
 
     tbody.innerHTML = rows.map(item => `
       <tr data-cat-id="${item.id}" data-position="${item.position ?? 0}">
-        <td class="text-center align-middle handle-cat" style="cursor: grab; width: 40px; color: #aaa;">
-           <span class="fs-5">≡</span>
-        </td>
         <td class="text-muted">#${item.id}</td>
         <td>
           <div class="fw-semibold">${item.name || '—'}</div>
           <div class="text-muted small">${item.slug || ''}</div>
         </td>
-        <td class="align-middle text-center">
-           <div class="d-flex align-items-center justify-content-center gap-1">
-             <button class="btn btn-sm btn-light border py-0 px-1" type="button" data-move-cat-up data-cat-id="${item.id}" title="Mover para cima">▲</button>
-             <span class="badge bg-light text-dark border" style="min-width: 32px;" data-pos-display>${item.position ?? '—'}</span>
-             <button class="btn btn-sm btn-light border py-0 px-1" type="button" data-move-cat-down data-cat-id="${item.id}" title="Mover para baixo">▼</button>
-           </div>
-        </td>
+        <td>${(item.verticals || []).map(v => badge(v)).join(' ')}</td>
+        <td><code class="small">${item.type || 'game-list'}</code></td>
         <td>${badge(item.status)}</td>
         <td class="text-muted">${Array.isArray(item.slots) ? item.slots.length : (item.slots_count ?? '—')}</td>
         <td class="text-end">
@@ -284,97 +318,33 @@
         </td>
       </tr>
     `).join('');
-
-    initCategorySortable();
-    if (btnSaveOrder) btnSaveOrder.disabled = true;
-  }
-
-  function initCategorySortable() {
-    if (categorySortable) return;
-    categorySortable = new Sortable(tbody, {
-      handle: '.handle-cat',
-      animation: 150,
-      ghostClass: 'bg-light',
-      onEnd: function() {
-        if (btnSaveOrder) btnSaveOrder.disabled = false;
-        updateCategoryPositionsVisual();
-      }
-    });
-  }
-
-  function updateCategoryPositionsVisual() {
-      const rows = tbody.querySelectorAll('tr[data-cat-id]');
-      const positions = Array.from(rows).map(r => Number(r.getAttribute('data-position'))).sort((a,b) => a-b);
-      rows.forEach((row, i) => {
-         const newPos = positions[i];
-         row.querySelector('[data-pos-display]').textContent = newPos;
-         row.setAttribute('data-position', newPos);
-      });
-  }
-
-  function moveCategory(id, direction) {
-      const rows = Array.from(tbody.querySelectorAll('tr[data-cat-id]'));
-      const idx = rows.findIndex(r => r.getAttribute('data-cat-id') === String(id));
-      if (idx === -1) return;
-      
-      const newIdx = idx + direction;
-      if (newIdx < 0 || newIdx >= rows.length) return;
-      
-      const row = rows[idx];
-      const target = rows[newIdx];
-      
-      if (direction > 0) {
-          target.after(row);
-      } else {
-          target.before(row);
-      }
-      
-      if (btnSaveOrder) btnSaveOrder.disabled = false;
-      updateCategoryPositionsVisual();
-  }
-
-  async function saveOrder() {
-      const rows = tbody.querySelectorAll('tr[data-cat-id]');
-      const items = Array.from(rows).map(row => ({
-          id: Number(row.getAttribute('data-cat-id')),
-          position: Number(row.getAttribute('data-position'))
-      }));
-      
-      const res = await apiFetch('/api/v1/categories/reorder', {
-          method: 'PUT',
-          body: JSON.stringify({ items })
-      });
-      
-      if (!res.ok) {
-          toast('Erro ao salvar ordem.', 'danger');
-          return;
-      }
-      
-      toast('Ordem salva com sucesso.');
-      if (btnSaveOrder) btnSaveOrder.disabled = true;
   }
 
   function getFilters() {
     return {
       q: document.getElementById('q').value.trim(),
       status: document.getElementById('status').value.trim(),
+      vertical: document.getElementById('vertical').value.trim(),
+      type: document.getElementById('type').value.trim(),
     };
   }
 
   async function load(cursor = null) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-muted p-4">Carregando…</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-muted p-4">Carregando…</td></tr>`;
 
     const params = new URLSearchParams();
     if (cursor) params.set('cursor', cursor);
 
-    const { q, status } = getFilters();
+    const { q, status, vertical, type } = getFilters();
     if (q) params.set('q', q);
     if (status) params.set('status', status);
+    if (vertical) params.set('vertical', vertical);
+    if (type) params.set('type', type);
 
     const res = await apiFetch('/api/v1/categories?' + params.toString());
     if (!res.ok) {
       toast('Falha ao carregar categorias (' + res.status + ')', 'danger');
-      tbody.innerHTML = `<tr><td colspan="7" class="text-danger p-4">Erro ao carregar.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="text-danger p-4">Erro ao carregar.</td></tr>`;
       return;
     }
 
@@ -395,6 +365,13 @@
   function fillForm(item) {
     document.getElementById('f_name').value = item?.name || '';
     document.getElementById('f_slug').value = item?.slug || '';
+    
+    const verticals = item?.verticals || (item?.vertical ? [item.vertical] : ['slots']);
+    document.querySelectorAll('input[name="f_verticals"]').forEach(cb => {
+        cb.checked = verticals.includes(cb.value);
+    });
+
+    document.getElementById('f_type').value = item?.type || 'game-list';
     document.getElementById('f_status').value = item?.status || 'active';
     document.getElementById('f_position').value = (item?.position ?? '') === null ? '' : (item?.position ?? '');
     document.getElementById('f_meta').value = JSON.stringify(item?.meta || {}, null, 2);
@@ -409,9 +386,13 @@
 
     const slug = document.getElementById('f_slug').value.trim();
 
+    const verticals = Array.from(document.querySelectorAll('input[name="f_verticals"]:checked')).map(cb => cb.value);
+
     return {
       name: document.getElementById('f_name').value.trim(),
       slug: slug ? slug : null, // se null, backend gera a partir do name
+      verticals: verticals,
+      type: document.getElementById('f_type').value,
       status: document.getElementById('f_status').value,
       position,
       meta,
@@ -424,7 +405,7 @@
     saveError.classList.add('d-none');
     saveError.textContent = '';
 
-    fillForm({ name: '', slug: '', status: 'active', position: 0, meta: {} });
+    fillForm({ name: '', slug: '', vertical: 'slots', type: 'game-list', status: 'active', position: 0, meta: {} });
     editModal.show();
   }
 
@@ -693,6 +674,8 @@
   document.getElementById('btnClear').addEventListener('click', () => {
     document.getElementById('q').value = '';
     document.getElementById('status').value = '';
+    document.getElementById('vertical').value = '';
+    document.getElementById('type').value = '';
     load(null);
   });
 
@@ -707,8 +690,6 @@
   });
 
   document.getElementById('btnSave').addEventListener('click', save);
-
-  if (btnSaveOrder) btnSaveOrder.addEventListener('click', saveOrder);
 
   async function syncCategories() {
     if (!confirm('Deseja sincronizar categorias da API externa? Isso pode criar novas categorias e atualizar nomes existentes.')) return;
@@ -747,19 +728,6 @@
   document.getElementById('btnSync').addEventListener('click', syncCategories);
 
   tbody.addEventListener('click', (e) => {
-    // Category sorting arrows
-    const btnUp = e.target.closest('button[data-move-cat-up]');
-    if (btnUp) {
-        moveCategory(btnUp.getAttribute('data-cat-id'), -1);
-        return;
-    }
-    
-    const btnDown = e.target.closest('button[data-move-cat-down]');
-    if (btnDown) {
-        moveCategory(btnDown.getAttribute('data-cat-id'), 1);
-        return;
-    }
-
     const btn = e.target.closest('button[data-action]');
     if (!btn) return;
     const action = btn.getAttribute('data-action');

@@ -10,6 +10,7 @@ Route::view('/', 'dashboard')->name('dashboard');
 Route::view('/banners', 'content.banners.index')->name('banners.ui');
 Route::view('/slots', 'content.slots.index')->name('slots.ui');
 Route::view('/categories', 'content.categories.index')->name('categories.ui');
+Route::view('/lobbies', 'content.lobbies.index')->name('lobbies.ui');
 Route::view('/menus', 'content.menus.index')->name('menus.ui');
 Route::view('/footers', 'content.footers.index')->name('footers.ui');
 Route::view('/showcases', 'content.showcases.index')->name('showcases.ui');

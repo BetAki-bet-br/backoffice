@@ -24,18 +24,23 @@ class CategoryController extends Controller
      * ) */
     public function index(Request $request)
     {
+        $vertical = $request->vertical;
+        if ($vertical === 'slot') $vertical = 'slots';
+
         $q = Category::query()
             ->when($request->filled('q'), fn($qq) =>
                 $qq->where('name', 'ilike', '%'.$request->q.'%')
                    ->orWhere('slug', 'ilike', '%'.$request->q.'%'))
             ->when($request->filled('status'), fn($qq) =>
                 $qq->where('status', $request->status))
-            ->orderBy('position')
+            ->when($vertical, fn($qq) =>
+                $qq->whereJsonContains('verticals', $vertical))
+            ->when($request->filled('type'), fn($qq) =>
+                $qq->where('type', $request->type))
             ->orderBy('name');
 
-            $categories = $q->has('slots', '>', 1)->with('slots')->get();
-            
         if ($request->get('format') === 'sublevel') {
+            $categories = $q->has('slots', '>', 1)->with('slots')->get();
 
             $externalIds = $categories
                 ->flatMap(fn($cat) => $cat->slots->pluck('provider_game_id'))
@@ -61,6 +66,8 @@ class CategoryController extends Controller
                     'id' => $cat->id,
                     'parentId' => null,
                     'name' => $cat->name,
+                    'verticals' => $cat->verticals,
+                    'type' => $cat->type,
                     'gameName' => null,
                     'subLevel' => [],
                     'gameMains' => $gameMains,
@@ -74,41 +81,38 @@ class CategoryController extends Controller
         return response()->json($q->cursorPaginate(20));
     }
 
-    /** @OA\Put(
-     *  path="/api/v1/categories/reorder",
+    /** @OA\Get(
+     *  path="/api/v1/categories/slots",
      *  tags={"Categories"},
-     *  security={{"bearerAuth": {}}},
-     *  summary="Reordenar categorias",
-     *  @OA\RequestBody(
-     *    required=true,
-     *    @OA\JsonContent(
-     *      @OA\Property(property="items", type="array",
-     *        @OA\Items(
-     *          @OA\Property(property="id", type="integer", example=1),
-     *          @OA\Property(property="position", type="integer", example=0)
-     *        )
-     *      )
-     *    )
-     *  ),
-     *  @OA\Response(response=204, description="No Content")
+     *  summary="Listar categorias de slots (sem jogos)",
+     *  @OA\Response(response=200, description="OK")
      * ) */
-    public function reorder(Request $request)
+    public function slots()
     {
-        $request->validate([
-            'items' => 'required|array',
-            'items.*.id' => 'required|integer',
-            'items.*.position' => 'required|integer',
-        ]);
+        return $this->listByVertical('slots');
+    }
 
-        $items = $request->input('items');
+    /** @OA\Get(
+     *  path="/api/v1/categories/live",
+     *  tags={"Categories"},
+     *  summary="Listar categorias de live casino (sem jogos)",
+     *  @OA\Response(response=200, description="OK")
+     * ) */
+    public function live()
+    {
+        return $this->listByVertical('live');
+    }
 
-        \DB::transaction(function () use ($items) {
-            foreach ($items as $item) {
-                Category::where('id', $item['id'])->update(['position' => $item['position']]);
-            }
-        });
+    protected function listByVertical(string $vertical)
+    {
+        $categories = Category::query()
+            ->whereJsonContains('verticals', $vertical)
+            ->where('status', 'active')
+            ->whereHas('slots', null, '>', 1)
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug', 'verticals', 'type', 'meta']);
 
-        return response()->noContent();
+        return response()->json($categories);
     }
 
     /** @OA\Post(

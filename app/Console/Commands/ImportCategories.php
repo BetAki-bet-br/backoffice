@@ -88,15 +88,19 @@ class ImportCategories extends Command
             }
 
             try {
-                // Find existing category by slug AND vertical to allow same name in different verticals
-                $category = Category::where('slug', $slug)
-                    ->where('vertical', $vertical)
-                    ->first();
+                // Find existing category by slug
+                $category = Category::where('slug', $slug)->first();
 
                 if (!$category) {
                     $category = new Category();
                     $category->slug = $slug;
-                    $category->vertical = $vertical;
+                    $category->verticals = [$vertical];
+                } else {
+                    $verticals = $category->verticals ?? [];
+                    if (!in_array($vertical, $verticals)) {
+                        $verticals[] = $vertical;
+                        $category->verticals = $verticals;
+                    }
                 }
 
                 $category->name = $name;

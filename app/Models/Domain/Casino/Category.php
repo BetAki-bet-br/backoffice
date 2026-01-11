@@ -10,12 +10,27 @@ class Category extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'name','slug','status','position','meta','created_by','updated_by',
+        'name','slug','verticals','type','status','position','meta','created_by','updated_by',
     ];
 
     protected $casts = [
         'meta' => 'array',
+        'verticals' => 'array',
     ];
+
+    protected $attributes = [
+        'verticals' => '["slots"]',
+    ];
+
+    public function scopeForVertical($query, string $vertical)
+    {
+        return $query->whereJsonContains('verticals', $vertical);
+    }
+
+    public function hasVertical(string $vertical): bool
+    {
+        return is_array($this->verticals) && in_array($vertical, $this->verticals);
+    }
 
     public function slots()
     {
