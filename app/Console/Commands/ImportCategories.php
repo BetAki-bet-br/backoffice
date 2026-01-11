@@ -16,7 +16,7 @@ class ImportCategories extends Command
      *
      * @var string
      */
-    protected $signature = 'app:import-categories {file=categories.json}';
+    protected $signature = 'app:import-categories {file=categories.json} {--vertical=slots} {--portal=5}';
 
     /**
      * The console command description.
@@ -31,13 +31,15 @@ class ImportCategories extends Command
     public function handle()
     {
         $filePath = $this->argument('file');
+        $vertical = $this->option('vertical');
+        $portalId = (int) $this->option('portal');
 
         if (!File::exists($filePath)) {
             $this->error("File not found: {$filePath}");
             return 1;
         }
 
-        $this->info("Reading file: {$filePath}");
+        $this->info("Reading file: {$filePath} (Vertical: {$vertical}, Portal: {$portalId})");
         
         $jsonContent = File::get($filePath);
         $data = json_decode($jsonContent, true);
@@ -86,22 +88,25 @@ class ImportCategories extends Command
             }
 
             try {
-                // Find existing category by slug to update, or create new
-                $category = Category::where('slug', $slug)->first();
+                // Find existing category by slug AND vertical to allow same name in different verticals
+                $category = Category::where('slug', $slug)
+                    ->where('vertical', $vertical)
+                    ->first();
 
                 if (!$category) {
                     $category = new Category();
                     $category->slug = $slug;
+                    $category->vertical = $vertical;
                 }
 
                 $category->name = $name;
                 $category->status = 'active';
+                $category->type = isset($item['type']) ? (string)$item['type'] : 'game-list';
                 
                 // Prepare meta data
                 $meta = $category->meta ?? [];
                 
                 // Store external identifiers and other properties in meta
-                // Using null coalescing operator with type checks where appropriate
                 $meta['external_id'] = isset($catData['id']) ? (string)$catData['id'] : null;
                 $meta['original_type'] = isset($item['type']) ? (string)$item['type'] : null;
                 $meta['parent_id'] = isset($catData['parentId']) ? (int)$catData['parentId'] : null;
@@ -147,9 +152,11 @@ class ImportCategories extends Command
 
                         // 2. Update/Create PortalGame (Required for LobbyLayoutController)
                         PortalGame::updateOrCreate(
-                            ['external_id' => $externalId],
                             [
-                                'portal_id' => 5, // Default to Desktop Portal ID as per context
+                                'portal_id' => $portalId,
+                                'external_id' => $externalId
+                            ],
+                            [
                                 'name' => $gameTitle,
                                 'product_name' => $provider,
                                 'supplier_name' => $gameData['productSupplierName'] ?? null,
@@ -167,7 +174,7 @@ class ImportCategories extends Command
                 }
 
                 $imported++;
-                $this->line("Imported: {$name} ({$slug}) - Games: " . count($slotIds));
+                $this->line("Imported: {$name} ({$slug}) [{$vertical}] - Games: " . count($slotIds));
 
             } catch (\Exception $e) {
                 $this->error("Error importing '{$name}': " . $e->getMessage());
