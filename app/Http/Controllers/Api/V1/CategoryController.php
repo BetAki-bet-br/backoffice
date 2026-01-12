@@ -7,6 +7,7 @@ use App\Http\Requests\Casino\CategoryRequest;
 use App\Http\Requests\Casino\CategorySlotsSyncRequest;
 use App\Models\Domain\Casino\Category;
 use App\Models\Domain\Casino\PortalGame;
+use App\Models\Domain\Casino\GameExtra;
 use App\Models\Domain\Casino\Slot;
 use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
@@ -53,11 +54,27 @@ class CategoryController extends Controller
                 ->get(['external_id', 'payload'])
                 ->keyBy('external_id');
 
-            $items = $categories->map(function (Category $cat) use ($portalGames) {
+            $gameExtras = GameExtra::query()
+                ->whereIn('external_id', $externalIds)
+                ->get(['external_id', 'rtp', 'volatility', 'min_bet'])
+                ->keyBy('external_id');
+
+            $items = $categories->map(function (Category $cat) use ($portalGames, $gameExtras) {
                 $gameMains = $cat->slots
-                    ->map(function (Slot $slot) use ($portalGames) {
+                    ->map(function (Slot $slot) use ($portalGames, $gameExtras) {
                         $portal = $portalGames->get($slot->provider_game_id);
-                        return $portal?->payload;
+                        $payload = $portal?->payload;
+                        
+                        if ($payload) {
+                            $extra = $gameExtras->get($slot->provider_game_id);
+                            if ($extra) {
+                                $payload['rtp'] = $extra->rtp;
+                                $payload['volatility'] = $extra->volatility;
+                                $payload['minBet'] = $extra->min_bet;
+                            }
+                        }
+                        
+                        return $payload;
                     })
                     ->filter()
                     ->values();
@@ -159,9 +176,25 @@ class CategoryController extends Controller
                 ->get(['external_id', 'payload'])
                 ->keyBy('external_id');
 
-            $category->slots->each(function (Slot $slot) use ($portalGames) {
+            $gameExtras = GameExtra::query()
+                ->whereIn('external_id', $externalIds)
+                ->get(['external_id', 'rtp', 'volatility', 'min_bet'])
+                ->keyBy('external_id');
+
+            $category->slots->each(function (Slot $slot) use ($portalGames, $gameExtras) {
                 $portal = $portalGames->get($slot->provider_game_id);
-                $slot->setAttribute('game_data', $portal?->payload);
+                $payload = $portal?->payload;
+
+                if ($payload) {
+                    $extra = $gameExtras->get($slot->provider_game_id);
+                    if ($extra) {
+                        $payload['rtp'] = $extra->rtp;
+                        $payload['volatility'] = $extra->volatility;
+                        $payload['minBet'] = $extra->min_bet;
+                    }
+                }
+
+                $slot->setAttribute('game_data', $payload);
             });
         }
 

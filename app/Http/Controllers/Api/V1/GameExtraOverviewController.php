@@ -26,6 +26,8 @@ class GameExtraOverviewController extends Controller
     {
         $portalId = (int) ($request->get('portal_id') ?? config('services.base_api.portal_id', 1));
 
+        // Voltamos a listar a partir de PortalGame (jogos da base)
+        // Assim, se o usuário sincronizou a base, ele vê os jogos, mesmo sem extras.
         $query = PortalGame::query()
             ->where('portal_games.portal_id', $portalId)
             ->leftJoin('game_extras', 'game_extras.external_id', '=', 'portal_games.external_id')
@@ -33,18 +35,23 @@ class GameExtraOverviewController extends Controller
                 'portal_games.id',
                 'portal_games.portal_id',
                 'portal_games.external_id',
-                DB::raw('portal_games.name as base_name'),
-                DB::raw('portal_games.supplier_name as base_supplier_name'),
-                DB::raw('portal_games.product_name as base_product_name'),
-                DB::raw('CASE WHEN game_extras.id IS NULL THEN false ELSE true END as has_extra'),
-                DB::raw('game_extras.rtp as rtp'),
-                DB::raw('game_extras.volatility as volatility'),
-                DB::raw('game_extras.min_bet as min_bet'),
-                DB::raw('game_extras.source as source'),
+                'portal_games.name as base_name',
+                'portal_games.supplier_name as base_supplier_name',
+                'portal_games.product_name as base_product_name',
+
+                // Extras
+                'game_extras.id as extra_id',
+                'game_extras.rtp',
+                'game_extras.volatility',
+                'game_extras.min_bet',
+                'game_extras.source',
+                
+                // Como estamos listando da base, sempre existe na base
+                DB::raw('true as exists_in_base'),
             ])
             ->when($request->filled('q'), fn($q) =>
                 $q->where('portal_games.external_id', 'like', '%'.$request->q.'%')
-                ->orWhere('portal_games.name', 'ilike', '%'.$request->q.'%')
+                  ->orWhere('portal_games.name', 'ilike', '%'.$request->q.'%')
             )
             ->orderByDesc('portal_games.id');
 

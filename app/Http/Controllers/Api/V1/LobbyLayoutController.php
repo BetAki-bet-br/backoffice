@@ -386,10 +386,31 @@ class LobbyLayoutController extends Controller
             return collect();
         }
 
-        return PortalGame::query()
+        // Carrega PortalGames e GameExtras
+        $portalGames = PortalGame::query()
             ->whereIn('external_id', $ids)
             ->get(['external_id', 'payload'])
             ->keyBy('external_id');
+
+        $gameExtras = \App\Models\Domain\Casino\GameExtra::query()
+            ->whereIn('external_id', $ids)
+            ->get(['external_id', 'rtp', 'volatility', 'min_bet'])
+            ->keyBy('external_id');
+
+        // Merge extra data into payload
+        return $portalGames->map(function ($pg) use ($gameExtras) {
+            $extra = $gameExtras->get($pg->external_id);
+            $payload = $pg->payload ?? [];
+            
+            if ($extra) {
+                $payload['rtp'] = $extra->rtp;
+                $payload['volatility'] = $extra->volatility;
+                $payload['minBet'] = $extra->min_bet;
+            }
+            
+            $pg->payload = $payload;
+            return $pg;
+        });
     }
 
     private function mapSlotsToGameMains($slots, Collection $portalGames): array
