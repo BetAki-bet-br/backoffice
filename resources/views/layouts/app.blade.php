@@ -362,6 +362,11 @@
                 <span>Banners</span>
             </a>
 
+            <a href="{{ route('providers.ui') }}" class="sidebar-link {{ request()->routeIs('providers.ui') ? 'active' : '' }}">
+                <span class="sidebar-link-icon">🏗️</span>
+                <span>Provedores</span>
+            </a>
+
             <a href="{{ route('slots.ui') }}" class="sidebar-link {{ request()->routeIs('slots.ui') ? 'active' : '' }}">
                 <span class="sidebar-link-icon">🎰</span>
                 <span>Slots</span>

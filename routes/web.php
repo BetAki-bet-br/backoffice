@@ -8,6 +8,7 @@ Route::view('/', 'dashboard')->name('dashboard');
 
 // Conteúdo
 Route::view('/banners', 'content.banners.index')->name('banners.ui');
+Route::view('/providers', 'content.providers.index')->name('providers.ui');
 Route::view('/slots', 'content.slots.index')->name('slots.ui');
 Route::view('/categories', 'content.categories.index')->name('categories.ui');
 Route::view('/lobbies', 'content.lobbies.index')->name('lobbies.ui');

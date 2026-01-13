@@ -74,6 +74,33 @@ class ProviderController extends Controller
         return response()->json($data);
     }
 
+    /** @OA\Put(
+     *  path="/api/v1/providers/{id}",
+     *  tags={"Providers"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Atualizar provedor",
+     *  @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\RequestBody(
+     *    required=true,
+     *    @OA\JsonContent(
+     *      @OA\Property(property="name", type="string"),
+     *      @OA\Property(property="status", type="string", enum={"active","inactive"})
+     *    )
+     *  ),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
+    public function update(Request $request, Provider $provider)
+    {
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'status' => 'sometimes|in:active,inactive',
+        ]);
+
+        $provider->update($validated);
+
+        return response()->json($provider);
+    }
+
     /** @OA\Post(
      *  path="/api/v1/providers/sync",
      *  tags={"Providers"},
