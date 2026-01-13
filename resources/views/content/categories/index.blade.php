@@ -12,7 +12,7 @@
 
   <div class="d-flex gap-2">
     <button class="btn btn-primary" id="btnNew">Nova categoria</button>
-    <button class="btn btn-outline-dark" id="btnSync" title="Puxar categorias da API externa">Sincronizar</button>
+    <button class="btn btn-outline-dark" id="btnSync" title="Puxar categorias da API externa">Sincronizar Categorias</button>
     <button class="btn btn-outline-secondary" id="btnReload">Atualizar</button>
   </div>
 </div>

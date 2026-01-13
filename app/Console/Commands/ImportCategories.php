@@ -7,10 +7,13 @@ use Illuminate\Support\Facades\File;
 use App\Models\Domain\Casino\Category;
 use App\Models\Domain\Casino\Slot;
 use App\Models\Domain\Casino\PortalGame;
+use App\Models\Domain\Casino\Provider;
 use Illuminate\Support\Str;
 
 class ImportCategories extends Command
 {
+    protected $providersCache = [];
+
     /**
      * The name and signature of the console command.
      *
@@ -87,6 +90,17 @@ class ImportCategories extends Command
                  continue;
             }
 
+            // Determine Vertical based on parentId
+            $currentVertical = $vertical; // Default from CLI
+            if (isset($catData['parentId'])) {
+                $pid = (int)$catData['parentId'];
+                if ($pid === 500) {
+                    $currentVertical = 'slots';
+                } elseif ($pid === 520) {
+                    $currentVertical = 'live';
+                }
+            }
+
             try {
                 // Find existing category by slug
                 $category = Category::where('slug', $slug)->first();
@@ -94,11 +108,11 @@ class ImportCategories extends Command
                 if (!$category) {
                     $category = new Category();
                     $category->slug = $slug;
-                    $category->verticals = [$vertical];
+                    $category->verticals = [$currentVertical];
                 } else {
                     $verticals = $category->verticals ?? [];
-                    if (!in_array($vertical, $verticals)) {
-                        $verticals[] = $vertical;
+                    if (!in_array($currentVertical, $verticals)) {
+                        $verticals[] = $currentVertical;
                         $category->verticals = $verticals;
                     }
                 }
@@ -132,14 +146,32 @@ class ImportCategories extends Command
                         }
 
                         // Determine provider: prefer productName, fallback to productSupplierName
-                        $provider = $gameData['productName'] ?? $gameData['productSupplierName'] ?? 'Unknown';
+                        $providerName = $gameData['productName'] ?? $gameData['productSupplierName'] ?? 'Unknown';
                         $externalId = (string)$gameData['externalId'];
                         $gameTitle = trim($gameData['name']);
+                        $supplierId = $gameData['productSupplierId'] ?? null;
+                        
+                        // New Provider Extraction Logic (based on productId/productName)
+                        $pId = $gameData['productId'] ?? null;
+                        $pName = $gameData['productName'] ?? null;
+
+                        if ($pId && $pName) {
+                            $pIdStr = (string)$pId;
+                            if (!isset($this->providersCache[$pIdStr])) {
+                                $this->providersCache[$pIdStr] = [
+                                    'name' => $pName,
+                                    'games' => []
+                                ];
+                            }
+                            // Store externalId to count unique games later
+                            $this->providersCache[$pIdStr]['games'][$externalId] = true;
+                        }
+
 
                         // 1. Update/Create Slot
                         $slot = Slot::updateOrCreate(
                             [
-                                'provider' => $provider,
+                                'provider' => $providerName,
                                 'provider_game_id' => $externalId
                             ],
                             [
@@ -149,6 +181,7 @@ class ImportCategories extends Command
                                     'gameTypeName' => $gameData['gameTypeName'] ?? null,
                                     'gameTypeId' => $gameData['gameTypeId'] ?? null,
                                     'productId' => $gameData['productId'] ?? null,
+                                    'productSupplierId' => $supplierId,
                                     'id' => $gameData['id'] ?? null // The integer ID from JSON
                                 ]
                             ]
@@ -162,7 +195,7 @@ class ImportCategories extends Command
                             ],
                             [
                                 'name' => $gameTitle,
-                                'product_name' => $provider,
+                                'product_name' => $providerName,
                                 'supplier_name' => $gameData['productSupplierName'] ?? null,
                                 'payload' => $gameData
                             ]
@@ -186,10 +219,31 @@ class ImportCategories extends Command
             }
         }
 
+        // Save Providers after processing all categories
+        $this->saveProviders();
+
         $this->info("Import completed.");
         $this->info("Total imported/updated: {$imported}");
         $this->info("Total skipped: {$skipped}");
 
         return 0;
+    }
+
+    protected function saveProviders()
+    {
+        $count = count($this->providersCache);
+        if ($count > 0) {
+            $this->info("Upserting {$count} providers...");
+            foreach ($this->providersCache as $id => $data) {
+                Provider::updateOrCreate(
+                    ['external_id' => $id],
+                    [
+                        'name' => $data['name'],
+                        'game_count' => count($data['games']),
+                        'status' => 'active'
+                    ]
+                );
+            }
+        }
     }
 }

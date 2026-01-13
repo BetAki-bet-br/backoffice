@@ -404,7 +404,7 @@ class LobbyLayoutController extends Controller
             
             if ($extra) {
                 $payload['rtp'] = $extra->rtp;
-                $payload['volatility'] = $extra->volatility;
+                $payload['volatility'] = \App\Support\Casino\GameExtraResolver::mapVolatility($extra->volatility);
                 $payload['minBet'] = $extra->min_bet;
             }
             

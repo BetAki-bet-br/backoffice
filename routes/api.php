@@ -88,6 +88,12 @@ Route::prefix('v1')->group(function () {
         ->parameters(['categories' => 'category'])
         ->names('categories');
 
+    // Providers
+    Route::apiResource('providers', \App\Http\Controllers\Api\V1\ProviderController::class)
+        ->only(['index', 'show'])
+        ->parameters(['providers' => 'provider'])
+        ->names('providers.public');
+
     // Showcases
     Route::apiResource('showcases', ShowcaseController::class)
         ->only(['index', 'show'])
@@ -200,6 +206,10 @@ Route::prefix('v1')->group(function () {
 
         Route::put('categories/{category}/slots', [CategoryController::class, 'syncSlots'])
             ->name('categories.slots.sync');
+
+        // Providers
+        Route::post('providers/sync', [\App\Http\Controllers\Api\V1\ProviderController::class, 'sync'])
+            ->name('providers.sync');
 
         // Showcases
         Route::apiResource('showcases', ShowcaseController::class)

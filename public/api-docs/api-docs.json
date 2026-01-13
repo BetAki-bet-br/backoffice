@@ -331,6 +331,30 @@
         ]
       }
     },
+    "/api/v1/categories/slots": {
+      "get": {
+        "tags": ["Categories"],
+        "summary": "Listar categorias de slots (sem jogos)",
+        "operationId": "266d93d1f4c90cc0a901a26faeca5bb8",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/categories/live": {
+      "get": {
+        "tags": ["Categories"],
+        "summary": "Listar categorias de live casino (sem jogos)",
+        "operationId": "dc619eb5cb2189fe87ca5d3ebe1ba3ec",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/categories/{id}": {
       "get": {
         "tags": ["Categories"],
@@ -343,6 +367,16 @@
             "required": true,
             "schema": {
               "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "Limite de jogos retornados",
+              "type": "integer",
+              "default": 500
             }
           }
         ],
@@ -447,6 +481,39 @@
                       },
                       "type": "object"
                     }
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/categories/sync": {
+      "post": {
+        "tags": ["Categories"],
+        "summary": "Sincronizar categorias da API externa",
+        "operationId": "0c5c448751fb43e0456c419a635b6852",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "portal_id": {
+                    "type": "integer",
+                    "example": 1
                   }
                 },
                 "type": "object"
@@ -1256,6 +1323,78 @@
         ]
       }
     },
+    "/api/v1/lobbies/{vertical}/config": {
+      "get": {
+        "tags": ["Lobbies"],
+        "summary": "Obter configuração do lobby",
+        "operationId": "b91ee6b719354fec460c9eff7940f002",
+        "parameters": [
+          {
+            "name": "vertical",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["slots", "live"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": ["Lobbies"],
+        "summary": "Atualizar configuração do lobby",
+        "operationId": "490082d5d6a4bd8bdd509fe17eedd026",
+        "parameters": [
+          {
+            "name": "vertical",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["slots", "live"]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "sections": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/lobbies/casino": {
       "get": {
         "tags": ["Lobbies"],
@@ -1306,6 +1445,51 @@
         "responses": {
           "201": {
             "description": "Criado"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/menus/reorder": {
+      "put": {
+        "tags": ["Menus"],
+        "summary": "Reordenar menus",
+        "operationId": "d4658548f78c4512f60da6fa5e619912",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "position": {
+                          "type": "integer",
+                          "example": 0
+                        }
+                      },
+                      "type": "object"
+                    }
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
           }
         },
         "security": [
@@ -1464,6 +1648,58 @@
         ]
       }
     },
+    "/api/v1/public/portal-games/providers": {
+      "get": {
+        "tags": ["Portal Games Public"],
+        "summary": "Get providers with game count for a portal",
+        "operationId": "fd458d6b92dc945a323a1a6d6dc432d3",
+        "parameters": [
+          {
+            "name": "portal_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of providers"
+          }
+        }
+      }
+    },
+    "/api/v1/public/portal-games/by-provider": {
+      "get": {
+        "tags": ["Portal Games Public"],
+        "summary": "Get games by provider for a portal",
+        "operationId": "a1038b6d756173c9048f7453ddc5c10c",
+        "parameters": [
+          {
+            "name": "portal_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "provider_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of games"
+          }
+        }
+      }
+    },
     "/api/v1/portal-games/sync": {
       "post": {
         "tags": ["Portal Games"],
@@ -1517,6 +1753,93 @@
                     "type": "string",
                     "enum": ["active", "inactive"],
                     "example": "active"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/providers": {
+      "get": {
+        "tags": ["Providers"],
+        "summary": "Listar provedores",
+        "operationId": "41efb7825509e17c300a278f31e7a617",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["active", "inactive"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/providers/{id}": {
+      "get": {
+        "tags": ["Providers"],
+        "summary": "Detalhar provedor e seus jogos",
+        "operationId": "c80815ccb961e442f83c4ae81af36e24",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/providers/sync": {
+      "post": {
+        "tags": ["Providers"],
+        "summary": "Sincronizar provedores da API externa",
+        "operationId": "07167f37e43726cfb1bec7d0a7ceabab",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "portal_id": {
+                    "type": "integer",
+                    "example": 1
                   }
                 },
                 "type": "object"
@@ -1914,6 +2237,41 @@
         "responses": {
           "201": {
             "description": "Criado"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/slots/by-ids": {
+      "post": {
+        "tags": ["Slots"],
+        "summary": "Listar slots por IDs externos",
+        "operationId": "74e506b5a8dfbfa2e5b48035a3b9c3cf",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "externalIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         },
         "security": [
@@ -2789,8 +3147,16 @@
       "description": "Portal Games"
     },
     {
+      "name": "Portal Games Public",
+      "description": "Portal Games Public"
+    },
+    {
       "name": "Slots",
       "description": "Slots"
+    },
+    {
+      "name": "Providers",
+      "description": "Providers"
     },
     {
       "name": "Settings",

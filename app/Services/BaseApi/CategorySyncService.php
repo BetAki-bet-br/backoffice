@@ -3,7 +3,10 @@
 namespace App\Services\BaseApi;
 
 use App\Models\Domain\Casino\Category;
+use App\Models\Domain\Casino\Slot;
+use App\Models\Domain\Casino\PortalGame;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class CategorySyncService
 {
@@ -19,6 +22,13 @@ class CategorySyncService
     public function syncPortal(int $portalId): array
     {
         $json = $this->client->getGameCategories($portalId);
+        
+        // Log requested to verify games are present
+        Log::info('CategorySyncService: Response received', [
+            'portalId' => $portalId,
+            'category_count' => count($json['gameCategoryList'] ?? []),
+            'sample_item' => $json['gameCategoryList'][0] ?? null,
+        ]);
 
         $list = $json['gameCategoryList'] ?? [];
         if (!is_array($list)) $list = [];
@@ -27,6 +37,7 @@ class CategorySyncService
             'fetched' => count($list),
             'created' => 0,
             'updated' => 0,
+            'games_synced' => 0,
         ];
 
         foreach ($list as $item) {
@@ -40,9 +51,6 @@ class CategorySyncService
             $typeId = $item['categoryTypeId'] ?? null;
 
             // Tenta encontrar por external_id no meta
-            // Note: SQLite/MySQL JSON syntax differ slightly in raw queries, 
-            // but Laravel's where('meta->external_id', ...) works broadly.
-            // Converting to string for consistency.
             $externalIdStr = (string)$externalId;
             
             $category = Category::query()
@@ -87,6 +95,45 @@ class CategorySyncService
                     'meta' => $meta,
                 ]);
                 $stats['updated']++;
+            }
+
+            // Sync Games if present
+            // We check common keys for games list
+            $games = $item['games'] ?? $item['gameList'] ?? [];
+            if (!empty($games) && is_array($games)) {
+                Log::info("Category {$category->id} ({$name}) has " . count($games) . " games from API.");
+                
+                $slotIds = [];
+                foreach ($games as $g) {
+                    // Extract Game ID
+                    $gId = is_array($g) ? ($g['id'] ?? $g['externalId'] ?? null) : $g;
+                    if (!$gId) continue;
+                    
+                    $gIdStr = (string)$gId;
+                    
+                    // Find existing Slot by provider_game_id
+                    $slot = Slot::where('provider_game_id', $gIdStr)->first();
+                    
+                    if (!$slot) {
+                        // Try to find PortalGame info to populate Slot
+                        $pg = PortalGame::where('external_id', $gIdStr)->first();
+                        
+                        $slot = Slot::create([
+                            'provider_game_id' => $gIdStr,
+                            'provider' => $pg?->supplier_name ?? 'unknown',
+                            'title' => $pg?->name ?? "Game $gIdStr",
+                            'status' => 'active',
+                            'created_by' => 0,
+                        ]);
+                    }
+                    
+                    $slotIds[] = $slot->id;
+                }
+                
+                if (!empty($slotIds)) {
+                    $category->slots()->sync($slotIds);
+                    $stats['games_synced'] += count($slotIds);
+                }
             }
         }
 

@@ -69,7 +69,7 @@ class CategoryController extends Controller
                             $extra = $gameExtras->get($slot->provider_game_id);
                             if ($extra) {
                                 $payload['rtp'] = $extra->rtp;
-                                $payload['volatility'] = $extra->volatility;
+                                $payload['volatility'] = \App\Support\Casino\GameExtraResolver::mapVolatility($extra->volatility);
                                 $payload['minBet'] = $extra->min_bet;
                             }
                         }
@@ -156,12 +156,18 @@ class CategoryController extends Controller
      *  security={{"bearerAuth": {}}},
      *  summary="Detalhar categoria",
      *  @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\Parameter(name="limit", in="query", required=false, @OA\Schema(type="integer", default=500, description="Limite de jogos retornados")),
      *  @OA\Response(response=200, description="OK")
      * ) */
-    public function show(Category $category)
+    public function show(Request $request, Category $category)
     {
-        $category->load(['slots' => function ($query) {
+        $limit = (int) $request->input('limit', 500);
+
+        $category->load(['slots' => function ($query) use ($limit) {
             $query->orderBy('category_slot.position');
+            if ($limit > 0) {
+                $query->take($limit);
+            }
         }]);
 
         $externalIds = $category->slots
@@ -189,7 +195,7 @@ class CategoryController extends Controller
                     $extra = $gameExtras->get($slot->provider_game_id);
                     if ($extra) {
                         $payload['rtp'] = $extra->rtp;
-                        $payload['volatility'] = $extra->volatility;
+                        $payload['volatility'] = \App\Support\Casino\GameExtraResolver::mapVolatility($extra->volatility);
                         $payload['minBet'] = $extra->min_bet;
                     }
                 }

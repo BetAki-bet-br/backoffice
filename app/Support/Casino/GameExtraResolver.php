@@ -27,18 +27,32 @@ class GameExtraResolver
             return $dto->withExtras(null, null, null);
         }
 
-        $vol = $extra->volatility;
-        if ($vol !== null) {
-            $vol = (int)$vol;
-            if ($vol < 1 || $vol > 5) {
-                $vol = null;
-            }
-        }
-
         return $dto->withExtras(
             rtp: $extra->rtp !== null ? (string)$extra->rtp : null,
-            volatility: $vol,
+            volatility: self::mapVolatility($extra->volatility),
             minBet: $extra->min_bet !== null ? (string)$extra->min_bet : null,
         );
+    }
+
+    public static function mapVolatility(?string $value): ?int
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        // Se já for numérico (1-5), retorna int
+        if (is_numeric($value)) {
+            $v = (int)$value;
+            return ($v >= 1 && $v <= 5) ? $v : null;
+        }
+
+        return match (strtolower($value)) {
+            'low' => 1,
+            'low_medium' => 2,
+            'medium' => 3,
+            'medium_high' => 4,
+            'high' => 5,
+            default => null,
+        };
     }
 }
