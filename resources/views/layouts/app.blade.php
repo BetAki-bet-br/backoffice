@@ -394,7 +394,7 @@
 
             <a href="{{ route('toplists.ui') }}" class="sidebar-link {{ request()->routeIs('toplists.ui') ? 'active' : '' }}">
                 <span class="sidebar-link-icon">🏆</span>
-                <span>Top Lists</span>
+                <span>Top 10 Lists</span>
             </a>
 
             <a href="{{ route('awards.ui') }}" class="sidebar-link {{ request()->routeIs('awards.ui') ? 'active' : '' }}">
@@ -404,7 +404,7 @@
 
             <a href="{{ route('topwinners.ui') }}" class="sidebar-link {{ request()->routeIs('topwinners.ui') ? 'active' : '' }}">
                 <span class="sidebar-link-icon">💰</span>
-                <span>Top Winners</span>
+                <span>Vencedores</span>
             </a>
 
             <div class="sidebar-section-title mt-3">Configuração</div>
