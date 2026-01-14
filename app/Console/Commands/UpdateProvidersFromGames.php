@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Domain\Casino\PortalGame;
 use App\Models\Domain\Casino\Provider;
+use App\Models\Domain\Casino\Slot;
 
 class UpdateProvidersFromGames extends Command
 {
@@ -29,7 +30,7 @@ class UpdateProvidersFromGames extends Command
     {
         $this->info("Scanning PortalGames to extract Providers...");
         
-        $stats = ['created' => 0, 'updated' => 0, 'scanned' => 0];
+        $stats = ['created' => 0, 'updated' => 0, 'scanned' => 0, 'slots_linked' => 0];
         $providersMap = [];
 
         PortalGame::chunk(500, function($games) use (&$stats, &$providersMap) {
@@ -45,6 +46,24 @@ class UpdateProvidersFromGames extends Command
                 $externalId = $payload['externalId'] ?? null;
 
                 if (!$pId || !$pName) continue;
+
+                // Sync Slot tags to link with Provider (productId)
+                if ($externalId) {
+                    // Try to find the slot matching this portal game
+                    $slot = Slot::where('provider_game_id', $externalId)
+                        ->where('provider', $pName) // Ensure strict match with PortalGame product_name/payload name
+                        ->first();
+
+                    if ($slot) {
+                        $tags = $slot->tags ?? [];
+                        if (!isset($tags['productId']) || $tags['productId'] != $pId) {
+                            $tags['productId'] = (int)$pId;
+                            $slot->tags = $tags;
+                            $slot->save();
+                            $stats['slots_linked']++;
+                        }
+                    }
+                }
                 
                 $idStr = (string)$pId;
 
@@ -93,7 +112,7 @@ class UpdateProvidersFromGames extends Command
 
         $bar->finish();
         $this->newLine();
-        $this->info("Done. Scanned: {$stats['scanned']}. Created: {$stats['created']}, Updated: {$stats['updated']}");
+        $this->info("Done. Scanned: {$stats['scanned']}. Created: {$stats['created']}, Updated: {$stats['updated']}, Slots Linked: {$stats['slots_linked']}");
         
         return 0;
     }
