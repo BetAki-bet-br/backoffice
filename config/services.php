@@ -36,7 +36,7 @@ return [
     ],
 
     'base_api' => [
-        'url' => env('BASE_API_URL', 'https://pgapi.betaki.bet.br'),
+        'url' => env('BASE_API_URL', 'https://pgapi.betaki.bet.br/api'),
         'portal_id' => (int) env('BASE_PORTAL_ID', 1),
         'timeout' => (int) env('BASE_API_TIMEOUT', 20),
         'api_key' => env('BASE_API_KEY'),
