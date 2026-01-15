@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Casino\SlotRequest;
 use App\Models\Domain\Casino\Slot;
 use App\Models\Domain\Casino\GameExtra;
+use App\Models\Domain\Casino\PortalGame;
 use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 
@@ -51,12 +52,19 @@ class SlotController extends Controller
             ->get()
             ->keyBy('external_id');
 
-        $items = $items->map(function (Slot $slot) use ($extrasByExternalId) {
+        $portalGamesByExternalId = PortalGame::query()
+            ->whereIn('external_id', $externalIds)
+            ->get()
+            ->keyBy('external_id');
+
+        $items = $items->map(function (Slot $slot) use ($extrasByExternalId, $portalGamesByExternalId) {
             $extra = $extrasByExternalId->get($slot->provider_game_id);
+            $portalGame = $portalGamesByExternalId->get($slot->provider_game_id);
 
             $slot->setAttribute('rtp', $extra?->rtp);
             $slot->setAttribute('volatility', $extra?->volatility);
             $slot->setAttribute('min_bet', $extra?->min_bet);
+            $slot->setAttribute('gameTypeName', $portalGame?->payload['gameTypeName'] ?? null);
 
             return $slot;
         });
@@ -99,12 +107,19 @@ class SlotController extends Controller
             ->get()
             ->keyBy('external_id');
 
-        $slots = $slots->map(function (Slot $slot) use ($extrasByExternalId) {
+        $portalGamesByExternalId = PortalGame::query()
+            ->whereIn('external_id', $externalIds)
+            ->get()
+            ->keyBy('external_id');
+
+        $slots = $slots->map(function (Slot $slot) use ($extrasByExternalId, $portalGamesByExternalId) {
             $extra = $extrasByExternalId->get($slot->provider_game_id);
+            $portalGame = $portalGamesByExternalId->get($slot->provider_game_id);
 
             $slot->setAttribute('rtp', $extra?->rtp);
             $slot->setAttribute('volatility', $extra?->volatility);
             $slot->setAttribute('min_bet', $extra?->min_bet);
+            $slot->setAttribute('gameTypeName', $portalGame?->payload['gameTypeName'] ?? null);
 
             return $slot;
         });
@@ -150,9 +165,14 @@ class SlotController extends Controller
             ->where('external_id', $slot->provider_game_id)
             ->first();
 
+        $portalGame = PortalGame::query()
+            ->where('external_id', $slot->provider_game_id)
+            ->first();
+
         $slot->setAttribute('rtp', $extra?->rtp);
         $slot->setAttribute('volatility', $extra?->volatility);
         $slot->setAttribute('min_bet', $extra?->min_bet);
+        $slot->setAttribute('gameTypeName', $portalGame?->payload['gameTypeName'] ?? null);
 
         return response()->json($slot);
     }
