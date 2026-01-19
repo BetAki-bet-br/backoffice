@@ -116,13 +116,15 @@ class AwardedController extends Controller
                 AwardedGame::create([
                     'batch_id'   => $batch->id,
                     'slot_id'    => $i['slot_id'],
-                    'rank'       => (int) $i['rank'],
-                    'position'   => (int) ($i['position'] ?? $i['rank']),
+                    'position'   => (int) ($i['position'] ?? 0),
                     'wins_count' => (int) ($i['wins_count'] ?? 0),
                     'prize_sum'  => (float) ($i['prize_sum'] ?? 0),
                     'max_prize'  => (float) ($i['max_prize'] ?? 0),
                     'avg_prize'  => (float) ($i['avg_prize'] ?? 0),
                     'meta'       => $i['meta'] ?? null,
+                    'prize_sum_initial' => (float) ($i['prize_sum_initial'] ?? null),
+                    'prize_sum_final' => (float) ($i['prize_sum_final'] ?? null),
+                    'increment_interval_minutes' => (int) ($i['increment_interval_minutes'] ?? null),
                 ]);
             }
 

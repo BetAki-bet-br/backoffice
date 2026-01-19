@@ -184,7 +184,6 @@
                   <thead>
                     <tr>
                       <th>Resultado</th>
-                      <th style="width: 90px;">Rank</th>
                       <th style="width: 90px;" class="text-end">Add</th>
                     </tr>
                   </thead>
@@ -199,9 +198,6 @@
           <div class="col-12 col-lg-7">
             <div class="d-flex justify-content-between align-items-center">
               <label class="form-label mb-0">Itens do lote</label>
-              <button class="btn btn-sm btn-outline-secondary" type="button" id="btnSortByRank">
-                Ordenar por rank
-              </button>
             </div>
 
             <div class="mt-2 table-soft">
@@ -210,10 +206,12 @@
                   <thead>
                     <tr>
                       <th>Slot</th>
-                      <th style="width: 80px;">Rank</th>
                       <th style="width: 110px;">Posição</th>
                       <th style="width: 120px;">Wins</th>
                       <th style="width: 140px;">Prize sum</th>
+                      <th style="width: 140px;">Prêmio Inicial</th>
+                      <th style="width: 140px;">Prêmio Final</th>
+                      <th style="width: 110px;">Intervalo (min)</th>
                       <th style="width: 140px;">Max</th>
                       <th style="width: 140px;">Avg</th>
                       <th style="width: 90px;" class="text-end">Remover</th>
@@ -451,7 +449,7 @@
   function renderLinkedResults() {
     const items = Array.from(linkedMap.values());
     if (!items.length) {
-      linkedResultsTbody.innerHTML = `<tr><td colspan="8" class="text-muted p-4">Nenhum resultado.</td></tr>`;
+      linkedResultsTbody.innerHTML = `<tr><td colspan="10" class="text-muted p-4">Nenhum resultado.</td></tr>`;
       return;
     }
 
@@ -461,10 +459,12 @@
           <div class="fw-semibold">${it.slot?.title || ('Slot #' + it.slot_id)}</div>
           <div class="text-muted small">${it.slot?.provider || ''} ${it.slot?.provider_game_id ? '• ' + it.slot.provider_game_id : ''}</div>
         </td>
-        <td><input type="number" min="1" class="form-control form-control-sm" data-rank data-slot-id="${it.slot_id}" value="${it.rank ?? 1}"></td>
         <td><input type="number" min="0" class="form-control form-control-sm" data-position data-slot-id="${it.slot_id}" value="${it.position ?? 0}"></td>
         <td><input type="number" min="0" class="form-control form-control-sm" data-wins data-slot-id="${it.slot_id}" value="${it.wins_count ?? 0}"></td>
         <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-sum data-slot-id="${it.slot_id}" value="${it.prize_sum ?? 0}"></td>
+        <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-prize-initial data-slot-id="${it.slot_id}" value="${it.prize_sum_initial ?? ''}"></td>
+        <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-prize-final data-slot-id="${it.slot_id}" value="${it.prize_sum_final ?? ''}"></td>
+        <td><input type="number" min="1" class="form-control form-control-sm" data-prize-interval data-slot-id="${it.slot_id}" value="${it.increment_interval_minutes ?? ''}"></td>
         <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-max data-slot-id="${it.slot_id}" value="${it.max_prize ?? 0}"></td>
         <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-avg data-slot-id="${it.slot_id}" value="${it.avg_prize ?? 0}"></td>
         <td class="text-end">
@@ -489,12 +489,14 @@
     (batch.results || []).forEach(r => {
       linkedMap.set(String(r.slot_id), {
         slot_id: r.slot_id,
-        rank: r.rank,
         position: r.position ?? 0,
         wins_count: r.wins_count ?? 0,
         prize_sum: r.prize_sum ?? 0,
         max_prize: r.max_prize ?? 0,
         avg_prize: r.avg_prize ?? 0,
+        prize_sum_initial: r.prize_sum_initial ?? null,
+        prize_sum_final: r.prize_sum_final ?? null,
+        increment_interval_minutes: r.increment_interval_minutes ?? null,
         meta: r.meta ?? null,
         slot: r.slot || null,
       });
@@ -531,7 +533,6 @@
           <div class="fw-semibold">${s.title}</div>
           <div class="text-muted small">${s.provider} • ${s.provider_game_id} • ${s.status}</div>
         </td>
-        <td><input type="number" min="1" class="form-control form-control-sm" data-add-rank value="1"></td>
         <td class="text-end">
           <button class="btn btn-sm btn-outline-primary" data-add data-slot-id="${s.id}">Adicionar</button>
         </td>
@@ -539,18 +540,20 @@
     `).join('');
   }
 
-  function addResult(slotId, rank, slotObj) {
+  function addResult(slotId, slotObj) {
     const key = String(slotId);
     if (linkedMap.has(key)) return toast('Esse slot já está no lote.', 'secondary');
 
     linkedMap.set(key, {
       slot_id: Number(slotId),
-      rank: Number(rank) || 1,
       position: 0,
       wins_count: 0,
       prize_sum: 0,
       max_prize: 0,
       avg_prize: 0,
+      prize_sum_initial: null,
+      prize_sum_final: null,
+      increment_interval_minutes: null,
       meta: null,
       slot: slotObj || null,
     });
@@ -561,21 +564,25 @@
     syncError.classList.add('d-none'); syncError.textContent = '';
 
     // lê inputs
-    document.querySelectorAll('[data-rank]').forEach(i => { const k=i.dataset.slotId; const it=linkedMap.get(k); if(it) it.rank = Number(i.value||1); });
     document.querySelectorAll('[data-position]').forEach(i => { const k=i.dataset.slotId; const it=linkedMap.get(k); if(it) it.position = Number(i.value||0); });
     document.querySelectorAll('[data-wins]').forEach(i => { const k=i.dataset.slotId; const it=linkedMap.get(k); if(it) it.wins_count = Number(i.value||0); });
     document.querySelectorAll('[data-sum]').forEach(i => { const k=i.dataset.slotId; const it=linkedMap.get(k); if(it) it.prize_sum = Number(i.value||0); });
     document.querySelectorAll('[data-max]').forEach(i => { const k=i.dataset.slotId; const it=linkedMap.get(k); if(it) it.max_prize = Number(i.value||0); });
     document.querySelectorAll('[data-avg]').forEach(i => { const k=i.dataset.slotId; const it=linkedMap.get(k); if(it) it.avg_prize = Number(i.value||0); });
+    document.querySelectorAll('[data-prize-initial]').forEach(i => { const k=i.dataset.slotId; const it=linkedMap.get(k); if(it) it.prize_sum_initial = i.value ? Number(i.value) : null; });
+    document.querySelectorAll('[data-prize-final]').forEach(i => { const k=i.dataset.slotId; const it=linkedMap.get(k); if(it) it.prize_sum_final = i.value ? Number(i.value) : null; });
+    document.querySelectorAll('[data-prize-interval]').forEach(i => { const k=i.dataset.slotId; const it=linkedMap.get(k); if(it) it.increment_interval_minutes = i.value ? Number(i.value) : null; });
 
     const items = Array.from(linkedMap.values()).map(it => ({
       slot_id: it.slot_id,
-      rank: it.rank,
       position: it.position,
       wins_count: it.wins_count,
       prize_sum: it.prize_sum,
       max_prize: it.max_prize,
       avg_prize: it.avg_prize,
+      prize_sum_initial: it.prize_sum_initial,
+      prize_sum_final: it.prize_sum_final,
+      increment_interval_minutes: it.increment_interval_minutes,
       meta: it.meta ?? null,
     }));
 
@@ -643,12 +650,11 @@
 
     const slotId = btn.getAttribute('data-slot-id');
     const row = btn.closest('tr');
-    const rank = row.querySelector('[data-add-rank]')?.value || 1;
 
     const title = row.querySelector('.fw-semibold')?.textContent?.trim() || '';
     const meta = row.querySelector('.text-muted')?.textContent?.trim() || '';
 
-    addResult(slotId, rank, { id: Number(slotId), title, provider: meta });
+    addResult(slotId, { id: Number(slotId), title, provider: meta });
   });
 
   linkedResultsTbody.addEventListener('click', (e) => {
@@ -659,16 +665,17 @@
     renderLinkedResults();
   });
 
-  document.getElementById('btnSortByRank').addEventListener('click', () => {
-    const arr = Array.from(linkedMap.values()).sort((a,b) => (a.rank ?? 1) - (b.rank ?? 1));
-    linkedMap.clear();
-    arr.forEach(it => linkedMap.set(String(it.slot_id), it));
-    renderLinkedResults();
-  });
-
   document.getElementById('btnSyncResults').addEventListener('click', syncResults);
 
-  load(null);
+  // Init
+  document.addEventListener('DOMContentLoaded', () => {
+    load(null);
+  });
+
+  // Expose to window for inline onclick
+  window.openEdit = openEdit;
+  window.openGames = openGames;
+
 </script>
 @endpush
 @endsection

@@ -24,7 +24,7 @@ class AwardedGameBatch extends Model
     public function results()
     {
         return $this->hasMany(AwardedGame::class, 'batch_id')
-            ->orderBy('rank');
+            ->orderBy('position');
     }
 
     public function scopeReadyToPublish($q)

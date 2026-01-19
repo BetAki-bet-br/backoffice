@@ -245,8 +245,8 @@ class LobbyLayoutController extends Controller
     ): ?array {
         $batchId = $this->extractNumericId($section, ['awardedBatchId', 'awarded_batch_id', 'batchId', 'batch_id']);
         $batch = $batchId
-            ? AwardedGameBatch::query()->whereKey($batchId)->first()
-            : AwardedGameBatch::query()
+            ? \App\Models\Domain\Casino\AwardedGameBatch::query()->whereKey($batchId)->first()
+            : \App\Models\Domain\Casino\AwardedGameBatch::query()
                 ->where('status', 'published')
                 ->where('vertical', $vertical)
                 ->orderByDesc('published_at')
@@ -259,8 +259,12 @@ class LobbyLayoutController extends Controller
 
         $batch->load(['results.slot' => fn($q) => $q->where('status', 'active')]);
 
-        $games = $this->resolveGamesFromResults($batch->results);
+        $games = $this->resolveGamesFromResults($batch->results, $batch);
         $games = $this->applyDisplayCount($games, $metadata);
+
+        // Calculate a total current prize sum for the section
+        $totalCurrentPrizeSum = collect($games)->sum('current_prize_sum');
+        $metadata['totalCurrentPrizeSum'] = $totalCurrentPrizeSum;
 
         return $this->makeGenericSection($section, [
             'id' => $section['id'] ?? $batch->id,
@@ -270,6 +274,82 @@ class LobbyLayoutController extends Controller
             'games' => $games,
             'metadata' => array_merge(['batchId' => $batch->id], $metadata),
         ]);
+    }
+
+    private function calculateCurrentPrizeForGame(\App\Models\Domain\Casino\AwardedGame $game): ?float
+    {
+        // If not progressive, return the already calculated prize_sum for the game
+        if ($game->prize_sum_initial === null || $game->prize_sum_final === null || $game->increment_interval_minutes === null) {
+            \Illuminate\Support\Facades\Log::warning('[PrizeCalc] Game ' . $game->id . ' is missing progressive prize parameters. Returning base prize_sum.', [
+                'game_id' => $game->id,
+                'slot_id' => $game->slot_id,
+                'prize_sum_initial' => $game->prize_sum_initial,
+                'prize_sum_final' => $game->prize_sum_final,
+                'increment_interval_minutes' => $game->increment_interval_minutes,
+            ]);
+            return $game->prize_sum;
+        }
+
+        $now = now();
+        $start = $game->batch->published_at ?? $game->batch->period_start;
+        $end = $game->batch->period_end;
+
+        if (!$start || !$end) {
+            \Illuminate\Support\Facades\Log::error('[PrizeCalc] Game ' . $game->id . ' batch has NULL start or end dates.', [
+                'game_id' => $game->id,
+                'batch_id' => $game->batch->id,
+                'start' => $start?->toIso8601String(),
+                'end' => $end?->toIso8601String(),
+            ]);
+            return (float) $game->prize_sum_initial;
+        }
+
+        if ($now->lessThan($start)) {
+            \Illuminate\Support\Facades\Log::info('[PrizeCalc] Prize progression has not started yet. Returning initial prize.', [
+                'game_id' => $game->id,
+                'now' => $now->toIso8601String(),
+                'start' => $start->toIso8601String(),
+            ]);
+            return (float) $game->prize_sum_initial;
+        }
+        if ($now->greaterThanOrEqualTo($end)) {
+            \Illuminate\Support\Facades\Log::info('[PrizeCalc] Prize progression has ended. Returning final prize.', [
+                'game_id' => $game->id,
+                'now' => $now->toIso8601String(),
+                'end' => $end->toIso8601String(),
+            ]);
+            return (float) $game->prize_sum_final;
+        }
+
+        // Using timestamps to get a precise, signed difference in minutes
+        $totalDuration = ($end->getTimestamp() - $start->getTimestamp()) / 60;
+        $elapsedDuration = ($now->getTimestamp() - $start->getTimestamp()) / 60;
+
+        $intervalMinutes = max(1, $game->increment_interval_minutes);
+        $totalPrizeIncrease = $game->prize_sum_final - $game->prize_sum_initial;
+
+        $intervalsPassed = floor($elapsedDuration / $intervalMinutes);
+        $totalIntervals = floor($totalDuration / $intervalMinutes);
+
+        if ($totalIntervals <= 0) {
+            \Illuminate\Support\Facades\Log::warning('[PrizeCalc] Total intervals is zero or negative. Returning initial prize.', [
+                'game_id' => $game->id,
+                'totalDurationInMinutes' => $totalDuration,
+                'intervalMinutes' => $intervalMinutes,
+                'totalIntervals' => $totalIntervals,
+            ]);
+            return (float) $game->prize_sum_initial;
+        }
+
+        $prizeIncreasePerInterval = $totalPrizeIncrease / $totalIntervals;
+        $currentPrize = $game->prize_sum_initial + ($intervalsPassed * $prizeIncreasePerInterval);
+
+        \Illuminate\Support\Facades\Log::info('[PrizeCalc] Prize calculated successfully.', [
+            'game_id' => $game->id,
+            'calculatedPrize' => $currentPrize,
+        ]);
+
+        return (float) max($game->prize_sum_initial, min($currentPrize, $game->prize_sum_final));
     }
 
     private function buildWinnersSection(
@@ -340,12 +420,18 @@ class LobbyLayoutController extends Controller
             $result['gameCount'] = $payload['gameCount'];
         }
 
-        if (!empty($payload['games'])) {
+        if (array_key_exists('games', $payload)) {
             $result['games'] = $payload['games'];
         }
 
         if (!empty($payload['providers'])) {
             $result['providers'] = $payload['providers'];
+        }
+
+        if (array_key_exists('currentPrizeSum', $payload)) {
+            $result['currentPrizeSum'] = $payload['currentPrizeSum'];
+            $result['initialPrizeSum'] = $payload['initialPrizeSum'];
+            $result['finalPrizeSum'] = $payload['finalPrizeSum'];
         }
 
         if (!empty($payload['metadata'])) {
@@ -433,7 +519,7 @@ class LobbyLayoutController extends Controller
         return $this->mapSlotsToGameMains($slots, $portalGames);
     }
 
-    private function resolveGamesFromResults(Collection $results): array
+    private function resolveGamesFromResults(Collection $results, \App\Models\Domain\Casino\AwardedGameBatch $batch): array
     {
         $externalIds = $results
             ->map(fn($result) => $result->slot?->provider_game_id)
@@ -444,12 +530,35 @@ class LobbyLayoutController extends Controller
         $portalGames = $this->loadPortalGames($externalIds);
 
         return $results
-            ->map(function ($result) use ($portalGames) {
+            ->map(function ($result) use ($portalGames, $batch) {
                 $externalId = $result->slot?->provider_game_id;
+
+                \Illuminate\Support\Facades\Log::info('[AwardedGames] Processing awarded game result.', [
+                    'awarded_game_id' => $result->id,
+                    'slot_id' => $result->slot_id,
+                    'slot_provider_game_id' => $externalId,
+                ]);
+
                 if (!$externalId) {
+                    \Illuminate\Support\Facades\Log::warning('[AwardedGames] No externalId (provider_game_id) found for awarded game.', ['awarded_game_id' => $result->id]);
                     return null;
                 }
-                return $portalGames->get($externalId)?->payload;
+
+                $payload = $portalGames->get($externalId)?->payload;
+
+                if ($payload) {
+                    $result->setRelation('batch', $batch);
+                    // Add progressive prize data to the game payload
+                    $payload['current_prize_sum'] = $this->calculateCurrentPrizeForGame($result);
+                    \Illuminate\Support\Facades\Log::info('[AwardedGames] Payload found and prize calculated.', ['awarded_game_id' => $result->id]);
+                } else {
+                    \Illuminate\Support\Facades\Log::warning('[AwardedGames] No PortalGame payload found for awarded game.', [
+                        'awarded_game_id' => $result->id,
+                        'searched_external_id' => $externalId,
+                    ]);
+                }
+
+                return $payload;
             })
             ->filter()
             ->values()

@@ -211,6 +211,11 @@ Route::prefix('v1')->group(function () {
         Route::post('providers/sync', [\App\Http\Controllers\Api\V1\ProviderController::class, 'sync'])
             ->name('providers.sync');
 
+        Route::apiResource('providers', \App\Http\Controllers\Api\V1\ProviderController::class)
+            ->only(['update'])
+            ->parameters(['providers' => 'provider'])
+            ->names('providers.admin');
+
         // Showcases
         Route::apiResource('showcases', ShowcaseController::class)
             ->except(['index', 'show'])

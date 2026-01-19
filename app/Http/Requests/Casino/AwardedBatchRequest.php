@@ -29,6 +29,10 @@ class AwardedBatchRequest extends FormRequest
             'criteria.provider'   => ['nullable','string','max:100'],
             'criteria.tags'       => ['nullable','array'],
             'criteria.tags.*'     => ['string','max:50'],
+
+            'prize_sum_initial'          => ['nullable','numeric','min:0'],
+            'prize_sum_final'            => ['nullable','numeric','min:0', 'gte:prize_sum_initial'],
+            'increment_interval_minutes' => ['nullable','integer','min:1'],
         ];
     }
 }
