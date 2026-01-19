@@ -288,9 +288,10 @@ class CategoryController extends Controller
      * ) */
     public function sync(Request $request)
     {
-        $portalId = (int) ($request->input('portal_id') ?? config('services.base_api.portal_id', 1));
+        $portalId = (int) ($request->input('portal_id') ?? config('services.base_api.portal_id', 5));
+        $levelId = $request->input('level_id') ? (int) $request->input('level_id') : null;
 
-        $stats = \App\Services\BaseApi\CategorySyncService::make()->syncPortal($portalId);
+        $stats = \App\Services\BaseApi\CategorySyncService::make()->syncFromLobby($portalId, $levelId);
 
         return response()->json($stats);
     }

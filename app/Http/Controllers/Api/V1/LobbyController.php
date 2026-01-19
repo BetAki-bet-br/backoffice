@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Domain\Casino\AwardedGameBatch;
 use App\Models\Setting;
 use App\Models\Domain\Casino\Category;
 use Illuminate\Http\Request;
@@ -38,7 +39,44 @@ class LobbyController extends Controller
             $config = $this->buildDefaultConfig($vertical);
         }
 
+        if (!empty($config['sections'])) {
+            foreach ($config['sections'] as &$section) {
+                if (($section['type'] ?? null) === 'awarded-games') {
+                    $this->enrichAwardedGamesSection($section, $vertical);
+                }
+            }
+            unset($section); // break reference
+        }
+
         return response()->json($config);
+    }
+
+    private function enrichAwardedGamesSection(array &$section, string $vertical): void
+    {
+        $batch = AwardedGameBatch::query()
+            ->where('status', 'published')
+            ->where('vertical', $vertical)
+            ->latest('published_at')
+            ->with(['results.slot'])
+            ->first();
+
+        if (!$batch) {
+            $section['games'] = [];
+            return;
+        }
+
+        $section['games'] = $batch->results->map(function ($awardedGame) {
+            if (!$awardedGame->slot) return null;
+
+            $slotData = $awardedGame->slot->toArray();
+            $slotData['awarded'] = [
+                'wins_count' => $awardedGame->wins_count,
+                'prize_sum' => $awardedGame->prize_sum,
+                'max_prize' => $awardedGame->max_prize,
+                'avg_prize' => $awardedGame->avg_prize,
+            ];
+            return $slotData;
+        })->whereNotNull()->values();
     }
 
     private function buildDefaultConfig(string $vertical): array
@@ -48,7 +86,7 @@ class LobbyController extends Controller
             ->forVertical($vertical)
             ->where(function ($q) {
                 $q->where('type', '!=', 'game-list')
-                    ->orWhereHas('slots', null, '>', 1);
+                    ->orWhereHas('slots', null, '>', 0);
             })
             ->orderBy('name')
             ->get();

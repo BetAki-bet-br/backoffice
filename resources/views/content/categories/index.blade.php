@@ -692,11 +692,15 @@
   document.getElementById('btnSave').addEventListener('click', save);
 
   async function syncCategories() {
-    if (!confirm('Deseja sincronizar categorias da API externa? Isso pode criar novas categorias e atualizar nomes existentes.')) return;
+    if (!confirm('Deseja sincronizar categorias da API externa? Isso pode criar/atualizar categorias, jogos e provedores.')) return;
     
-    // Podemos permitir configurar o Portal ID, mas por padrão usaremos o do .env (ou input se necessário)
-    // const portalId = prompt('Portal ID (Desktop=5, Mobile=6):', '5');
-    // if (!portalId) return;
+    const portalId = prompt('Digite o Portal ID (Desktop=5, Mobile=6):', '5');
+    if (!portalId) {
+      toast('Portal ID é obrigatório.', 'secondary');
+      return;
+    }
+
+    const levelId = prompt('Digite o Level ID (opcional):', '');
 
     const btn = document.getElementById('btnSync');
     const originalText = btn.textContent;
@@ -704,16 +708,26 @@
     btn.textContent = 'Sincronizando...';
 
     try {
+        const payload = {
+          portal_id: parseInt(portalId, 10),
+        };
+        if (levelId) {
+          payload.level_id = parseInt(levelId, 10);
+        }
+
         const res = await apiFetch('/api/v1/categories/sync', { 
             method: 'POST',
-            // body: JSON.stringify({ portal_id: portalId }) 
+            body: JSON.stringify(payload) 
         });
 
         if (!res.ok) {
-            toast('Erro ao sincronizar.', 'danger');
+            const err = await res.json().catch(() => null);
+            console.error('Sync error:', err);
+            toast(err ? JSON.stringify(err) : 'Erro ao sincronizar.', 'danger');
         } else {
             const stats = await res.json();
-            toast(`Sincronização concluída! Criadas: ${stats.created}, Atualizadas: ${stats.updated}`);
+            const message = `Sincronização concluída! Criadas: ${stats.created}, Atualizadas: ${stats.updated}, Games: ${stats.games_synced}, Skipped: ${stats.skipped}`;
+            toast(message, 'success', 8000);
             await load(null);
         }
     } catch (e) {

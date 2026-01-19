@@ -112,21 +112,21 @@ class LobbyLayoutController extends Controller
             ->filter(fn($item) => is_array($item))
             ->values();
 
-        $categoryIds = $sectionsConfig
+        $categoryExternalIds = $sectionsConfig
             ->map(fn($section) => $this->resolveCategoryId($section))
             ->filter()
             ->unique()
             ->values();
 
-        $categories = $categoryIds->isEmpty()
+        $categories = $categoryExternalIds->isEmpty()
             ? collect()
             : Category::query()
-                ->whereIn('id', $categoryIds)
+                ->whereIn('meta->external_id', $categoryExternalIds->map('strval'))
                 ->where('status', 'active')
                 ->forVertical($vertical)
                 ->with(['slots' => fn($q) => $q->where('status', 'active')])
                 ->get()
-                ->keyBy('id');
+                ->keyBy(fn ($cat) => (string) data_get($cat, 'meta.external_id'));
 
         $portalGames = $this->loadPortalGames(
             $categories->flatMap(fn(Category $cat) => $cat->slots->pluck('provider_game_id'))
@@ -150,7 +150,7 @@ class LobbyLayoutController extends Controller
         int $index
     ): ?array {
         $categoryId = $this->resolveCategoryId($section);
-        $category = $categoryId ? $categories->get($categoryId) : null;
+        $category = $categoryId ? $categories->get((string) $categoryId) : null;
 
         $type = $section['type'] ?? ($category?->type ?? 'game-list');
         $title = $section['title'] ?? ($category?->name ?? null);
