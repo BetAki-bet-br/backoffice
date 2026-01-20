@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Domain\Banners\Banner;
 use App\Http\Requests\Banners\BannerRequest;
+use App\Services\FileUploadService;
 
 class BannerController extends Controller
 {
@@ -43,6 +44,12 @@ class BannerController extends Controller
         $banner = \DB::transaction(function () use ($request) {
             $data = $request->validated();
             $data['created_by'] = $request->user()->id;
+            
+            // Handle file upload if cover_url file is provided
+            if ($request->hasFile('cover_url')) {
+                $data['cover_url'] = FileUploadService::uploadBannerImage($request->file('cover_url'));
+            }
+            
             $banner = Banner::create($data);
 
             foreach (($data['translations'] ?? []) as $t) {
@@ -71,6 +78,17 @@ class BannerController extends Controller
         $banner = \DB::transaction(function () use ($request, $banner) {
             $data = $request->validated();
             $data['updated_by'] = $request->user()->id;
+            
+            // Handle file upload if cover_url file is provided
+            if ($request->hasFile('cover_url')) {
+                // Delete old image if exists
+                if ($banner->cover_url) {
+                    FileUploadService::deleteImageByUrl($banner->cover_url);
+                }
+                // Upload new image
+                $data['cover_url'] = FileUploadService::uploadBannerImage($request->file('cover_url'));
+            }
+            
             $banner->update($data);
 
             if (isset($data['translations'])) {

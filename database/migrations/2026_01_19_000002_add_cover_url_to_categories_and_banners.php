@@ -11,15 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Add cover_url to categories table
         Schema::table('categories', function (Blueprint $table) {
-            $table->enum('type', [
-                'game-list',
-                'recent-games',
-                'mais-premiados',
-                'winners-list',
-                'top-10-list',
-                'providers-carousel'
-            ])->default('game-list')->after('verticals')->index();
+            $table->string('cover_url')->nullable()->after('slug');
+        });
+
+        // Add cover_url to banners table
+        Schema::table('banners', function (Blueprint $table) {
+            $table->string('cover_url')->nullable()->after('slug');
         });
     }
 
@@ -29,7 +28,11 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('categories', function (Blueprint $table) {
-            $table->dropColumn('type');
+            $table->dropColumn('cover_url');
+        });
+
+        Schema::table('banners', function (Blueprint $table) {
+            $table->dropColumn('cover_url');
         });
     }
 };

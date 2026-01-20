@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Casino\SlotRequest;
+use App\Services\FileUploadService;
 use App\Models\Domain\Casino\Slot;
 use App\Models\Domain\Casino\GameExtra;
 use App\Models\Domain\Casino\PortalGame;
@@ -143,6 +144,11 @@ class SlotController extends Controller
             $data = $request->validated();
             $data['created_by'] = $request->user()->id;
 
+            // Handle file upload if cover_url file is provided
+            if ($request->hasFile('cover_url')) {
+                $data['cover_url'] = FileUploadService::uploadSlotImage($request->file('cover_url'));
+            }
+
             return Slot::create($data);
         });
 
@@ -193,6 +199,16 @@ class SlotController extends Controller
         $slot = \DB::transaction(function () use ($request, $slot) {
             $data = $request->validated();
             $data['updated_by'] = $request->user()->id;
+
+            // Handle file upload if cover_url file is provided
+            if ($request->hasFile('cover_url')) {
+                // Delete old image if exists
+                if ($slot->cover_url) {
+                    FileUploadService::deleteImageByUrl($slot->cover_url);
+                }
+                // Upload new image
+                $data['cover_url'] = FileUploadService::uploadSlotImage($request->file('cover_url'));
+            }
 
             $slot->update($data);
             return $slot;

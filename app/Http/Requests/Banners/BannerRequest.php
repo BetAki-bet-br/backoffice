@@ -37,6 +37,7 @@ class BannerRequest extends FormRequest
             'utm_campaign' => ['nullable','string','max:120'],
 
             // mídia (por breakpoint)
+            'cover_url'              => ['nullable','image','mimes:jpeg,png,webp,gif','max:2048'],
             'media'                  => ['nullable','array'],
             'media.desktop'          => ['nullable','url','max:2000'],
             'media.mobile'           => ['nullable','url','max:2000'],

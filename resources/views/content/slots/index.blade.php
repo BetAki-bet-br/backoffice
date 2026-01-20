@@ -112,8 +112,7 @@
           </div>
 
           <div class="col-12">
-            <label class="form-label">Cover URL</label>
-            <input class="form-control" id="f_cover_url" placeholder="https://...">
+            <x-file-upload name="cover_url" label="Imagem (Cover)" />
           </div>
 
           <div class="col-12">
@@ -237,7 +236,16 @@
     document.getElementById('f_position').value = (item?.position ?? '') === null ? '' : (item?.position ?? '');
     document.getElementById('f_provider').value = item?.provider || '';
     document.getElementById('f_provider_game_id').value = item?.provider_game_id || '';
-    document.getElementById('f_cover_url').value = item?.cover_url || '';
+    // Atualizar hidden field de cover_url (se existir)
+    const coverUrlField = document.getElementById('f_cover_url');
+    if (coverUrlField) {
+      coverUrlField.value = item?.cover_url || '';
+    }
+    // Reset file input
+    const fileInput = document.getElementById('cover_url');
+    if (fileInput) {
+      fileInput.value = '';
+    }
     document.getElementById('f_tags').value = Array.isArray(item?.tags) ? item.tags.join(',') : '';
   }
 
@@ -245,13 +253,27 @@
     const positionRaw = document.getElementById('f_position').value;
     const position = positionRaw === '' ? null : Number(positionRaw);
 
+    // Se há um novo arquivo, usamos file input; senão, usamos hidden field
+    const fileInput = document.getElementById('cover_url');
+    let coverUrl = null;
+    
+    if (fileInput && fileInput.files && fileInput.files[0]) {
+      // Novo arquivo selecionado - será enviado via multipart/form-data
+      // O FormData vai lidar com isso automaticamente
+      coverUrl = null; // Não incluir na payload
+    } else {
+      // Sem novo arquivo - manter a URL atual
+      const coverUrlField = document.getElementById('f_cover_url');
+      coverUrl = coverUrlField ? (coverUrlField.value.trim() || null) : null;
+    }
+
     return {
       title: document.getElementById('f_title').value.trim(),
       status: document.getElementById('f_status').value,
       position,
       provider: document.getElementById('f_provider').value.trim(),
       provider_game_id: document.getElementById('f_provider_game_id').value.trim(),
-      cover_url: document.getElementById('f_cover_url').value.trim() || null,
+      cover_url: coverUrl,
       tags: csvToArray(document.getElementById('f_tags').value),
     };
   }
