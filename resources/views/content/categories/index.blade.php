@@ -714,9 +714,8 @@
   async function syncCategories() {
     if (!confirm('Deseja sincronizar categorias da API externa? Isso pode criar novas categorias e atualizar nomes existentes.')) return;
     
-    // Podemos permitir configurar o Portal ID, mas por padrão usaremos o do .env (ou input se necessário)
-    // const portalId = prompt('Portal ID (Desktop=5, Mobile=6):', '5');
-    // if (!portalId) return;
+    const portalId = prompt('Portal ID (Desktop=5, Mobile=6):', '5');
+    if (!portalId) return;
 
     const btn = document.getElementById('btnSync');
     const originalText = btn.textContent;
@@ -726,7 +725,7 @@
     try {
         const res = await apiFetch('/api/v1/categories/sync', { 
             method: 'POST',
-            // body: JSON.stringify({ portal_id: portalId }) 
+            body: JSON.stringify({ portal_id: portalId }) 
         });
 
         if (!res.ok) {
