@@ -24,6 +24,7 @@ class TopListController extends Controller
     public function index(Request $request)
     {
         $q = TopList::query()
+            ->withCount('slots')
             ->when($request->filled('q'), fn($qq) =>
                 $qq->where('title','ilike','%'.$request->q.'%')
                    ->orWhere('slug','ilike','%'.$request->q.'%'))

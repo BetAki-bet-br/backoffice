@@ -99,11 +99,6 @@
             </select>
           </div>
 
-          <div class="col-6 col-lg-4">
-            <label class="form-label">Posicao</label>
-            <input type="number" min="0" class="form-control" id="f_position" placeholder="0">
-          </div>
-
           <div class="col-12">
             <label class="form-label">Meta (JSON)</label>
             <textarea class="form-control font-monospace" rows="8" id="f_meta" spellcheck="false">{}</textarea>
@@ -290,7 +285,6 @@
     document.getElementById('f_name').value = item?.name || '';
     document.getElementById('f_slug').value = item?.slug || '';
     document.getElementById('f_status').value = item?.status || 'active';
-    document.getElementById('f_position').value = (item?.position ?? '') === null ? '' : (item?.position ?? '');
     document.getElementById('f_meta').value = JSON.stringify(item?.meta || {}, null, 2);
   }
 

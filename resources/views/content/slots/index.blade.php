@@ -49,14 +49,12 @@
           <th style="width: 90px;">ID</th>
           <th>Slot</th>
           <th>Provider</th>
-          <th>Tags</th>
-          <th style="width: 110px;">Posição</th>
           <th style="width: 140px;">Status</th>
           <th style="width: 220px;" class="text-end">Ações</th>
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="7" class="text-muted p-4">Carregando…</td></tr>
+        <tr><td colspan="5" class="text-muted p-4">Carregando…</td></tr>
       </tbody>
     </table>
   </div>
@@ -94,11 +92,6 @@
             </select>
           </div>
 
-          <div class="col-6 col-lg-3">
-            <label class="form-label">Posição</label>
-            <input type="number" min="0" class="form-control" id="f_position" placeholder="0">
-          </div>
-
           <div class="col-12 col-lg-6">
             <label class="form-label">Provider</label>
             <input class="form-control" id="f_provider" placeholder="Ex: pragmatic">
@@ -114,12 +107,6 @@
           <div class="col-12">
             <label class="form-label">Cover URL</label>
             <input class="form-control" id="f_cover_url" placeholder="https://...">
-          </div>
-
-          <div class="col-12">
-            <label class="form-label">Tags (separadas por vírgula)</label>
-            <input class="form-control" id="f_tags" placeholder="Ex: jackpot,volatilidade-alta,novo">
-            <div class="form-text">Será enviado como array: ["jackpot","volatilidade-alta","novo"]</div>
           </div>
         </div>
 
@@ -158,19 +145,9 @@
     return `<span class="badge badge-status ${cls}">${status || '—'}</span>`;
   }
 
-  function tagsToText(tags) {
-    if (!Array.isArray(tags) || !tags.length) return '—';
-    return tags.map(t => `<span class="badge bg-light text-muted me-1">${t}</span>`).join('');
-  }
-
-  function csvToArray(s) {
-    const parts = (s || '').split(',').map(x => x.trim()).filter(Boolean);
-    return parts.length ? parts : [];
-  }
-
   function render(rows) {
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="7" class="text-muted p-4">Nenhum registro.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" class="text-muted p-4">Nenhum registro.</td></tr>`;
       return;
     }
 
@@ -185,8 +162,6 @@
           <div>${item.provider || '—'}</div>
           <div class="small text-muted">${item.provider_game_id || ''}</div>
         </td>
-        <td>${tagsToText(item.tags)}</td>
-        <td class="text-muted">${item.position ?? '—'}</td>
         <td>${badge(item.status)}</td>
         <td class="text-end">
           <div class="d-flex justify-content-end gap-2">
@@ -205,7 +180,7 @@
   }
 
   async function load(cursor = null) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-muted p-4">Carregando…</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="text-muted p-4">Carregando…</td></tr>`;
 
     const params = new URLSearchParams();
     if (cursor) params.set('cursor', cursor);
@@ -217,7 +192,7 @@
     const res = await apiFetch('/api/v1/slots?' + params.toString());
     if (!res.ok) {
       toast('Falha ao carregar slots (' + res.status + ')', 'danger');
-      tbody.innerHTML = `<tr><td colspan="7" class="text-danger p-4">Erro ao carregar.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="text-danger p-4">Erro ao carregar.</td></tr>`;
       return;
     }
 
@@ -234,25 +209,18 @@
   function fillForm(item) {
     document.getElementById('f_title').value = item?.title || '';
     document.getElementById('f_status').value = item?.status || 'active';
-    document.getElementById('f_position').value = (item?.position ?? '') === null ? '' : (item?.position ?? '');
     document.getElementById('f_provider').value = item?.provider || '';
     document.getElementById('f_provider_game_id').value = item?.provider_game_id || '';
     document.getElementById('f_cover_url').value = item?.cover_url || '';
-    document.getElementById('f_tags').value = Array.isArray(item?.tags) ? item.tags.join(',') : '';
   }
 
   function buildPayload() {
-    const positionRaw = document.getElementById('f_position').value;
-    const position = positionRaw === '' ? null : Number(positionRaw);
-
     return {
       title: document.getElementById('f_title').value.trim(),
       status: document.getElementById('f_status').value,
-      position,
       provider: document.getElementById('f_provider').value.trim(),
       provider_game_id: document.getElementById('f_provider_game_id').value.trim(),
       cover_url: document.getElementById('f_cover_url').value.trim() || null,
-      tags: csvToArray(document.getElementById('f_tags').value),
     };
   }
 
@@ -265,11 +233,9 @@
     fillForm({
       title: '',
       status: 'active',
-      position: 0,
       provider: '',
       provider_game_id: '',
       cover_url: '',
-      tags: []
     });
 
     modal.show();

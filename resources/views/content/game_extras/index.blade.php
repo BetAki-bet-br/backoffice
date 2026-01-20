@@ -46,11 +46,10 @@
           <th>Existe na base?</th>
           <th>Nome (base)</th>
           <th>Fornecedor</th>
-          <th>Produto</th>
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="8" class="text-muted p-4">Carregando…</td></tr>
+        <tr><td colspan="7" class="text-muted p-4">Carregando…</td></tr>
       </tbody>
     </table>
   </div>
@@ -112,7 +111,7 @@
 
   function renderRows(rows) {
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="8" class="text-muted p-4">Nenhum registro.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-muted p-4">Nenhum registro.</td></tr>`;
       return;
     }
 
@@ -130,15 +129,16 @@
           <td>${r.min_bet ?? '—'}</td>
           <td>${badge}</td>
           <td class="text-muted">${r.base_name ?? '—'}</td>
-          <td class="text-muted">${r.base_supplier_name ?? '—'}</td>
-          <td class="text-muted">${r.base_product_name ?? '—'}</td>
+          <td>
+            <div class="small text-muted">${r.base_product_name ?? ''}</div>
+          </td>
         </tr>
       `;
     }).join('');
   }
 
   async function load(page=1) {
-    tbody.innerHTML = `<tr><td colspan="8" class="text-muted p-4">Carregando…</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-muted p-4">Carregando…</td></tr>`;
 
     const params = getParams(page);
     const res = await apiFetch('/api/v1/game-extras/overview?' + params.toString());

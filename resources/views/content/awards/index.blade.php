@@ -62,7 +62,6 @@
           <th style="width: 120px;">Vertical</th>
           <th style="width: 140px;">Status</th>
           <th style="width: 220px;">Período</th>
-          <th style="width: 110px;">Top N</th>
           <th style="width: 420px;" class="text-end">Ações</th>
         </tr>
       </thead>
@@ -126,10 +125,6 @@
             <input type="date" class="form-control" id="f_period_end">
           </div>
 
-          <div class="col-6 col-lg-3">
-            <label class="form-label">Top N</label>
-            <input type="number" min="1" max="100" class="form-control" id="f_top_n" placeholder="10">
-          </div>
 
           <div class="col-12">
             <label class="form-label">Criteria (JSON)</label>
@@ -260,16 +255,28 @@
 
   const linkedMap = new Map(); // slot_id -> item
 
-  function badge(status) {
-    const s = (status || '').toLowerCase();
+  function badge(statusOrVertical) {
+    const s = (statusOrVertical || '').toLowerCase();
     const map = {
       published: 'bg-success-subtle text-success',
       review: 'bg-info-subtle text-info',
       draft: 'bg-warning-subtle text-warning',
       archived: 'bg-secondary-subtle text-secondary',
+      slots: 'bg-info-subtle text-info-emphasis', // Added for verticals
+      live: 'bg-warning-subtle text-warning-emphasis', // Added for verticals
     };
     const cls = map[s] || 'bg-light text-muted';
-    return `<span class="badge badge-status ${cls}">${status || '—'}</span>`;
+    return `<span class="badge badge-status ${cls}">${statusOrVertical || '—'}</span>`;
+  }
+
+  function fmtDate(dt) {
+    if (!dt) return '—';
+    try {
+      // Retorna apenas a parte da data no formato local
+      return new Date(dt).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+    } catch {
+      return dt;
+    }
   }
 
   function getFilters() {
@@ -316,12 +323,10 @@
         <td class="text-muted">#${b.id}</td>
         <td>
           <div class="fw-semibold">${b.title || '—'}</div>
-          <div class="text-muted small">${b.period_start || '—'} → ${b.period_end || '—'}</div>
         </td>
-        <td class="text-muted">${b.vertical || '—'}</td>
+        <td>${badge(b.vertical)}</td>
         <td>${badge(b.status)}</td>
-        <td class="text-muted small">${b.period_start || '—'} → ${b.period_end || '—'}</td>
-        <td class="text-muted">${b.top_n ?? '—'}</td>
+        <td class="text-muted small">${fmtDate(b.period_start)} → ${fmtDate(b.period_end)}</td>
         <td class="text-end">
           <div class="d-flex justify-content-end gap-2">
             <button class="btn btn-sm btn-outline-secondary" data-action="edit" data-id="${b.id}">Editar</button>
@@ -335,13 +340,18 @@
     `).join('');
   }
 
+  function isoToInputDate(dt) {
+    if (!dt) return '';
+    // Extrai apenas a parte da data (YYYY-MM-DD) de uma string ISO
+    return dt.substring(0, 10);
+  }
+
   function fillForm(batch) {
     document.getElementById('f_title').value = batch?.title || '';
     document.getElementById('f_vertical').value = batch?.vertical || 'slots';
     document.getElementById('f_status').value = batch?.status || 'draft';
-    document.getElementById('f_period_start').value = batch?.period_start || '';
-    document.getElementById('f_period_end').value = batch?.period_end || '';
-    document.getElementById('f_top_n').value = batch?.top_n ?? 10;
+    document.getElementById('f_period_start').value = isoToInputDate(batch?.period_start);
+    document.getElementById('f_period_end').value = isoToInputDate(batch?.period_end);
     document.getElementById('f_criteria').value = JSON.stringify(batch?.criteria || {}, null, 2);
   }
 
@@ -484,7 +494,7 @@
     if (!res.ok) return toast('Falha ao carregar lote (' + res.status + ')', 'danger');
 
     const batch = await res.json();
-    resultsSubtitle.textContent = `${batch.title} • ${batch.vertical} • ${batch.status}`;
+    resultsSubtitle.innerHTML = `${batch.title} • ${badge(batch.vertical)} • ${badge(batch.status)}`;
 
     (batch.results || []).forEach(r => {
       linkedMap.set(String(r.slot_id), {

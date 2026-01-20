@@ -137,6 +137,23 @@
         winnersBatches: []
     };
 
+    function badge(status) {
+        const s = (status || '').toLowerCase();
+        const map = {
+        active: 'bg-success-subtle text-success',
+        inactive: 'bg-secondary-subtle text-secondary',
+        slots: 'bg-info-subtle text-info-emphasis',
+        live: 'bg-warning-subtle text-warning-emphasis',
+
+        'game-list': 'bg-primary-subtle text-primary',
+        'top-10-list': 'bg-info-subtle text-info-emphasis',
+        'mais-premiados': 'bg-success-subtle text-success-emphasis',
+        'winners-list': 'bg-warning-subtle text-warning-emphasis',
+        };
+        const cls = map[s] || 'bg-light text-muted';
+        return `<span class="badge ${cls}">${status || '—'}</span>`;
+    }
+
     // --- Init ---
     initSortable();
     loadResources(); // Load resource lists once (or per vertical change if needed)
@@ -261,19 +278,45 @@
             const el = document.createElement('div');
             el.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
             
-            // Determine label
-            let label = `<span class="badge bg-secondary me-2">${sec.type}</span>`;
+            let label = badge(sec.type);
             let title = sec.title || '—';
             let detail = '';
+            let verticalBadge = '';
 
             if (sec.type === 'game-list') {
                 const cat = loadedResources.categories.find(c => c.id == (sec.categoryId || sec.category_id));
-                detail = cat ? `Fonte: ${cat.name}` : `CatID: ${sec.categoryId}`;
+                if (cat) {
+                    detail = `Fonte: ${cat.name}`;
+                    const verticals = (cat.verticals || (cat.vertical ? [cat.vertical] : []));
+                    verticalBadge = verticals.map(v => badge(v)).join(' ');
+                } else {
+                    detail = `CatID: ${sec.categoryId}`;
+                }
             } else if (sec.type === 'top-10-list') {
                 const tl = loadedResources.topLists.find(t => t.id == (sec.topListId || sec.top_list_id));
-                detail = tl ? `Fonte: ${tl.title}` : `TL ID: ${sec.topListId}`;
+                if (tl) {
+                    detail = `Fonte: ${tl.title}`;
+                    if(tl.vertical) verticalBadge = badge(tl.vertical);
+                } else {
+                    detail = `TL ID: ${sec.topListId}`;
+                }
+            } else if (sec.type === 'mais-premiados') {
+                const aw = loadedResources.awardedBatches.find(b => b.id == (sec.awardedBatchId || sec.batchId));
+                 if (aw) {
+                    detail = `Fonte: ${aw.title}`;
+                    if(aw.vertical) verticalBadge = badge(aw.vertical);
+                } else {
+                    detail = `Batch ID: ${sec.awardedBatchId || sec.batchId}`;
+                }
+            } else if (sec.type === 'winners-list') {
+                const wn = loadedResources.winnersBatches.find(b => b.id == (sec.winnersBatchId || sec.batchId));
+                 if (wn) {
+                    detail = `Fonte: ${wn.title}`;
+                    if(wn.vertical) verticalBadge = badge(wn.vertical);
+                } else {
+                    detail = `Batch ID: ${sec.winnersBatchId || sec.batchId}`;
+                }
             }
-            // ... others
 
             el.innerHTML = `
                 <div class="d-flex align-items-center gap-3">
@@ -285,7 +328,7 @@
                     </div>
                     <div>
                         <div class="fw-semibold">${label} ${title}</div>
-                        <div class="small text-muted">${detail}</div>
+                        <div class="small text-muted">${detail} ${verticalBadge}</div>
                     </div>
                 </div>
                 <div class="d-flex gap-2">

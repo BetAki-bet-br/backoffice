@@ -29,6 +29,7 @@ class CategoryController extends Controller
         if ($vertical === 'slot') $vertical = 'slots';
 
         $q = Category::query()
+            ->withCount('slots')
             ->when($request->filled('q'), fn($qq) =>
                 $qq->where('name', 'ilike', '%'.$request->q.'%')
                    ->orWhere('slug', 'ilike', '%'.$request->q.'%'))

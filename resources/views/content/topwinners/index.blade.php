@@ -62,7 +62,6 @@
           <th style="width: 120px;">Vertical</th>
           <th style="width: 140px;">Status</th>
           <th style="width: 220px;">Período</th>
-          <th style="width: 110px;">Top N</th>
           <th style="width: 440px;" class="text-end">Ações</th>
         </tr>
       </thead>
@@ -239,16 +238,28 @@
   // Usamos rank como chave “principal”, mas permitimos duplicado até validar antes de enviar.
   const rows = []; // array de objetos winners
 
-  function badge(status) {
-    const s = (status || '').toLowerCase();
+  function badge(statusOrVertical) {
+    const s = (statusOrVertical || '').toLowerCase();
     const map = {
       published: 'bg-success-subtle text-success',
       review: 'bg-info-subtle text-info',
       draft: 'bg-warning-subtle text-warning',
       archived: 'bg-secondary-subtle text-secondary',
+      slots: 'bg-info-subtle text-info-emphasis', // Added for verticals
+      live: 'bg-warning-subtle text-warning-emphasis', // Added for verticals
     };
     const cls = map[s] || 'bg-light text-muted';
-    return `<span class="badge badge-status ${cls}">${status || '—'}</span>`;
+    return `<span class="badge badge-status ${cls}">${statusOrVertical || '—'}</span>`;
+  }
+
+  function fmtDate(dt) {
+    if (!dt) return '—';
+    try {
+      // Retorna apenas a parte da data no formato local
+      return new Date(dt).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+    } catch {
+      return dt;
+    }
   }
 
   function getFilters() {
@@ -294,13 +305,11 @@
       <tr>
         <td class="text-muted">#${b.id}</td>
         <td>
-          <div class="fw-semibold">${b.title || '—'}</div>
-          <div class="text-muted small">${b.period_start || '—'} → ${b.period_end || '—'}</div>
+          <div class="fw-semibold text-nowrap">${b.title || '—'}</div>
         </td>
-        <td class="text-muted">${b.vertical || '—'}</td>
+        <td>${badge(b.vertical)}</td>
         <td>${badge(b.status)}</td>
-        <td class="text-muted small">${b.period_start || '—'} → ${b.period_end || '—'}</td>
-        <td class="text-muted">${b.top_n ?? '—'}</td>
+        <td class="text-muted small">${fmtDate(b.period_start)} → ${fmtDate(b.period_end)}</td>
         <td class="text-end">
           <div class="d-flex justify-content-end gap-2">
             <button class="btn btn-sm btn-outline-secondary" data-action="edit" data-id="${b.id}">Editar</button>
@@ -314,12 +323,18 @@
     `).join('');
   }
 
+  function isoToInputDate(dt) {
+    if (!dt) return '';
+    // Extrai apenas a parte da data (YYYY-MM-DD) de uma string ISO
+    return dt.substring(0, 10);
+  }
+
   function fillForm(batch) {
     document.getElementById('f_title').value = batch?.title || '';
     document.getElementById('f_vertical').value = batch?.vertical || 'slots';
     document.getElementById('f_status').value = batch?.status || 'draft';
-    document.getElementById('f_period_start').value = batch?.period_start || '';
-    document.getElementById('f_period_end').value = batch?.period_end || '';
+    document.getElementById('f_period_start').value = isoToInputDate(batch?.period_start);
+    document.getElementById('f_period_end').value = isoToInputDate(batch?.period_end);
     document.getElementById('f_top_n').value = batch?.top_n ?? 10;
     document.getElementById('f_criteria').value = JSON.stringify(batch?.criteria || {}, null, 2);
   }

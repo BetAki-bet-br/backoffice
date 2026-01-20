@@ -50,7 +50,6 @@
         <tr>
           <th style="width: 90px;">ID</th>
           <th>Top List</th>
-          <th style="width: 120px;">Posição</th>
           <th style="width: 140px;">Status</th>
           <th style="width: 170px;">Validade</th>
           <th style="width: 110px;">Slots</th>
@@ -119,19 +118,16 @@
             </select>
           </div>
 
-          <div class="col-6 col-lg-3">
-            <label class="form-label">Posição</label>
-            <input type="number" min="0" class="form-control" id="f_position" placeholder="0">
-          </div>
+   
 
           <div class="col-12 col-lg-3">
             <label class="form-label">Valid from</label>
-            <input type="datetime-local" class="form-control" id="f_valid_from">
+            <input type="date" class="form-control" id="f_valid_from">
           </div>
 
           <div class="col-12 col-lg-3">
             <label class="form-label">Valid until</label>
-            <input type="datetime-local" class="form-control" id="f_valid_until">
+            <input type="date" class="form-control" id="f_valid_until">
           </div>
 
           <div class="col-12">
@@ -213,13 +209,14 @@
                 <table class="table mb-0 align-middle">
                   <thead>
                     <tr>
+                      <th style="width: 40px;"></th>
                       <th>Slot</th>
                       <th style="width: 140px;">Posição</th>
                       <th style="width: 90px;" class="text-end">Remover</th>
                     </tr>
                   </thead>
                   <tbody id="linkedSlots">
-                    <tr><td colspan="3" class="text-muted p-4">Carregando…</td></tr>
+                    <tr><td colspan="4" class="text-muted p-4">Carregando…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -239,6 +236,7 @@
 </div>
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script>
   const tbody = document.getElementById('tbody');
   const info = document.getElementById('paginationInfo');
@@ -262,38 +260,38 @@
   const cacheById = new Map();
   const linkedMap = new Map(); // slot_id -> { slot_id, position, slot }
 
-  function badge(status) {
-    const s = (status || '').toLowerCase();
+  function fmtDate(dt) {
+    if (!dt) return '—';
+    try {
+      // Retorna apenas a parte da data no formato local
+      return new Date(dt).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+    } catch {
+      return dt;
+    }
+  }
+
+  function isoToInputDate(dt) {
+    if (!dt) return '';
+    // Extracts only the date part (YYYY-MM-DD) from an ISO string
+    return dt.substring(0, 10);
+  }
+
+  function badge(statusOrVertical) {
+    const s = (statusOrVertical || '').toLowerCase();
     const map = {
       published: 'bg-success-subtle text-success',
       draft: 'bg-warning-subtle text-warning',
       archived: 'bg-secondary-subtle text-secondary',
+      slots: 'bg-info-subtle text-info-emphasis', // Added for verticals
+      live: 'bg-warning-subtle text-warning-emphasis', // Added for verticals
     };
     const cls = map[s] || 'bg-light text-muted';
-    return `<span class="badge badge-status ${cls}">${status || '—'}</span>`;
-  }
-
-  function fmtDate(dt) {
-    if (!dt) return '—';
-    try { return new Date(dt).toLocaleString('pt-BR'); } catch { return dt; }
-  }
-
-  function isoToInput(dt) {
-    if (!dt) return '';
-    const d = new Date(dt);
-    const pad = n => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  }
-
-  function inputToIso(v) {
-    if (!v) return null;
-    const d = new Date(v);
-    return d.toISOString();
+    return `<span class="badge badge-status ${cls}">${statusOrVertical || '—'}</span>`;
   }
 
   function render(rows) {
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="7" class="text-muted p-4">Nenhum registro.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-muted p-4">Nenhuma top list encontrada.</td></tr>`;
       return;
     }
 
@@ -302,11 +300,9 @@
         <td class="text-muted">#${item.id}</td>
         <td>
           <div class="fw-semibold">${item.title || '—'}</div>
-          <div class="text-muted small">${item.slug || ''} ${item.vertical ? '• ' + item.vertical : ''} ${item.type ? '• ' + item.type : ''}</div>
         </td>
-        <td class="text-muted">${item.position ?? '—'}</td>
         <td>${badge(item.status)}</td>
-        <td class="text-muted small">${fmtDate(item.valid_from)} → ${fmtDate(item.valid_until)}</td>
+        <td class="text-muted small text-nowrap">${fmtDate(item.valid_from)} → ${fmtDate(item.valid_until)}</td>
         <td class="text-muted">${Array.isArray(item.slots) ? item.slots.length : (item.slots_count ?? '—')}</td>
         <td class="text-end">
           <div class="d-flex justify-content-end gap-2">
@@ -363,16 +359,12 @@
     document.getElementById('f_status').value = item?.status || 'draft';
     document.getElementById('f_vertical').value = item?.vertical || 'slots';
     document.getElementById('f_type').value = item?.type || 'manual';
-    document.getElementById('f_position').value = (item?.position ?? '') === null ? '' : (item?.position ?? '');
-    document.getElementById('f_valid_from').value = isoToInput(item?.valid_from);
-    document.getElementById('f_valid_until').value = isoToInput(item?.valid_until);
+    document.getElementById('f_valid_from').value = isoToInputDate(item?.valid_from);
+    document.getElementById('f_valid_until').value = isoToInputDate(item?.valid_until);
     document.getElementById('f_criteria').value = JSON.stringify(item?.criteria || {}, null, 2);
   }
 
   function buildPayload() {
-    const positionRaw = document.getElementById('f_position').value;
-    const position = positionRaw === '' ? null : Number(positionRaw);
-
     let criteria = {};
     try { criteria = JSON.parse(document.getElementById('f_criteria').value || '{}'); } catch { criteria = {}; }
 
@@ -384,9 +376,8 @@
       status: document.getElementById('f_status').value,
       vertical: document.getElementById('f_vertical').value.trim() || null,
       type: document.getElementById('f_type').value,
-      position,
-      valid_from: inputToIso(document.getElementById('f_valid_from').value),
-      valid_until: inputToIso(document.getElementById('f_valid_until').value),
+      valid_from: document.getElementById('f_valid_from').value || null,
+      valid_until: document.getElementById('f_valid_until').value || null,
       criteria,
     };
   }
@@ -469,27 +460,82 @@
   }
 
   // ===== Slots Sync =====
+  let sortableInstance = null;
+
   function renderLinkedSlots() {
-    const items = Array.from(linkedMap.values());
+    const items = Array.from(linkedMap.values()).sort((a,b) => (a.position ?? 0) - (b.position ?? 0));
+    
     if (!items.length) {
-      linkedSlotsTbody.innerHTML = `<tr><td colspan="3" class="text-muted p-4">Nenhum slot vinculado.</td></tr>`;
+      linkedSlotsTbody.innerHTML = `<tr><td colspan="4" class="text-muted p-4">Nenhum slot vinculado.</td></tr>`;
       return;
     }
 
-    linkedSlotsTbody.innerHTML = items.map(it => `
-      <tr>
-        <td>
+    linkedSlotsTbody.innerHTML = items.map((it, idx) => `
+      <tr data-slot-id="${it.slot_id}">
+        <td class="text-center align-middle handle" style="cursor: grab; width: 40px; color: #aaa;">
+           <span class="fs-5">≡</span>
+        </td>
+        <td class="align-middle">
           <div class="fw-semibold">${it.slot?.title || ('Slot #' + it.slot_id)}</div>
           <div class="text-muted small">${it.slot?.provider || ''} ${it.slot?.provider_game_id ? '• '+it.slot.provider_game_id : ''}</div>
         </td>
-        <td>
-          <input type="number" min="0" class="form-control form-control-sm" data-pos data-slot-id="${it.slot_id}" value="${it.position ?? 0}">
+        <td class="align-middle text-center">
+           <div class="d-flex align-items-center justify-content-center gap-1">
+             <button class="btn btn-sm btn-light border py-0 px-1" type="button" data-move-up data-slot-id="${it.slot_id}" title="Mover para cima">▲</button>
+             <span class="badge bg-light text-dark border" style="min-width: 32px;">${idx + 1}</span>
+             <button class="btn btn-sm btn-light border py-0 px-1" type="button" data-move-down data-slot-id="${it.slot_id}" title="Mover para baixo">▼</button>
+           </div>
         </td>
-        <td class="text-end">
+        <td class="text-end align-middle">
           <button class="btn btn-sm btn-outline-danger" data-remove-slot data-slot-id="${it.slot_id}">Remover</button>
         </td>
       </tr>
     `).join('');
+  }
+
+  function updateMapPositions() {
+     const rows = linkedSlotsTbody.querySelectorAll('tr[data-slot-id]');
+     rows.forEach((row, idx) => {
+        const id = row.getAttribute('data-slot-id');
+        if (linkedMap.has(id)) {
+            linkedMap.get(id).position = idx;
+        }
+     });
+  }
+
+  function initSortable() {
+    if (sortableInstance) {
+        sortableInstance.destroy();
+    }
+    sortableInstance = new Sortable(linkedSlotsTbody, {
+      handle: '.handle',
+      animation: 150,
+      ghostClass: 'bg-light',
+      onEnd: function() {
+        updateMapPositions();
+        renderLinkedSlots(); 
+      }
+    });
+  }
+
+  function moveItem(id, direction) {
+    const items = Array.from(linkedMap.values()).sort((a,b) => (a.position ?? 0) - (b.position ?? 0));
+    const idx = items.findIndex(it => String(it.slot_id) === String(id));
+    if (idx === -1) return;
+
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= items.length) return;
+
+    const moved = items.splice(idx, 1)[0];
+    items.splice(newIdx, 0, moved);
+    
+    items.forEach((it, i) => {
+        if (linkedMap.has(String(it.slot_id))) {
+            linkedMap.get(String(it.slot_id)).position = i;
+        }
+    });
+    
+    renderLinkedSlots();
   }
 
   async function openSlotsModal(id) {
@@ -497,7 +543,7 @@
     syncError.classList.add('d-none');
     syncError.textContent = '';
     linkedMap.clear();
-    linkedSlotsTbody.innerHTML = `<tr><td colspan="3" class="text-muted p-4">Carregando…</td></tr>`;
+    linkedSlotsTbody.innerHTML = `<tr><td colspan="4" class="text-muted p-4">Carregando…</td></tr>`;
 
     const res = await apiFetch('/api/v1/top-lists/' + id);
     if (!res.ok) {
@@ -506,7 +552,7 @@
     }
 
     const top = await res.json();
-    slotsSubtitle.textContent = `${top.title} • ${top.slug || ''}`;
+    slotsSubtitle.innerHTML = `${top.title} • ${top.slug || ''} • ${badge(top.vertical)}`;
 
     (top.slots || []).forEach(s => {
       linkedMap.set(String(s.id), {
@@ -517,6 +563,8 @@
     });
 
     renderLinkedSlots();
+    initSortable();
+
     slotResultsTbody.innerHTML = `<tr><td colspan="3" class="text-muted p-3">Faça uma busca para adicionar slots.</td></tr>`;
     document.getElementById('slotSearch').value = '';
 
@@ -577,16 +625,12 @@
     syncError.classList.add('d-none');
     syncError.textContent = '';
 
-    document.querySelectorAll('[data-pos]').forEach(inp => {
-      const slotId = inp.getAttribute('data-slot-id');
-      const it = linkedMap.get(String(slotId));
-      if (it) it.position = Number(inp.value || 0);
-    });
-
-    const items = Array.from(linkedMap.values()).map(it => ({
-      slot_id: it.slot_id,
-      position: it.position ?? 0,
-    }));
+    const items = Array.from(linkedMap.values())
+        .sort((a,b) => (a.position ?? 0) - (b.position ?? 0))
+        .map((it, idx) => ({
+            slot_id: it.slot_id,
+            position: idx,
+        }));
 
     const res = await apiFetch(`/api/v1/top-lists/${managingTopListId}/slots`, {
       method: 'PUT',
@@ -660,11 +704,25 @@
   });
 
   linkedSlotsTbody.addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-remove-slot]');
-    if (!btn) return;
-    const slotId = btn.getAttribute('data-slot-id');
-    linkedMap.delete(String(slotId));
-    renderLinkedSlots();
+    const btnRemove = e.target.closest('button[data-remove-slot]');
+    if (btnRemove) {
+        const slotId = btnRemove.getAttribute('data-slot-id');
+        linkedMap.delete(String(slotId));
+        renderLinkedSlots();
+        return;
+    }
+    
+    const btnUp = e.target.closest('button[data-move-up]');
+    if (btnUp) {
+        moveItem(btnUp.getAttribute('data-slot-id'), -1);
+        return;
+    }
+    
+    const btnDown = e.target.closest('button[data-move-down]');
+    if (btnDown) {
+        moveItem(btnDown.getAttribute('data-slot-id'), 1);
+        return;
+    }
   });
 
   document.getElementById('btnSortByPosition').addEventListener('click', () => {
