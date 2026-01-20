@@ -43,7 +43,7 @@ class BasePortalApiClient
         return $response->json() ?? [];
     }
 
-    public function getGameCategories(int $portalId): array
+    public function getGameCategories(int $portalId, ?int $levelId = null): array
     {
         $url = $this->baseUrl . "/portal/v1/prod-game/game-categories/{$portalId}";
 
@@ -56,7 +56,41 @@ class BasePortalApiClient
             ]);
         }
 
-        $response = $request->get($url);
+        $queryParams = [];
+        if ($levelId) {
+            $queryParams['levelId'] = $levelId;
+        }
+
+        $response = $request->get($url, $queryParams);
+
+        $response->throw();
+
+        return $response->json() ?? [];
+    }
+
+    public function getLobby(int $portalId, ?int $levelId = null): array
+    {
+        $url = $this->baseUrl . "/portal/v1/prod-game/lobby";
+
+        $request = Http::acceptJson()
+            ->timeout($this->timeout);
+
+        if ($this->apiKey) {
+            $request = $request->withHeaders([
+                'x-api-key' => $this->apiKey,
+            ]);
+        }
+
+        $queryParams = [
+            'Language' => 'pt-BR',
+            'PortalId' => $portalId,
+        ];
+
+        if ($levelId) {
+            $queryParams['LevelId'] = $levelId;
+        }
+
+        $response = $request->get($url, $queryParams);
 
         $response->throw();
 

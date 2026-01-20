@@ -201,14 +201,9 @@
                   <thead>
                     <tr>
                       <th>Slot</th>
-                      <th style="width: 110px;">Posição</th>
-                      <th style="width: 120px;">Wins</th>
-                      <th style="width: 140px;">Prize sum</th>
                       <th style="width: 140px;">Prêmio Inicial</th>
                       <th style="width: 140px;">Prêmio Final</th>
                       <th style="width: 110px;">Intervalo (min)</th>
-                      <th style="width: 140px;">Max</th>
-                      <th style="width: 140px;">Avg</th>
                       <th style="width: 90px;" class="text-end">Remover</th>
                     </tr>
                   </thead>
@@ -459,7 +454,7 @@
   function renderLinkedResults() {
     const items = Array.from(linkedMap.values());
     if (!items.length) {
-      linkedResultsTbody.innerHTML = `<tr><td colspan="10" class="text-muted p-4">Nenhum resultado.</td></tr>`;
+      linkedResultsTbody.innerHTML = `<tr><td colspan="5" class="text-muted p-4">Nenhum resultado.</td></tr>`;
       return;
     }
 
@@ -469,14 +464,9 @@
           <div class="fw-semibold">${it.slot?.title || ('Slot #' + it.slot_id)}</div>
           <div class="text-muted small">${it.slot?.provider || ''} ${it.slot?.provider_game_id ? '• ' + it.slot.provider_game_id : ''}</div>
         </td>
-        <td><input type="number" min="0" class="form-control form-control-sm" data-position data-slot-id="${it.slot_id}" value="${it.position ?? 0}"></td>
-        <td><input type="number" min="0" class="form-control form-control-sm" data-wins data-slot-id="${it.slot_id}" value="${it.wins_count ?? 0}"></td>
-        <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-sum data-slot-id="${it.slot_id}" value="${it.prize_sum ?? 0}"></td>
         <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-prize-initial data-slot-id="${it.slot_id}" value="${it.prize_sum_initial ?? ''}"></td>
         <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-prize-final data-slot-id="${it.slot_id}" value="${it.prize_sum_final ?? ''}"></td>
         <td><input type="number" min="1" class="form-control form-control-sm" data-prize-interval data-slot-id="${it.slot_id}" value="${it.increment_interval_minutes ?? ''}"></td>
-        <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-max data-slot-id="${it.slot_id}" value="${it.max_prize ?? 0}"></td>
-        <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-avg data-slot-id="${it.slot_id}" value="${it.avg_prize ?? 0}"></td>
         <td class="text-end">
           <button class="btn btn-sm btn-outline-danger" data-remove data-slot-id="${it.slot_id}">Remover</button>
         </td>
@@ -499,11 +489,6 @@
     (batch.results || []).forEach(r => {
       linkedMap.set(String(r.slot_id), {
         slot_id: r.slot_id,
-        position: r.position ?? 0,
-        wins_count: r.wins_count ?? 0,
-        prize_sum: r.prize_sum ?? 0,
-        max_prize: r.max_prize ?? 0,
-        avg_prize: r.avg_prize ?? 0,
         prize_sum_initial: r.prize_sum_initial ?? null,
         prize_sum_final: r.prize_sum_final ?? null,
         increment_interval_minutes: r.increment_interval_minutes ?? null,
@@ -574,22 +559,12 @@
     syncError.classList.add('d-none'); syncError.textContent = '';
 
     // lê inputs
-    document.querySelectorAll('[data-position]').forEach(i => { const k=i.dataset.slotId; const it=linkedMap.get(k); if(it) it.position = Number(i.value||0); });
-    document.querySelectorAll('[data-wins]').forEach(i => { const k=i.dataset.slotId; const it=linkedMap.get(k); if(it) it.wins_count = Number(i.value||0); });
-    document.querySelectorAll('[data-sum]').forEach(i => { const k=i.dataset.slotId; const it=linkedMap.get(k); if(it) it.prize_sum = Number(i.value||0); });
-    document.querySelectorAll('[data-max]').forEach(i => { const k=i.dataset.slotId; const it=linkedMap.get(k); if(it) it.max_prize = Number(i.value||0); });
-    document.querySelectorAll('[data-avg]').forEach(i => { const k=i.dataset.slotId; const it=linkedMap.get(k); if(it) it.avg_prize = Number(i.value||0); });
     document.querySelectorAll('[data-prize-initial]').forEach(i => { const k=i.dataset.slotId; const it=linkedMap.get(k); if(it) it.prize_sum_initial = i.value ? Number(i.value) : null; });
     document.querySelectorAll('[data-prize-final]').forEach(i => { const k=i.dataset.slotId; const it=linkedMap.get(k); if(it) it.prize_sum_final = i.value ? Number(i.value) : null; });
     document.querySelectorAll('[data-prize-interval]').forEach(i => { const k=i.dataset.slotId; const it=linkedMap.get(k); if(it) it.increment_interval_minutes = i.value ? Number(i.value) : null; });
 
     const items = Array.from(linkedMap.values()).map(it => ({
       slot_id: it.slot_id,
-      position: it.position,
-      wins_count: it.wins_count,
-      prize_sum: it.prize_sum,
-      max_prize: it.max_prize,
-      avg_prize: it.avg_prize,
       prize_sum_initial: it.prize_sum_initial,
       prize_sum_final: it.prize_sum_final,
       increment_interval_minutes: it.increment_interval_minutes,

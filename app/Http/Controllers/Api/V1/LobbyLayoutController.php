@@ -54,12 +54,10 @@ class LobbyLayoutController extends Controller
 
     private function resolveSectionsConfig(string $vertical): array
     {
-        $aliases = $vertical === 'slots' ? ['casino'] : [];
-        $keys = array_merge(["lobby.layout.{$vertical}"], array_map(fn($alias) => "lobby.layout.{$alias}", $aliases));
+        $key = "lobby.layout.{$vertical}"; // Only look for the specific vertical key
 
         $setting = Setting::query()
-            ->whereIn('key', $keys)
-            ->orderByRaw("CASE key WHEN ? THEN 0 ELSE 1 END", [$keys[0]])
+            ->where('key', $key)
             ->first();
 
         if (!$setting) {
@@ -123,7 +121,6 @@ class LobbyLayoutController extends Controller
             : Category::query()
                 ->whereIn('id', $categoryIds)
                 ->where('status', 'active')
-                ->forVertical($vertical)
                 ->with(['slots' => fn($q) => $q->where('status', 'active')])
                 ->get()
                 ->keyBy('id');
