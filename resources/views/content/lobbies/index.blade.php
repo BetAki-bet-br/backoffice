@@ -167,7 +167,7 @@
             document.getElementById('btnSave').addEventListener('click', saveConfig);
             document.getElementById('btnAddSection').addEventListener('click', () => openSectionModal());
             document.getElementById('btnConfirmSection').addEventListener('click', confirmSectionModal);
-            document.getElementById('btnLoadAllCategories').addEventListener('click', loadAllCategories);
+            // document.getElementById('btnLoadAllCategories').addEventListener('click', loadAllCategories);
 
             secType.addEventListener('change', updateModalFields);
 
@@ -176,7 +176,7 @@
             function loadAllCategories() {
                 if (!confirm(
                         'Isso substituirá a configuração atual pelas categorias de jogo da vertical selecionada. Deseja continuar?'
-                        )) return;
+                    )) return;
 
                 const vertical = verticalSelector.value;
                 const gameListCategories = loadedResources.categories.filter(c => {
@@ -289,7 +289,7 @@
                 } catch (e) {
                     console.error(e);
                     sectionsList.innerHTML =
-                    '<div class="p-4 text-center text-danger">Erro ao carregar configuração.</div>';
+                        '<div class="p-4 text-center text-danger">Erro ao carregar configuração.</div>';
                     toast('Erro ao carregar configuração.', 'danger');
                 }
             }
@@ -331,7 +331,7 @@
                         }
                     } else if (sec.type === 'mais-premiados') {
                         const aw = loadedResources.awardedBatches.find(b => b.id == (sec.awardedBatchId || sec
-                        .batchId));
+                            .batchId));
                         if (aw) {
                             detail = `Fonte: ${aw.title}`;
                             if (aw.vertical) verticalBadge = badge(aw.vertical);
@@ -340,7 +340,7 @@
                         }
                     } else if (sec.type === 'winners-list') {
                         const wn = loadedResources.winnersBatches.find(b => b.id == (sec.winnersBatchId || sec
-                        .batchId));
+                            .batchId));
                         if (wn) {
                             detail = `Fonte: ${wn.title}`;
                             if (wn.vertical) verticalBadge = badge(wn.vertical);
@@ -388,18 +388,7 @@
                 // Populate Selects based on Vertical
                 const vertical = verticalSelector.value;
 
-                // Populate Categories
-                secCategoryId.innerHTML = '<option value="">Selecione...</option>';
-                loadedResources.categories
-                    .filter(c => {
-                        // Check if category has the vertical in its verticals array
-                        // The category object from API: { id, name, verticals: ["slots", "live"], ... }
-                        const catsVerticals = c.verticals || (c.vertical ? [c.vertical] : []);
-                        return catsVerticals.includes(vertical);
-                    })
-                    .forEach(c => {
-                        secCategoryId.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-                    });
+                // Categoria Fonte options are now populated dynamically by updateModalFields
 
                 // Populate TopLists
                 secTopListId.innerHTML = '<option value="">Selecione...</option>';
@@ -466,7 +455,28 @@
                 document.getElementById('groupAwarded').classList.add('d-none');
                 document.getElementById('groupWinners').classList.add('d-none');
 
-                if (type === 'game-list') document.getElementById('groupCategory').classList.remove('d-none');
+                if (type === 'game-list') {
+                    document.getElementById('groupCategory').classList.remove('d-none');
+
+                    const vertical = verticalSelector.value;
+                    const previouslySelected = secCategoryId.value;
+
+                    // Repopulate categories based on vertical
+                    secCategoryId.innerHTML = '<option value="">Selecione...</option>';
+                    loadedResources.categories
+                        .filter(c => {
+                            const catsVerticals = c.verticals || (c.vertical ? [c.vertical] : []);
+                            return catsVerticals.includes(vertical);
+                        })
+                        .forEach(c => {
+                            secCategoryId.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                        });
+
+                    // Restore selection if possible
+                    if (previouslySelected) {
+                        secCategoryId.value = previouslySelected;
+                    }
+                }
                 if (type === 'top-10-list') document.getElementById('groupTopList').classList.remove('d-none');
                 if (type === 'mais-premiados') document.getElementById('groupAwarded').classList.remove('d-none');
                 if (type === 'winners-list') document.getElementById('groupWinners').classList.remove('d-none');

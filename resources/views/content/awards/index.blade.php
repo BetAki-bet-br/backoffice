@@ -360,7 +360,6 @@
       status: document.getElementById('f_status').value,
       period_start: document.getElementById('f_period_start').value,
       period_end: document.getElementById('f_period_end').value,
-      top_n: Number(document.getElementById('f_top_n').value || 10),
       criteria,
     };
   }
@@ -369,7 +368,7 @@
     editingId = null;
     editTitle.textContent = 'Novo lote';
     saveError.classList.add('d-none'); saveError.textContent = '';
-    fillForm({ title:'', vertical:'slots', status:'draft', period_start:'', period_end:'', top_n:10, criteria:{} });
+    fillForm({ title:'', vertical:'slots', status:'draft', period_start:'', period_end:'', criteria:{} });
     editModal.show();
   }
 
@@ -398,7 +397,6 @@
     if (!allowedVertical.includes(payload.vertical)) return showSaveError('Vertical inválida.');
     if (!allowedStatus.includes(payload.status)) return showSaveError('Status inválido.');
     if (!payload.period_start || !payload.period_end) return showSaveError('Período início e fim são obrigatórios.');
-    if (!(payload.top_n >= 1 && payload.top_n <= 100)) return showSaveError('Top N deve ser entre 1 e 100.');
 
     const isEdit = !!editingId;
     const url = isEdit ? ('/api/v1/awards/batches/' + editingId) : '/api/v1/awards/batches';
