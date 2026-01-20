@@ -368,6 +368,19 @@
 
     document.getElementById('f_type').value = item?.type || 'game-list';
     document.getElementById('f_status').value = item?.status || 'active';
+    document.getElementById('f_position').value = (item?.position ?? '') === null ? '' : (item?.position ?? '');
+    
+    // Atualizar hidden field de cover_url (se existir)
+    const coverUrlField = document.getElementById('f_cover_url');
+    if (coverUrlField) {
+      coverUrlField.value = item?.cover_url || '';
+    }
+    // Reset file input
+    const fileInput = document.getElementById('cover_url');
+    if (fileInput) {
+      fileInput.value = '';
+    }
+    
     document.getElementById('f_meta').value = JSON.stringify(item?.meta || {}, null, 2);
   }
 
@@ -379,8 +392,20 @@
     try { meta = JSON.parse(document.getElementById('f_meta').value || '{}'); } catch { meta = {}; }
 
     const slug = document.getElementById('f_slug').value.trim();
-
     const verticals = Array.from(document.querySelectorAll('input[name="f_verticals"]:checked')).map(cb => cb.value);
+
+    // Se há um novo arquivo, usamos file input; senão, usamos hidden field
+    const fileInput = document.getElementById('cover_url');
+    let coverUrl = null;
+    
+    if (fileInput && fileInput.files && fileInput.files[0]) {
+      // Novo arquivo selecionado - será enviado via multipart/form-data
+      coverUrl = null; // Não incluir na payload
+    } else {
+      // Sem novo arquivo - manter a URL atual
+      const coverUrlField = document.getElementById('f_cover_url');
+      coverUrl = coverUrlField ? (coverUrlField.value.trim() || null) : null;
+    }
 
     return {
       name: document.getElementById('f_name').value.trim(),
@@ -389,6 +414,7 @@
       type: document.getElementById('f_type').value,
       status: document.getElementById('f_status').value,
       position,
+      cover_url: coverUrl,
       meta,
     };
   }

@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Casino\CategoryRequest;
 use App\Http\Requests\Casino\CategorySlotsSyncRequest;
+use App\Http\Resources\CategoryResource;
+use App\Http\Resources\SlotResource;
 use App\Models\Domain\Casino\Category;
 use App\Models\Domain\Casino\PortalGame;
 use App\Models\Domain\Casino\GameExtra;
 use App\Models\Domain\Casino\Slot;
+use App\Services\FileUploadService;
 use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 
@@ -146,6 +149,11 @@ class CategoryController extends Controller
         $data = $request->validated();
         $data['created_by'] = $request->user()->id;
 
+        // Handle file upload if cover_url file is provided
+        if ($request->hasFile('cover_url')) {
+            $data['cover_url'] = FileUploadService::uploadCategoryImage($request->file('cover_url'));
+        }
+
         $category = \DB::transaction(fn() => Category::create($data));
 
         return response()->json($category, 201);
@@ -157,55 +165,60 @@ class CategoryController extends Controller
      *  security={{"bearerAuth": {}}},
      *  summary="Detalhar categoria",
      *  @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *  @OA\Parameter(name="limit", in="query", required=false, @OA\Schema(type="integer", default=500, description="Limite de jogos retornados")),
+     *  @OA\Parameter(name="with_slots", in="query", required=false, @OA\Schema(type="boolean", default="true", description="Incluir slots associados")),
+     *  @OA\Parameter(name="slots_limit", in="query", required=false, @OA\Schema(type="integer", default=50, description="Limite de slots retornados")),
+     *  @OA\Parameter(name="slots_page", in="query", required=false, @OA\Schema(type="integer", default=1, description="Página de slots")),
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function show(Request $request, Category $category)
     {
-        $limit = (int) $request->input('limit', 500);
+        $withSlots = $request->boolean('with_slots', true);
+        $slotsLimit = (int) $request->input('slots_limit', 50);
+        $slotsPage = (int) $request->input('slots_page', 1);
 
-        $category->load(['slots' => function ($query) use ($limit) {
-            $query->orderBy('category_slot.position');
-            if ($limit > 0) {
-                $query->take($limit);
-            }
-        }]);
+        if ($withSlots) {
+            $category->load(['slots' => function ($query) use ($slotsLimit, $slotsPage) {
+                $query->orderBy('category_slot.position');
+                $query->limit($slotsLimit);
+                $query->offset(($slotsPage - 1) * $slotsLimit);
+            }]);
 
-        $externalIds = $category->slots
-            ->pluck('provider_game_id')
-            ->filter()
-            ->unique()
-            ->values();
+            $externalIds = $category->slots
+                ->pluck('provider_game_id')
+                ->filter()
+                ->unique()
+                ->values();
 
-        if ($externalIds->isNotEmpty()) {
-            $portalGames = PortalGame::query()
-                ->whereIn('external_id', $externalIds)
-                ->get(['external_id', 'payload'])
-                ->keyBy('external_id');
+            if ($externalIds->isNotEmpty()) {
+                $portalGames = PortalGame::query()
+                    ->whereIn('external_id', $externalIds)
+                    ->get(['external_id', 'payload'])
+                    ->keyBy('external_id');
 
-            $gameExtras = GameExtra::query()
-                ->whereIn('external_id', $externalIds)
-                ->get(['external_id', 'rtp', 'volatility', 'min_bet'])
-                ->keyBy('external_id');
+                $gameExtras = GameExtra::query()
+                    ->whereIn('external_id', $externalIds)
+                    ->get(['external_id', 'rtp', 'volatility', 'min_bet'])
+                    ->keyBy('external_id');
 
-            $category->slots->each(function (Slot $slot) use ($portalGames, $gameExtras) {
-                $portal = $portalGames->get($slot->provider_game_id);
-                $payload = $portal?->payload;
+                $category->slots->each(function (Slot $slot) use ($portalGames, $gameExtras) {
+                    $portal = $portalGames->get($slot->provider_game_id);
+                    $payload = $portal?->payload;
 
-                if ($payload) {
-                    $extra = $gameExtras->get($slot->provider_game_id);
-                    if ($extra) {
-                        $payload['rtp'] = $extra->rtp;
-                        $payload['volatility'] = \App\Support\Casino\GameExtraResolver::mapVolatility($extra->volatility);
-                        $payload['minBet'] = $extra->min_bet;
+                    if ($payload) {
+                        $extra = $gameExtras->get($slot->provider_game_id);
+                        if ($extra) {
+                            $payload['rtp'] = $extra->rtp;
+                            $payload['volatility'] = \App\Support\Casino\GameExtraResolver::mapVolatility($extra->volatility);
+                            $payload['minBet'] = $extra->min_bet;
+                        }
                     }
-                }
 
-                $slot->setAttribute('game_data', $payload);
-            });
+                    $slot->setAttribute('game_data', $payload);
+                });
+            }
         }
 
-        return response()->json($category);
+        return response()->json(CategoryResource::make($category));
     }
 
     /** @OA\Put(
@@ -221,6 +234,16 @@ class CategoryController extends Controller
     {
         $data = $request->validated();
         $data['updated_by'] = $request->user()->id;
+
+        // Handle file upload if cover_url file is provided
+        if ($request->hasFile('cover_url')) {
+            // Delete old image if exists
+            if ($category->cover_url) {
+                FileUploadService::deleteImageByUrl($category->cover_url);
+            }
+            // Upload new image
+            $data['cover_url'] = FileUploadService::uploadCategoryImage($request->file('cover_url'));
+        }
 
         \DB::transaction(fn() => $category->update($data));
 
