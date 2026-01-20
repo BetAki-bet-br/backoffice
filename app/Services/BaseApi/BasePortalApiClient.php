@@ -62,33 +62,4 @@ class BasePortalApiClient
 
         return $response->json() ?? [];
     }
-
-    public function getLobby(int $portalId, ?int $levelId = null): array
-    {
-        $url = $this->baseUrl . "/portal/v1/prod-game/lobby";
-
-        $queryParams = [
-            'PortalId' => $portalId,
-            'Language' => 'en-US'
-        ];
-
-        if ($levelId) {
-            $queryParams['LevelId'] = $levelId;
-        }
-
-        $request = Http::acceptJson()
-            ->timeout(60); // Aumentar timeout para lobby que pode ser grande
-
-        if ($this->apiKey) {
-            $request = $request->withHeaders([
-                'x-api-key' => $this->apiKey,
-            ]);
-        }
-
-        $response = $request->get($url, $queryParams);
-
-        $response->throw();
-
-        return $response->json() ?? [];
-    }
 }

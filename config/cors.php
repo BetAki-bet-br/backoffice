@@ -40,7 +40,6 @@ return [
         'Authorization',
         'Content-Type',
         'X-Requested-With',
-        'X-Api-Key',
         'Accept',
         'Origin',
         'Idempotency-Key',
