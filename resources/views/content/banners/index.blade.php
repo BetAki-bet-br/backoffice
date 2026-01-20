@@ -137,6 +137,10 @@
           </div>
 
           <div class="col-12">
+            <x-file-upload name="cover_url" label="Imagem (Cover)" />
+          </div>
+
+          <div class="col-12">
             <label class="form-label">Media (JSON)</label>
             <textarea class="form-control font-monospace" rows="6" id="f_media" spellcheck="false">{}</textarea>
             <div class="form-text">Seu model usa cast array. Ex.: {"desktop":"...","mobile":"..."}</div>
@@ -309,6 +313,17 @@
     document.getElementById('f_utm_medium').value = item.utm_medium || '';
     document.getElementById('f_utm_campaign').value = item.utm_campaign || '';
 
+    // Atualizar hidden field de cover_url (se existir)
+    const coverUrlField = document.getElementById('f_cover_url');
+    if (coverUrlField) {
+      coverUrlField.value = item?.cover_url || '';
+    }
+    // Reset file input
+    const fileInput = document.getElementById('cover_url');
+    if (fileInput) {
+      fileInput.value = '';
+    }
+
     document.getElementById('f_media').value = JSON.stringify(item.media || {}, null, 2);
 
     clearTranslations();
@@ -327,6 +342,19 @@
     let media = {};
     try { media = JSON.parse(mediaText || '{}'); } catch { media = {}; }
 
+    // Se há um novo arquivo, usamos file input; senão, usamos hidden field
+    const fileInput = document.getElementById('cover_url');
+    let coverUrl = null;
+    
+    if (fileInput && fileInput.files && fileInput.files[0]) {
+      // Novo arquivo selecionado - será enviado via multipart/form-data
+      coverUrl = null; // Não incluir na payload
+    } else {
+      // Sem novo arquivo - manter a URL atual
+      const coverUrlField = document.getElementById('f_cover_url');
+      coverUrl = coverUrlField ? (coverUrlField.value.trim() || null) : null;
+    }
+
     return {
       slug: document.getElementById('f_slug').value.trim() || null,
       status: document.getElementById('f_status').value,
@@ -339,6 +367,7 @@
       utm_medium: document.getElementById('f_utm_medium').value.trim() || null,
       utm_campaign: document.getElementById('f_utm_campaign').value.trim() || null,
 
+      cover_url: coverUrl,
       media,
       translations: readTranslations(),
     };

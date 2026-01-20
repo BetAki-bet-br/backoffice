@@ -10,7 +10,7 @@ class Banner extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'slug','status','countries','publish_at','expire_at',
+        'slug','cover_url','status','countries','publish_at','expire_at',
         'link_url','utm_source','utm_medium','utm_campaign','media',
         'created_by','updated_by','published_by'
     ];

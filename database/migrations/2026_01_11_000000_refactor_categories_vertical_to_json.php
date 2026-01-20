@@ -49,10 +49,10 @@ return new class extends Migration
             }
         }
 
-        // 3. Drop 'vertical' column
+        // 3. Drop 'vertical' column (this will also drop the index automatically)
         Schema::table('categories', function (Blueprint $table) {
+            $table->dropIndex('categories_vertical_index');
             $table->dropColumn('vertical');
-            // 'slug' is already unique from the creation migration, so we don't need to add it again.
         });
     }
 
