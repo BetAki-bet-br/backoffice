@@ -163,9 +163,14 @@ class CategorySyncService
                         $this->providersCache[$pIdStr] = [
                             'name' => $providerName,
                             'games' => [],
+                            'verticals' => [],
                         ];
                     }
                     $this->providersCache[$pIdStr]['games'][$gameExternalId] = true;
+
+                    if ($currentVertical && !in_array($currentVertical, $this->providersCache[$pIdStr]['verticals'])) {
+                        $this->providersCache[$pIdStr]['verticals'][] = $currentVertical;
+                    }
                 }
 
                 // 1. Update/Create Slot
@@ -232,6 +237,7 @@ class CategorySyncService
                         'name' => $data['name'],
                         'game_count' => count($data['games']),
                         'status' => 'active',
+                        'verticals' => $data['verticals'],
                     ]
                 );
             }

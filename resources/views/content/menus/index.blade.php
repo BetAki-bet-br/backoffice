@@ -199,9 +199,11 @@
 
             function updateMenuPositionsVisual() {
                 const rows = tbody.querySelectorAll('tr[data-menu-id]');
-                const positions = Array.from(rows).map(r => Number(r.getAttribute('data-position'))).sort((a, b) => a - b);
+                const positions = Array.from(rows).map(r => Number(r.getAttribute('data-position')));
+                const minPosition = positions.length > 0 ? Math.min(...positions) : 0;
+
                 rows.forEach((row, i) => {
-                    const newPos = positions[i];
+                    const newPos = minPosition + i;
                     row.querySelector('[data-pos-display]').textContent = newPos;
                     row.setAttribute('data-position', newPos);
                 });

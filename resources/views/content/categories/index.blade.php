@@ -389,7 +389,7 @@
 
                 document.getElementById('f_type').value = item?.type || 'game-list';
                 document.getElementById('f_status').value = item?.status || 'active';
-                document.getElementById('f_position').value = (item?.position ?? '') === null ? '' : (item?.position ?? '');
+
 
                 // Atualizar hidden field de cover_url (se existir)
                 const coverUrlField = document.getElementById('f_cover_url');
@@ -406,7 +406,7 @@
             }
 
             function buildPayload() {
-                const positionRaw = document.getElementById('f_position').value;
+                const positionRaw = 0;
                 const position = positionRaw === '' ? null : Number(positionRaw);
 
                 let meta = {};

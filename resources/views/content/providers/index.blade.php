@@ -61,12 +61,13 @@
           <th style="width: 120px;">Ext ID</th>
           <th>Nome</th>
           <th style="width: 120px;">Jogos</th>
+          <th style="width: 120px;">Verticals</th>
           <th style="width: 120px;">Status</th>
           <th style="width: 180px;" class="text-end">Ações</th>
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="6" class="text-muted p-4">Carregando…</td></tr>
+        <tr><td colspan="7" class="text-muted p-4">Carregando…</td></tr>
       </tbody>
     </table>
   </div>
@@ -170,9 +171,19 @@
     return `<span class="badge badge-status ${cls}">${status || '—'}</span>`;
   }
 
+  function verticalBadge(vertical) {
+    const v = (vertical || '').toLowerCase();
+    const map = {
+      slots: 'bg-info-subtle text-info',
+      live: 'bg-primary-subtle text-primary',
+    };
+    const cls = map[v] || 'bg-light text-muted';
+    return `<span class="badge ${cls}">${vertical || '—'}</span>`;
+  }
+
   function render(rows) {
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-muted p-4">Nenhum registro encontrado.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-muted p-4">Nenhum registro encontrado.</td></tr>`;
       return;
     }
 
@@ -194,7 +205,7 @@
     }
 
     if (!filtered.length) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-muted p-4">Nenhum registro encontrado (filtro local).</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-muted p-4">Nenhum registro encontrado (filtro local).</td></tr>`;
       return;
     }
 
@@ -204,6 +215,9 @@
         <td><code>${item.external_id}</code></td>
         <td class="fw-semibold">${item.name || '—'}</td>
         <td>${item.game_count ?? 0}</td>
+        <td>
+          ${(item.verticals || []).map(verticalBadge).join(' ')}
+        </td>
         <td>${badge(item.status)}</td>
         <td class="text-end">
           <div class="d-flex justify-content-end gap-2">
@@ -216,7 +230,7 @@
   }
 
   async function load() {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-muted p-4">Carregando…</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-muted p-4">Carregando…</td></tr>`;
 
     const params = new URLSearchParams();
     

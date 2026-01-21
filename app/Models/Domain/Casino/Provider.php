@@ -11,9 +11,11 @@ class Provider extends Model
         'name',
         'game_count',
         'status',
+        'verticals',
     ];
 
     protected $casts = [
         'game_count' => 'integer',
+        'verticals' => 'array',
     ];
 }
