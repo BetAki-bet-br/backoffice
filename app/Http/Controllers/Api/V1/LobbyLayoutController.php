@@ -204,15 +204,21 @@ class LobbyLayoutController extends Controller
         array $metadata
     ): ?array {
         $topListId = $this->extractNumericId($section, ['topListId', 'top_list_id']);
-        $topList = $topListId
-            ? TopList::query()->whereKey($topListId)->first()
-            : TopList::query()
-                ->where('status', 'published')
-                ->where('vertical', $vertical)
-                ->activeWindow()
+        
+        $query = TopList::query();
+
+        if ($topListId) {
+            $query->whereKey($topListId);
+        } else {
+            $query->where('vertical', $vertical)
                 ->orderBy('position')
-                ->orderByDesc('id')
-                ->first();
+                ->orderByDesc('id');
+        }
+
+        $topList = $query
+            ->where('status', 'published')
+            ->activeWindow()
+            ->first();
 
         if (!$topList) {
             return null;
@@ -241,14 +247,19 @@ class LobbyLayoutController extends Controller
         array $metadata
     ): ?array {
         $batchId = $this->extractNumericId($section, ['awardedBatchId', 'awarded_batch_id', 'batchId', 'batch_id']);
-        $batch = $batchId
-            ? \App\Models\Domain\Casino\AwardedGameBatch::query()->whereKey($batchId)->first()
-            : \App\Models\Domain\Casino\AwardedGameBatch::query()
-                ->where('status', 'published')
-                ->where('vertical', $vertical)
+
+        $query = \App\Models\Domain\Casino\AwardedGameBatch::query();
+
+        if ($batchId) {
+            $query->whereKey($batchId);
+        } else {
+            $query->where('vertical', $vertical)
                 ->orderByDesc('published_at')
-                ->orderByDesc('id')
-                ->first();
+                ->orderByDesc('id');
+        }
+
+        // Only published batches should appear in the lobby
+        $batch = $query->where('status', 'published')->first();
 
         if (!$batch) {
             return null;
@@ -357,14 +368,18 @@ class LobbyLayoutController extends Controller
         array $metadata
     ): ?array {
         $batchId = $this->extractNumericId($section, ['winnersBatchId', 'winners_batch_id', 'batchId', 'batch_id']);
-        $batch = $batchId
-            ? TopWinnerBatch::query()->whereKey($batchId)->first()
-            : TopWinnerBatch::query()
-                ->where('status', 'published')
-                ->where('vertical', $vertical)
+        
+        $query = TopWinnerBatch::query();
+
+        if ($batchId) {
+            $query->whereKey($batchId);
+        } else {
+            $query->where('vertical', $vertical)
                 ->orderByDesc('published_at')
-                ->orderByDesc('id')
-                ->first();
+                ->orderByDesc('id');
+        }
+
+        $batch = $query->where('status', 'published')->first();
 
         return $this->makeGenericSection($section, [
             'id' => $section['id'] ?? ($batch?->id ?? 'winners'),
