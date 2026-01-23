@@ -7,6 +7,7 @@ use App\Models\Domain\Casino\Provider;
 use App\Models\Domain\Casino\Slot;
 use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
+use App\Jobs\SyncProvidersJob;
 
 class ProviderController extends Controller
 {
@@ -94,11 +95,48 @@ class ProviderController extends Controller
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'status' => 'sometimes|in:active,inactive',
+            'verticals' => 'sometimes|array',
+            'verticals.*' => 'sometimes|string',
         ]);
 
         $provider->update($validated);
 
         return response()->json($provider);
+    }
+
+    /** @OA\Put(
+     *  path="/api/v1/providers/reorder",
+     *  tags={"Providers"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Reordenar provedores",
+     *  @OA\RequestBody(
+     *    required=true,
+     *    @OA\JsonContent(
+     *      @OA\Property(
+     *        property="providers",
+     *        type="array",
+     *        @OA\Items(
+     *          @OA\Property(property="id", type="integer"),
+     *          @OA\Property(property="position", type="integer")
+     *        )
+     *      )
+     *    )
+     *  ),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
+    public function reorder(Request $request)
+    {
+        $validated = $request->validate([
+            'providers' => 'required|array',
+            'providers.*.id' => 'required|integer|exists:providers,id',
+            'providers.*.position' => 'required|integer',
+        ]);
+
+        foreach ($validated['providers'] as $item) {
+            Provider::where('id', $item['id'])->update(['position' => $item['position']]);
+        }
+
+        return response()->json(['message' => 'Providers reordered successfully.']);
     }
 
     /** @OA\Post(
@@ -118,8 +156,8 @@ class ProviderController extends Controller
     {
         $portalId = (int) ($request->input('portal_id') ?? config('services.base_api.portal_id', 1));
 
-        $stats = \App\Services\BaseApi\ProviderSyncService::make()->syncPortal($portalId);
+        SyncProvidersJob::dispatch($portalId)->onConnection('database');
 
-        return response()->json($stats);
+        return response()->json(['message' => 'Provider synchronization has been queued.']);
     }
 }

@@ -798,10 +798,9 @@
                     });
 
                     if (!res.ok) {
-                        toast('Erro ao sincronizar.', 'danger');
+                        toast('Erro ao iniciar a sincronização.', 'danger');
                     } else {
-                        const stats = await res.json();
-                        toast(`Sincronização concluída! Criadas: ${stats.created}, Atualizadas: ${stats.updated}`);
+                        toast(`Sincronização iniciada em segundo plano.`);
                         await load(null);
                     }
                 } catch (e) {

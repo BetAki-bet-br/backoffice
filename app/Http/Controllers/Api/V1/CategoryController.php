@@ -14,6 +14,7 @@ use App\Models\Domain\Casino\Slot;
 use App\Services\FileUploadService;
 use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
+use App\Jobs\SyncCategoriesJob;
 
 class CategoryController extends Controller
 {
@@ -74,7 +75,7 @@ class CategoryController extends Controller
                             if ($extra) {
                                 $payload['rtp'] = $extra->rtp;
                                 $payload['volatility'] = \App\Support\Casino\GameExtraResolver::mapVolatility($extra->volatility);
-                                $payload['minBet'] = $extra->min_bet;
+                                $payload['min_bet'] = $extra->min_bet;
                             }
                         }
                         
@@ -173,52 +174,62 @@ class CategoryController extends Controller
     public function show(Request $request, Category $category)
     {
         $withSlots = $request->boolean('with_slots', true);
+
+        if (!$withSlots) {
+            return response()->json(CategoryResource::make($category));
+        }
+
         $slotsLimit = (int) $request->input('slots_limit', 50);
         $slotsPage = (int) $request->input('slots_page', 1);
 
-        if ($withSlots) {
-            $category->load(['slots' => function ($query) use ($slotsLimit, $slotsPage) {
-                $query->orderBy('category_slot.position');
-                $query->limit($slotsLimit);
-                $query->offset(($slotsPage - 1) * $slotsLimit);
-            }]);
+        $category->load(['slots' => function ($query) use ($slotsLimit, $slotsPage) {
+            $query->orderBy('category_slot.position');
+            $query->limit($slotsLimit);
+            $query->offset(($slotsPage - 1) * $slotsLimit);
+        }]);
 
-            $externalIds = $category->slots
-                ->pluck('provider_game_id')
+        $externalIds = $category->slots
+            ->pluck('provider_game_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $games = collect();
+        if ($externalIds->isNotEmpty()) {
+            $portalGames = PortalGame::query()
+                ->whereIn('external_id', $externalIds)
+                ->get(['external_id', 'payload'])
+                ->keyBy('external_id');
+
+            $gameExtras = GameExtra::query()
+                ->whereIn('external_id', $externalIds)
+                ->get(['external_id', 'rtp', 'volatility', 'min_bet'])
+                ->keyBy('external_id');
+
+            $portalGamesWithExtras = $portalGames->map(function ($pg) use ($gameExtras) {
+                $extra = $gameExtras->get($pg->external_id);
+                $payload = $pg->payload ?? [];
+
+                if ($extra) {
+                    $payload['rtp'] = (string) $extra->rtp;
+                    $payload['volatility'] = \App\Support\Casino\GameExtraResolver::mapVolatility($extra->volatility);
+                    $payload['minBet'] = (string) $extra->min_bet;
+                }
+
+                $pg->payload = $payload;
+                return $pg;
+            });
+
+            $games = $category->slots
+                ->map(fn($slot) => $portalGamesWithExtras->get($slot->provider_game_id)?->payload)
                 ->filter()
-                ->unique()
                 ->values();
-
-            if ($externalIds->isNotEmpty()) {
-                $portalGames = PortalGame::query()
-                    ->whereIn('external_id', $externalIds)
-                    ->get(['external_id', 'payload'])
-                    ->keyBy('external_id');
-
-                $gameExtras = GameExtra::query()
-                    ->whereIn('external_id', $externalIds)
-                    ->get(['external_id', 'rtp', 'volatility', 'min_bet'])
-                    ->keyBy('external_id');
-
-                $category->slots->each(function (Slot $slot) use ($portalGames, $gameExtras) {
-                    $portal = $portalGames->get($slot->provider_game_id);
-                    $payload = $portal?->payload;
-
-                    if ($payload) {
-                        $extra = $gameExtras->get($slot->provider_game_id);
-                        if ($extra) {
-                            $payload['rtp'] = $extra->rtp;
-                            $payload['volatility'] = \App\Support\Casino\GameExtraResolver::mapVolatility($extra->volatility);
-                            $payload['minBet'] = $extra->min_bet;
-                        }
-                    }
-
-                    $slot->setAttribute('game_data', $payload);
-                });
-            }
         }
 
-        return response()->json(CategoryResource::make($category));
+        $resource = CategoryResource::make($category)->resolve();
+        $resource['slots'] = $games;
+
+        return response()->json($resource);
     }
 
     /** @OA\Put(
@@ -315,8 +326,8 @@ class CategoryController extends Controller
         $portalId = (int) ($request->input('portal_id') ?? config('services.base_api.portal_id', 1));
         $levelId = $request->input('level_id') ? (int) $request->input('level_id') : null;
 
-        $stats = \App\Services\BaseApi\CategorySyncService::make()->syncPortal($portalId, $levelId);
+        SyncCategoriesJob::dispatch($portalId, $levelId)->onConnection('database');
 
-        return response()->json($stats);
+        return response()->json(['message' => 'Category synchronization has been queued.']);
     }
 }

@@ -12,6 +12,7 @@ class Provider extends Model
         'game_count',
         'status',
         'verticals',
+        'position',
     ];
 
     protected $casts = [

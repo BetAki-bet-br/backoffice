@@ -211,6 +211,9 @@ Route::prefix('v1')->group(function () {
         Route::post('providers/sync', [\App\Http\Controllers\Api\V1\ProviderController::class, 'sync'])
             ->name('providers.sync');
 
+        Route::put('providers/reorder', [\App\Http\Controllers\Api\V1\ProviderController::class, 'reorder'])
+            ->name('providers.reorder');
+
         Route::apiResource('providers', \App\Http\Controllers\Api\V1\ProviderController::class)
             ->only(['update'])
             ->parameters(['providers' => 'provider'])
