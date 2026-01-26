@@ -423,6 +423,13 @@
                 <span class="sidebar-link-icon">🕹️</span>
                 <span>Game Extras</span>
             </a>
+
+            <div class="sidebar-section-title mt-3">Integrações</div>
+
+            <a href="{{ route('telegramBots.ui') }}" class="sidebar-link {{ request()->routeIs('telegramBots.ui', 'botFlows.ui', 'botStatistics.ui') ? 'active' : '' }}">
+                <span class="sidebar-link-icon">🤖</span>
+                <span>Telegram Bots</span>
+            </a>
         </nav>
 
         <div class="sidebar-footer">

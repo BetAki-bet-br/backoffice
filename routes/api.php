@@ -42,6 +42,11 @@ use App\Http\Controllers\Api\V1\TopWinnersController;
 // Footers
 use App\Http\Controllers\Api\V1\FooterController;
 
+// Telegram Bots
+use App\Http\Controllers\Api\V1\TelegramBotController;
+use App\Http\Controllers\Api\V1\BotFlowController;
+use App\Http\Controllers\Api\V1\BotStatisticController;
+
 Route::prefix('v1')->group(function () {
     /*
     |--------------------------------------------------------------------------
@@ -312,5 +317,62 @@ Route::prefix('v1')->group(function () {
         // Pré-cadastro de Slots a partir de portal_games
         Route::post('slots/sync-from-portal', [\App\Http\Controllers\Api\V1\PortalSlotsSyncController::class, 'sync'])
             ->name('slots.syncFromPortal');
+
+        // Telegram Bots
+        Route::apiResource('telegram-bots', TelegramBotController::class);
+
+        Route::post('telegram-bots/{bot}/setup-webhook', [TelegramBotController::class, 'setupWebhook'])
+            ->name('telegram-bots.setup-webhook');
+
+        Route::post('telegram-bots/{bot}/test-webhook', [TelegramBotController::class, 'testWebhook'])
+            ->name('telegram-bots.test-webhook');
+
+        Route::post('telegram-bots/{bot}/reset-webhook', [TelegramBotController::class, 'resetWebhook'])
+            ->name('telegram-bots.reset-webhook');
+
+        // Bot Flows
+        Route::post('telegram-bots/{bot}/flows', [BotFlowController::class, 'store'])
+            ->name('bot-flows.store');
+
+        Route::get('telegram-bots/{bot}/flows', [BotFlowController::class, 'index'])
+            ->name('bot-flows.index');
+
+        Route::get('telegram-bots/{bot}/flows/{flow}', [BotFlowController::class, 'show'])
+            ->name('bot-flows.show');
+
+        Route::put('telegram-bots/{bot}/flows/{flow}', [BotFlowController::class, 'update'])
+            ->name('bot-flows.update');
+
+        Route::delete('telegram-bots/{bot}/flows/{flow}', [BotFlowController::class, 'destroy'])
+            ->name('bot-flows.destroy');
+
+        Route::post('telegram-bots/{bot}/flows/{flow}/duplicate', [BotFlowController::class, 'duplicate'])
+            ->name('bot-flows.duplicate');
+
+        Route::post('telegram-bots/{bot}/flows/{flow}/publish', [BotFlowController::class, 'publish'])
+            ->name('bot-flows.publish');
+
+        // Bot Statistics
+        Route::get('telegram-bots/{bot}/statistics', [BotStatisticController::class, 'summary'])
+            ->name('bot-statistics.summary');
+
+        Route::get('telegram-bots/{bot}/statistics/chart', [BotStatisticController::class, 'chartData'])
+            ->name('bot-statistics.chart');
+
+        Route::get('telegram-bots/{bot}/statistics/validated-users', [BotStatisticController::class, 'validatedUsers'])
+            ->name('bot-statistics.validated-users');
+
+        Route::get('telegram-bots/{bot}/statistics/failed-users', [BotStatisticController::class, 'failedUsers'])
+            ->name('bot-statistics.failed-users');
+
+        Route::get('telegram-bots/{bot}/statistics/messages', [BotStatisticController::class, 'messageLogs'])
+            ->name('bot-statistics.messages');
+
+        Route::get('telegram-bots/{bot}/statistics/export', [BotStatisticController::class, 'export'])
+            ->name('bot-statistics.export');
     });
 });
+
+// Telegram Webhooks (Public)
+Route::post('/webhooks/telegram/{botId}', [\App\Http\Controllers\Webhooks\TelegramWebhookController::class, 'handle'])
+    ->name('webhooks.telegram');

@@ -21,3 +21,7 @@ Route::view('/top-winners', 'content.topwinners.index')->name('topwinners.ui');
 Route::view('/footers', 'content.footers.index')->name('footers.ui');
 Route::view('/users', 'content.users.index')->name('users.ui');
 Route::view('/game-extras', 'content.game_extras.index')->name('gameextras.ui');
+// Telegram Bots
+Route::view('/telegram-bots', 'content.telegram-bots.index')->name('telegramBots.ui');
+Route::view('/telegram-bots/{botId}/flows', 'content.telegram-bots.flows')->name('botFlows.ui');
+Route::view('/telegram-bots/{botId}/statistics', 'content.telegram-bots.statistics')->name('botStatistics.ui');

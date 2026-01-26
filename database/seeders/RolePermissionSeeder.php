@@ -87,6 +87,13 @@ class RolePermissionSeeder extends Seeder
             'winners.update',
             'winners.publish',
             'winners.delete',
+
+            // Telegram Bot (integrações)
+            'telegram_bot.view',
+            'telegram_bot.create',
+            'telegram_bot.update',
+            'telegram_bot.delete',
+            'telegram_bot.publish',
         ];
 
         foreach ($permissions as $perm) {
@@ -100,12 +107,14 @@ class RolePermissionSeeder extends Seeder
                 'categories.view', 'categories.create', 'categories.update',
                 'slots.view', 'slots.create', 'slots.update',
                 'settings.view',
+                'telegram_bot.view', 'telegram_bot.create', 'telegram_bot.update', 'telegram_bot.publish',
             ],
             'marketing' => [
                 'banners.view', 'banners.publish',
                 'categories.view',
                 'slots.view',
                 'settings.view',
+                'telegram_bot.view', 'telegram_bot.publish',
             ],
             'support' => [
                 'banners.view',
@@ -115,6 +124,7 @@ class RolePermissionSeeder extends Seeder
                 'roles.view',
                 'permissions.view',
                 'settings.view',
+                'telegram_bot.view',
             ],
         ];
 
