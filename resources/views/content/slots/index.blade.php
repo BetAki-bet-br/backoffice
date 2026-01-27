@@ -239,27 +239,28 @@
                 const positionRaw = 0;
                 const position = positionRaw === '' ? null : Number(positionRaw);
 
-                // Se há um novo arquivo, usamos file input; senão, usamos hidden field
                 const fileInput = document.getElementById('cover_url');
-                let coverUrl = null;
+                const hasFile = fileInput && fileInput.files && fileInput.files[0];
 
-                if (fileInput && fileInput.files && fileInput.files[0]) {
-                    // Novo arquivo selecionado - será enviado via multipart/form-data
-                    // O FormData vai lidar com isso automaticamente
-                    coverUrl = null; // Não incluir na payload
-                } else {
-                    // Sem novo arquivo - manter a URL atual
-                    const coverUrlField = document.getElementById('f_cover_url');
-                    coverUrl = coverUrlField ? (coverUrlField.value.trim() || null) : null;
-                }
-
-                return {
+                const payload = {
                     title: document.getElementById('f_title').value.trim(),
                     status: document.getElementById('f_status').value,
                     provider: document.getElementById('f_provider').value.trim(),
                     provider_game_id: document.getElementById('f_provider_game_id').value.trim(),
-                    cover_url: coverUrl,
                 };
+
+                // Só incluir cover_url se há novo arquivo
+                // Se não há arquivo novo, não enviamos o campo (para não validar como nulo)
+                if (!hasFile) {
+                    // Sem novo arquivo - manter a URL atual (do hidden field)
+                    const coverUrlField = document.getElementById('f_cover_url');
+                    const coverUrl = coverUrlField ? (coverUrlField.value.trim() || null) : null;
+                    if (coverUrl) {
+                        payload.cover_url = coverUrl;
+                    }
+                }
+
+                return payload;
             }
 
             function openNew() {
@@ -302,15 +303,54 @@
                 saveError.textContent = '';
 
                 const payload = buildPayload();
+                const fileInput = document.getElementById('cover_url');
+                const hasFile = fileInput && fileInput.files && fileInput.files[0];
+
+                let body;
+                let options = { method: 'POST' };
+
+                if (hasFile) {
+                    // Usar FormData para enviar arquivo
+                    const formData = new FormData();
+                    formData.append('cover_url', fileInput.files[0]);
+                    
+                    // Adicionar TODOS os campos do payload
+                    Object.keys(payload).forEach(key => {
+                        const value = payload[key];
+                        if (value !== null && value !== undefined) {
+                            if (typeof value === 'object') {
+                                formData.append(key, JSON.stringify(value));
+                            } else {
+                                formData.append(key, value);
+                            }
+                        }
+                    });
+                    
+                    body = formData;
+                    
+                    // Para PUT com FormData, usar method spoofing do Laravel
+                    if (editingId) {
+                        formData.append('_method', 'PUT');
+                    }
+                } else {
+                    // Usar JSON para requisições sem arquivo
+                    body = JSON.stringify(payload);
+                    options.headers = { 'Content-Type': 'application/json' };
+                }
 
                 const isEdit = !!editingId;
                 const url = isEdit ? ('/api/v1/slots/' + editingId) : '/api/v1/slots';
-                const method = isEdit ? 'PUT' : 'POST';
+                
+                // Determinar método HTTP
+                if (isEdit) {
+                    options.method = 'PUT';
+                } else {
+                    options.method = 'POST';
+                }
+                
+                options.body = body;
 
-                const res = await apiFetch(url, {
-                    method,
-                    body: JSON.stringify(payload)
-                });
+                const res = await apiFetch(url, options);
 
                 if (!res.ok) {
                     const body = await res.json().catch(() => null);

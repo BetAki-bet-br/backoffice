@@ -65,7 +65,7 @@ class FileUploadService
     /**
      * Delete image from S3 by path
      */
-    public static function deleteImageByPath(string $path): bool
+    public static function deleteImageByPath(?string $path): bool
     {
         if (empty($path)) {
             return true;

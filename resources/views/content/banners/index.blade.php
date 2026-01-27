@@ -322,6 +322,11 @@
       let data = {};
       try { data = JSON.parse(jsonText || '{}'); } catch { data = {}; }
 
+      // Garantir que media é sempre um array (pode estar vazio)
+      if (!data.media) {
+        data.media = {};
+      }
+
       items.push({ locale, ...data });
     });
     return items;
@@ -344,6 +349,40 @@
     if (coverUrlField) {
       coverUrlField.value = item?.cover_url || '';
     }
+
+    // Atualizar imagem atual no componente
+    const currentImageContainer = document.querySelector('.current-image');
+    const currentImageElement = document.getElementById('current-cover_url-image');
+    
+    if (item?.cover_url) {
+      if (!currentImageContainer) {
+        // Se não existe, criar o container
+        const fileInputContainer = document.querySelector('.file-upload-container');
+        const container = document.createElement('div');
+        container.className = 'current-image mb-2';
+        container.innerHTML = `
+          <img id="current-cover_url-image" 
+               src="${item.cover_url}" 
+               alt="Current Imagem"
+               class="img-thumbnail"
+               style="max-width: 200px; max-height: 200px;">
+          <button type="button" 
+                  class="btn btn-sm btn-danger ms-2"
+                  onclick="removeCurrentCoverUrl()">
+            Remover Atual
+          </button>
+        `;
+        fileInputContainer.insertBefore(container, fileInputContainer.firstChild);
+      } else {
+        // Se existe, atualizar a imagem
+        currentImageElement.src = item.cover_url;
+        currentImageContainer.style.display = 'block';
+      }
+    } else if (currentImageContainer) {
+      // Se não há imagem, esconder o container
+      currentImageContainer.style.display = 'none';
+    }
+
     // Reset file input
     const fileInput = document.getElementById('cover_url');
     if (fileInput) {
@@ -368,21 +407,10 @@
     let media = {};
     try { media = JSON.parse(mediaText || '{}'); } catch { media = {}; }
 
-    // Se há um novo arquivo, usamos file input; senão, usamos hidden field
     const fileInput = document.getElementById('cover_url');
-    let coverUrl = null;
-    
-    if (fileInput && fileInput.files && fileInput.files[0]) {
-      // Novo arquivo selecionado - será enviado via multipart/form-data
-      coverUrl = null; // Não incluir na payload
-    } else {
-      // Sem novo arquivo - manter a URL atual
-      const coverUrlField = document.getElementById('f_cover_url');
-      coverUrl = coverUrlField ? (coverUrlField.value.trim() || null) : null;
-    }
+    const hasFile = fileInput && fileInput.files && fileInput.files[0];
 
-    return {
-      vertical: document.getElementById('f_vertical').value,
+    const payload = {
       slug: document.getElementById('f_slug').value.trim() || null,
       status: document.getElementById('f_status').value,
       countries: csvToArray(document.getElementById('f_countries').value),
@@ -394,10 +422,24 @@
       utm_medium: document.getElementById('f_utm_medium').value.trim() || null,
       utm_campaign: document.getElementById('f_utm_campaign').value.trim() || null,
 
-      cover_url: coverUrl,
       media,
       translations: readTranslations(),
     };
+
+    // Só incluir cover_url se há novo arquivo
+    // Se não há arquivo novo, não enviamos o campo (para não validar como nulo)
+    if (hasFile) {
+      payload.cover_url = null; // FormData será adicionado separadamente
+    } else {
+      // Sem novo arquivo - manter a URL atual (do hidden field)
+      const coverUrlField = document.getElementById('f_cover_url');
+      const coverUrl = coverUrlField ? (coverUrlField.value.trim() || null) : null;
+      if (coverUrl) {
+        payload.cover_url = coverUrl;
+      }
+    }
+
+    return payload;
   }
 
   async function load(cursor = null, direction = 'initial') {
@@ -480,21 +522,91 @@
     modal.show();
   }
 
+  function removeCurrentCoverUrl() {
+    const currentImageContainer = document.querySelector('.current-image');
+    if (currentImageContainer) {
+      currentImageContainer.style.display = 'none';
+    }
+  }
+
   async function save() {
     saveError.classList.add('d-none');
     saveError.textContent = '';
 
     const payload = buildPayload();
+    const fileInput = document.getElementById('cover_url');
+    const hasFile = fileInput && fileInput.files && fileInput.files[0];
+
+    let body;
+    let options = { method: 'POST' };
+
+    if (hasFile) {
+      // Usar FormData para enviar arquivo
+      const formData = new FormData();
+      
+      // Adicionar arquivo
+      formData.append('cover_url', fileInput.files[0]);
+      
+      // Adicionar TODOS os campos do payload
+      Object.keys(payload).forEach(key => {
+        const value = payload[key];
+        
+        if (value === null || value === undefined) {
+          return;
+        }
+        
+        if (Array.isArray(value)) {
+          // Arrays: countries[0], countries[1], translations[0][...], etc
+          if (key === 'countries') {
+            value.forEach((item, i) => {
+              formData.append(`${key}[${i}]`, item);
+            });
+          } else if (key === 'translations') {
+            value.forEach((item, i) => {
+              Object.keys(item).forEach(subkey => {
+                const subvalue = item[subkey];
+                if (typeof subvalue === 'object' && subvalue !== null) {
+                  formData.append(`${key}[${i}][${subkey}]`, JSON.stringify(subvalue));
+                } else {
+                  formData.append(`${key}[${i}][${subkey}]`, subvalue);
+                }
+              });
+            });
+          }
+        } else if (typeof value === 'object') {
+          // Objetos: serializar como JSON
+          const jsonValue = JSON.stringify(value);
+          formData.append(key, jsonValue);
+        } else {
+          // Valores simples
+          formData.append(key, value);
+        }
+      });
+
+      body = formData;
+      
+      // Para PUT com FormData, usar method spoofing do Laravel
+      if (editingId) {
+        formData.append('_method', 'PUT');
+      }
+    } else {
+      // Usar JSON para requisições sem arquivo
+      body = JSON.stringify(payload);
+      options.headers = { 'Content-Type': 'application/json' };
+    }
 
     const isEdit = !!editingId;
     const url = isEdit ? ('/api/v1/banners/' + editingId) : '/api/v1/banners';
-    const method = isEdit ? 'PUT' : 'POST';
-
-    const res = await apiFetch(url, { method, body: JSON.stringify(payload) });
-
+    
+    // Determinar método HTTP
+    if (isEdit) {
+      options.method = 'PUT';
+    } else {
+      options.method = 'POST';
+    }
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      saveError.textContent = body ? JSON.stringify(body) : ('Erro ao salvar (' + res.status + ')');
+      const resBody = await res.json().catch(() => null);
+      saveError.textContent = resBody ? JSON.stringify(resBody) : ('Erro ao salvar (' + res.status + ')');
       saveError.classList.remove('d-none');
       return;
     }

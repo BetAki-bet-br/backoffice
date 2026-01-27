@@ -12,6 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('awarded_games', function (Blueprint $table) {
+            // Drop index first before dropping column
+            if (Schema::hasTable('awarded_games')) {
+                $table->dropIndex('awarded_games_batch_id_rank_index');
+            }
             $table->dropColumn('rank');
         });
     }
