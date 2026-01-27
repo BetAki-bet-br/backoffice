@@ -26,6 +26,30 @@ class BannerController extends Controller
             ->with('translations')
             ->orderByDesc('id');
 
+        if ($request->filled('vertical')) {
+            $q->where('vertical', $request->input('vertical'));
+        }
+
+        if ($request->filled('status')) {
+            $q->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('q')) {
+            $q->where('slug', 'like', '%' . $request->input('q') . '%');
+        }
+
+        if ($request->filled('countries')) {
+            $countries = explode(',', $request->input('countries'));
+            $countries = array_map('trim', $countries);
+            if (count($countries) > 0) {
+                 $q->where(function($query) use ($countries) {
+                    foreach ($countries as $country) {
+                        $query->orWhereJsonContains('countries', $country);
+                    }
+                });
+            }
+        }
+
         return response()->json($q->cursorPaginate(20));
     }
 

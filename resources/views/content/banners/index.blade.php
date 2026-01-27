@@ -19,7 +19,7 @@
 <div class="card card-soft mb-3">
   <div class="card-body">
     <div class="row g-2 align-items-end">
-      <div class="col-12 col-lg-4">
+      <div class="col-12 col-lg-3">
         <label class="form-label">Busca</label>
         <input type="text" class="form-control" id="q" placeholder="opcional">
       </div>
@@ -34,7 +34,17 @@
         </select>
       </div>
 
-      <div class="col-6 col-lg-3">
+      <div class="col-6 col-lg-2">
+        <label class="form-label">Vertical</label>
+        <select class="form-select" id="vertical">
+          <option value="">Todas</option>
+          <option value="casino">Casino</option>
+          <option value="live_casino">Cassino ao Vivo</option>
+          <option value="sportbook">Sportbook</option>
+        </select>
+      </div>
+
+      <div class="col-6 col-lg-2">
         <label class="form-label">Country</label>
         <input type="text" class="form-control" id="countries" placeholder="Ex: BR,PT">
       </div>
@@ -54,6 +64,7 @@
         <tr>
           <th style="width: 90px;">ID</th>
           <th>Slug</th>
+          <th>Vertical</th>
           <th>Countries</th>
           <th>Agendamento</th>
           <th style="width: 140px;">Status</th>
@@ -91,6 +102,15 @@
             <input class="form-control" id="f_slug" placeholder="ex: banner-natal">
           </div>
 
+          <div class="col-12 col-lg-2">
+            <label class="form-label">Vertical</label>
+            <select class="form-select" id="f_vertical">
+                <option value="casino">Casino</option>
+                <option value="live_casino">Cassino ao Vivo</option>
+                <option value="sportbook">Sportbook</option>
+            </select>
+          </div>
+
           <div class="col-6 col-lg-2">
             <label class="form-label">Status</label>
             <select class="form-select" id="f_status">
@@ -100,7 +120,7 @@
             </select>
           </div>
 
-          <div class="col-6 col-lg-3">
+          <div class="col-6 col-lg-4">
             <label class="form-label">Countries (CSV)</label>
             <input class="form-control" id="f_countries" placeholder="BR,PT">
             <div class="form-text">Será enviado como array: ["BR","PT"]</div>
@@ -185,15 +205,19 @@
 
   let editingId = null;
 
-  function badge(status) {
-    const s = (status || '').toLowerCase();
+  function badge(statusOrVertical) {
+    const s = (statusOrVertical || '').toLowerCase();
     const map = {
       published: 'bg-success-subtle text-success',
+      review: 'bg-info-subtle text-info',
       draft: 'bg-warning-subtle text-warning',
-      archived: 'bg-secondary-subtle text-secondary'
+      archived: 'bg-secondary-subtle text-secondary',
+      casino: 'bg-info-subtle text-info-emphasis',
+      live_casino: 'bg-warning-subtle text-warning-emphasis',
+      sportbook: 'bg-primary-subtle text-primary',
     };
     const cls = map[s] || 'bg-light text-muted';
-    return `<span class="badge badge-status ${cls}">${status || '—'}</span>`;
+    return `<span class="badge badge-status ${cls}">${statusOrVertical || '—'}</span>`;
   }
 
   function fmtDate(dt) {
@@ -207,7 +231,7 @@
 
   function render(rows) {
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-muted p-4">Nenhum registro.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-muted p-4">Nenhum registro.</td></tr>`;
       return;
     }
 
@@ -221,6 +245,7 @@
             <div class="fw-semibold">${item.slug || '—'}</div>
             <div class="text-muted small">${item.link_url || ''}</div>
           </td>
+          <td>${badge(item.vertical || '—')}</td>
           <td class="text-muted">${countries}</td>
           <td class="text-muted small">${sched}</td>
           <td>${badge(item.status)}</td>
@@ -304,6 +329,7 @@
 
   function fillForm(item) {
     document.getElementById('f_slug').value = item.slug || '';
+    document.getElementById('f_vertical').value = item.vertical || 'casino';
     document.getElementById('f_status').value = item.status || 'draft';
     document.getElementById('f_countries').value = Array.isArray(item.countries) ? item.countries.join(',') : '';
     document.getElementById('f_link_url').value = item.link_url || '';
@@ -356,6 +382,7 @@
     }
 
     return {
+      vertical: document.getElementById('f_vertical').value,
       slug: document.getElementById('f_slug').value.trim() || null,
       status: document.getElementById('f_status').value,
       countries: csvToArray(document.getElementById('f_countries').value),
@@ -378,6 +405,18 @@
 
     const params = new URLSearchParams();
     if (cursor) params.set('cursor', cursor);
+
+    const q = document.getElementById('q').value.trim();
+    if (q) params.set('q', q);
+
+    const status = document.getElementById('status').value;
+    if (status) params.set('status', status);
+
+    const countries = document.getElementById('countries').value.trim();
+    if (countries) params.set('countries', countries);
+
+    const vertical = document.getElementById('vertical').value;
+    if (vertical) params.set('vertical', vertical);
 
     const res = await apiFetch('/api/v1/banners?' + params.toString());
     if (!res.ok) {
@@ -409,6 +448,7 @@
 
     fillForm({
       slug: '',
+      vertical: 'casino',
       status: 'draft',
       countries: ['BR'],
       publish_at: null,
@@ -517,6 +557,7 @@
     document.getElementById('q').value = '';
     document.getElementById('status').value = '';
     document.getElementById('countries').value = '';
+    document.getElementById('vertical').value = '';
     load(null);
   });
 
