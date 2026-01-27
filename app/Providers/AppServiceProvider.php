@@ -17,6 +17,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Register Spatie Permission middleware alias
+        $this->app['router']->aliasMiddleware('permission', \Spatie\Permission\Middleware\PermissionMiddleware::class);
+        $this->app['router']->aliasMiddleware('role', \Spatie\Permission\Middleware\RoleMiddleware::class);
+
         // Proteção do Horizon em ambientes não locais
         if (class_exists(Horizon::class)) {
             Horizon::auth(fn ($request) => app()->environment('local', 'staging'));
