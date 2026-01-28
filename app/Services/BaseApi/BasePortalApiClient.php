@@ -92,6 +92,11 @@ class BasePortalApiClient
 
         $response = $request->get($url, $queryParams);
 
+        \Illuminate\Support\Facades\Log::debug('BasePortalApiClient: getLobby raw response', [
+            'status' => $response->status(),
+            'body' => $response->body(),
+        ]);
+
         $response->throw();
 
         return $response->json() ?? [];

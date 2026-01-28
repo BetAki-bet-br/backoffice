@@ -29,6 +29,8 @@ class CategorySyncService
         // Make a single call to get the entire lobby structure
         $list = $this->client->getLobby($portalId, $levelId);
 
+        Log::debug('CategorySyncService: Raw lobby response', ['response' => $list]);
+
         Log::info('CategorySyncService: Lobby response received', [
             'portalId' => $portalId,
             'levelId' => $levelId,

@@ -326,7 +326,7 @@ class CategoryController extends Controller
         $portalId = (int) ($request->input('portal_id') ?? config('services.base_api.portal_id', 1));
         $levelId = $request->input('level_id') ? (int) $request->input('level_id') : null;
 
-        SyncCategoriesJob::dispatch($portalId, $levelId)->onConnection('database');
+        SyncCategoriesJob::dispatch($portalId, $levelId);
 
         return response()->json(['message' => 'Category synchronization has been queued.']);
     }
