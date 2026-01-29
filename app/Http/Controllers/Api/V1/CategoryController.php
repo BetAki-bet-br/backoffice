@@ -130,6 +130,10 @@ class CategoryController extends Controller
         $categories = Category::query()
             ->whereJsonContains('verticals', $vertical)
             ->where('status', 'active')
+            ->where(function ($query) {
+                $query->whereNull('meta->is_placeholder')
+                      ->orWhere('meta->is_placeholder', '!=', true);
+            })
             ->whereHas('slots', null, '>', 1)
             ->orderBy('name')
             ->get(['id', 'name', 'slug', 'verticals', 'type', 'meta']);
