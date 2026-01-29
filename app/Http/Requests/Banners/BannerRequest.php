@@ -38,6 +38,7 @@ class BannerRequest extends FormRequest
 
             // mídia (por breakpoint)
             'cover_url'              => ['nullable','image','mimes:jpeg,png,webp,gif','max:2048'],
+            'remove_cover_url'       => ['nullable','boolean'],
             'media'                  => ['nullable','array'],
             'media.desktop'          => ['nullable','url','max:2000'],
             'media.mobile'           => ['nullable','url','max:2000'],

@@ -412,6 +412,7 @@
 
     const payload = {
       slug: document.getElementById('f_slug').value.trim() || null,
+      vertical: document.getElementById('f_vertical').value,
       status: document.getElementById('f_status').value,
       countries: csvToArray(document.getElementById('f_countries').value),
       link_url: document.getElementById('f_link_url').value.trim() || null,
@@ -426,17 +427,19 @@
       translations: readTranslations(),
     };
 
-    // Só incluir cover_url se há novo arquivo
-    // Se não há arquivo novo, não enviamos o campo (para não validar como nulo)
+    // Lógica de cover_url:
+    // 1. Se há novo arquivo: será adicionado via FormData (não incluir no payload)
+    // 2. Se removeu a imagem: enviar null para limpar no backend
+    // 3. Se manteve a imagem atual: não enviar o campo (backend mantém o valor)
     if (hasFile) {
-      payload.cover_url = null; // FormData será adicionado separadamente
+      // Novo arquivo - será adicionado via FormData, não incluir no payload
+      // (cover_url não é adicionado ao payload)
+    } else if (coverUrlRemoved) {
+      // Usuário removeu a imagem - enviar null para limpar
+      payload.remove_cover_url = true;
     } else {
-      // Sem novo arquivo - manter a URL atual (do hidden field)
-      const coverUrlField = document.getElementById('f_cover_url');
-      const coverUrl = coverUrlField ? (coverUrlField.value.trim() || null) : null;
-      if (coverUrl) {
-        payload.cover_url = coverUrl;
-      }
+      // Mantém imagem atual - não envia o campo
+      // (backend não altera cover_url se não for enviado)
     }
 
     return payload;
@@ -484,6 +487,7 @@
 
   function openNew() {
     editingId = null;
+    coverUrlRemoved = false;
     saveError.classList.add('d-none');
     saveError.textContent = '';
     editTitle.textContent = 'Novo Banner';
@@ -508,6 +512,7 @@
 
   function openEdit(id) {
     editingId = String(id);
+    coverUrlRemoved = false;
     saveError.classList.add('d-none');
     saveError.textContent = '';
     editTitle.textContent = 'Editar Banner #' + id;
@@ -522,11 +527,20 @@
     modal.show();
   }
 
+  // Flag para indicar que a imagem foi removida intencionalmente
+  let coverUrlRemoved = false;
+
   function removeCurrentCoverUrl() {
     const currentImageContainer = document.querySelector('.current-image');
     if (currentImageContainer) {
       currentImageContainer.style.display = 'none';
     }
+    // Limpar o hidden field e marcar como removido
+    const coverUrlField = document.getElementById('f_cover_url');
+    if (coverUrlField) {
+      coverUrlField.value = '';
+    }
+    coverUrlRemoved = true;
   }
 
   async function save() {
@@ -599,11 +613,19 @@
     const url = isEdit ? ('/api/v1/banners/' + editingId) : '/api/v1/banners';
     
     // Determinar método HTTP
-    if (isEdit) {
+    // Para FormData com PUT, usar POST + _method (já adicionado acima)
+    if (hasFile && isEdit) {
+      options.method = 'POST'; // Laravel method spoofing via _method
+    } else if (isEdit) {
       options.method = 'PUT';
     } else {
       options.method = 'POST';
     }
+
+    // Adicionar body às options
+    options.body = body;
+
+    const res = await apiFetch(url, options);
     if (!res.ok) {
       const resBody = await res.json().catch(() => null);
       saveError.textContent = resBody ? JSON.stringify(resBody) : ('Erro ao salvar (' + res.status + ')');

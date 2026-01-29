@@ -103,8 +103,17 @@ class BannerController extends Controller
             $data = $request->validated();
             $data['updated_by'] = $request->user()->id;
             
+            // Handle cover_url removal
+            if ($request->boolean('remove_cover_url')) {
+                // Delete old image if exists
+                if ($banner->cover_url) {
+                    FileUploadService::deleteImageByUrl($banner->cover_url);
+                }
+                $data['cover_url'] = null;
+                unset($data['remove_cover_url']);
+            }
             // Handle file upload if cover_url file is provided
-            if ($request->hasFile('cover_url')) {
+            elseif ($request->hasFile('cover_url')) {
                 // Delete old image if exists
                 if ($banner->cover_url) {
                     FileUploadService::deleteImageByUrl($banner->cover_url);
