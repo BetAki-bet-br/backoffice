@@ -77,9 +77,42 @@
 </div>
 
 <script>
-    const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    
+    const MAX_FILE_SIZE_{{ strtoupper($name) }} = 2 * 1024 * 1024; // 2MB
+    const ALLOWED_TYPES_{{ strtoupper($name) }} = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+    function resetFileUpload{{ ucfirst($name) }}() {
+        const input = document.getElementById('{{ $name }}');
+        const hiddenInput = document.getElementById('f_{{ $name }}');
+        const errorDiv = document.getElementById('{{ $name }}_error');
+        const infoDiv = document.getElementById('{{ $name }}_info');
+        const previewContainer = document.getElementById('{{ $name }}_preview_container');
+        const previewImg = document.getElementById('{{ $name }}_preview');
+        const progressDiv = document.getElementById('{{ $name }}_progress');
+        const currentImageContainer = document.getElementById('current-{{ $name }}-image')?.parentElement;
+
+        if (input) input.value = '';
+        if (hiddenInput) hiddenInput.value = '';
+
+        if (currentImageContainer) {
+            currentImageContainer.style.display = 'none';
+        }
+
+        if (errorDiv) {
+            errorDiv.textContent = '';
+            errorDiv.classList.add('d-none');
+        }
+
+        if (infoDiv) {
+            infoDiv.textContent = '';
+            infoDiv.classList.add('d-none');
+        }
+
+        if (previewImg) previewImg.src = '';
+        if (previewContainer) previewContainer.classList.add('d-none');
+
+        if (progressDiv) progressDiv.classList.add('d-none');
+    }
+
     function handleFileSelect{{ ucfirst($name) }}(input) {
         const errorDiv = document.getElementById('{{ $name }}_error');
         const infoDiv = document.getElementById('{{ $name }}_info');
@@ -96,20 +129,20 @@
         progressDiv.classList.add('d-none');
 
         const file = input.files[0];
-        
+
         if (!file) {
             return;
         }
 
         // Validate file type
-        if (!ALLOWED_TYPES.includes(file.type)) {
+        if (!ALLOWED_TYPES_{{ strtoupper($name) }}.includes(file.type)) {
             showError{{ ucfirst($name) }}('Tipo de arquivo inválido. Use JPG, PNG, WebP ou GIF.');
             input.value = '';
             return;
         }
 
         // Validate file size
-        if (file.size > MAX_FILE_SIZE) {
+        if (file.size > MAX_FILE_SIZE_{{ strtoupper($name) }}) {
             const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
             showError{{ ucfirst($name) }}(`Arquivo muito grande (${sizeMB}MB). Máximo 2MB.`);
             input.value = '';
@@ -143,22 +176,25 @@
         }
     }
 
-    // Reset on form reset
+    // Listener to reset when a modal is closed, assuming Bootstrap Modals
+    const fileUploadInputForModal_{{ $name }} = document.getElementById('{{ $name }}');
+    if (fileUploadInputForModal_{{ $name }}) {
+        const modal = fileUploadInputForModal_{{ $name }}.closest('.modal');
+        if (modal) {
+            modal.addEventListener('hidden.bs.modal', function () {
+                resetFileUpload{{ ucfirst($name) }}();
+            });
+        }
+    }
+
+    // Improved reset on form reset
     document.addEventListener('reset', function(e) {
-        if (e.target.tagName === 'FORM') {
-            const errorDiv = document.getElementById('{{ $name }}_error');
-            const infoDiv = document.getElementById('{{ $name }}_info');
-            const previewContainer = document.getElementById('{{ $name }}_preview_container');
-            const progressDiv = document.getElementById('{{ $name }}_progress');
-            
-            if (errorDiv) errorDiv.classList.add('d-none');
-            if (infoDiv) infoDiv.classList.add('d-none');
-            if (previewContainer) previewContainer.classList.add('d-none');
-            if (progressDiv) progressDiv.classList.add('d-none');
+        const fileUploadInput = document.getElementById('{{ $name }}');
+        if (e.target.tagName === 'FORM' && e.target.contains(fileUploadInput)) {
+            resetFileUpload{{ ucfirst($name) }}();
         }
     });
 </script>
-
 <style>
     .file-upload-wrapper {
         border-radius: 8px;
