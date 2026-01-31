@@ -13,19 +13,17 @@ class MasterUserSeeder extends Seeder
     {
         // Cria usuário master
         $user = User::updateOrCreate(
-            ['email' => 'admin@betaki.com'],
+            ['email' => 'admin@betaki.bet.br'],
             [
                 'name' => 'Administrador',
                 'password' => Hash::make('Betaki@123'),
             ]
         );
 
-        // Cria ou obtém role admin
         $role = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'api']);
 
-        // Vincula a role
         $user->syncRoles([$role]);
 
-        $this->command->info('Usuário master criado: admin@betaki.com / Betaki@123');
+        $this->command->info('Usuário master criado: admin@betaki.bet.br / Betaki@123');
     }
 }
