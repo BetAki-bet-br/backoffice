@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Route;
 // Auth
 use App\Http\Controllers\AuthController;
 
+use App\Http\Controllers\Api\V1\GameExtraSyncController;
+
 // Settings
 use App\Http\Controllers\Api\V1\SettingController;
 
@@ -75,6 +77,7 @@ Route::prefix('v1')->group(function () {
 
     // Slots
     Route::post('slots/by-ids', [SlotController::class, 'byIds'])->name('slots.byIds');
+    Route::get('slots/by-external-id/{external_id}', [SlotController::class, 'getByExternalId'])->name('slots.getByExternalId');
     Route::apiResource('slots', SlotController::class)
         ->only(['index', 'show'])
         ->parameters(['slots' => 'slot'])
@@ -298,6 +301,9 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('game-extras', \App\Http\Controllers\Api\V1\GameExtraController::class)
             ->parameters(['game-extras' => 'game_extra'])
             ->names('gameextras');
+
+        Route::post('game-extras/sync', [GameExtraSyncController::class, 'sync'])
+            ->name('gameextras.sync');
 
         Route::post('portal-games/sync', [\App\Http\Controllers\Api\V1\PortalGamesSyncController::class, 'sync'])
             ->name('portalgames.sync');

@@ -190,6 +190,9 @@ class CategorySyncService
                             'productId' => $gameData['productId'] ?? null,
                             'productSupplierId' => $gameData['productSupplierId'] ?? null,
                             'id' => $gameData['id'] ?? null,
+                            'demoPlayRestricted' => $gameData['demoPlayRestricted'] ?? null,
+                            'realPlayRestricted' => $gameData['realPlayRestricted'] ?? null,
+                            'maintenanceModeEnabled' => $gameData['maintenanceModeEnabled'] ?? null,
                         ],
                     ]
                 );

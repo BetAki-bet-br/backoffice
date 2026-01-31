@@ -70,9 +70,39 @@ class SlotController extends Controller
             return $slot;
         });
 
-        $paginator->setCollection($items);
-
         return response()->json($paginator);
+    }
+    
+    /**
+     * @OAGet(
+     *   path="/api/v1/slots/by-external-id/{external_id}",
+     *   tags={"Slots"},
+     *   security={{"bearerAuth": {}}},
+     *   summary="Detalhar slot por ID Externo",
+     *   @OA\Parameter(name="external_id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\Response(response=200, description="OK")
+     * )
+     */
+    public function getByExternalId(string $external_id)
+    {
+        $slot = Slot::query()
+            ->where('provider_game_id', $external_id)
+            ->firstOrFail();
+
+        $extra = GameExtra::query()
+            ->where('external_id', $slot->provider_game_id)
+            ->first();
+
+        $portalGame = PortalGame::query()
+            ->where('external_id', $slot->provider_game_id)
+            ->first();
+
+        $slot->setAttribute('rtp', $extra?->rtp);
+        $slot->setAttribute('volatility', $extra?->volatility);
+        $slot->setAttribute('min_bet', $extra?->min_bet);
+        $slot->setAttribute('gameTypeName', $portalGame?->payload['gameTypeName'] ?? null);
+
+        return response()->json($slot);
     }
 
     /**

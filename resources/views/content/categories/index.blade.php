@@ -502,21 +502,23 @@
                 const hasFile = fileInput && fileInput.files && fileInput.files[0];
 
                 let body;
-                let options = { method: 'POST' };
+                let options = {
+                    method: 'POST'
+                };
 
                 if (hasFile) {
                     // Usar FormData para enviar arquivo
                     const formData = new FormData();
                     formData.append('cover_url', fileInput.files[0]);
-                    
+
                     // Adicionar TODOS os campos do payload
                     Object.keys(payload).forEach(key => {
                         const value = payload[key];
-                        
+
                         if (value === null || value === undefined) {
                             return;
                         }
-                        
+
                         if (Array.isArray(value)) {
                             // Arrays: verticals[0], verticals[1], etc
                             value.forEach((item, i) => {
@@ -534,9 +536,9 @@
                             formData.append(key, value);
                         }
                     });
-                    
+
                     body = formData;
-                    
+
                     // Para PUT com FormData, usar method spoofing do Laravel
                     if (editingId) {
                         formData.append('_method', 'PUT');
@@ -544,19 +546,21 @@
                 } else {
                     // Usar JSON para requisições sem arquivo
                     body = JSON.stringify(payload);
-                    options.headers = { 'Content-Type': 'application/json' };
+                    options.headers = {
+                        'Content-Type': 'application/json'
+                    };
                 }
 
                 const isEdit = !!editingId;
                 const url = isEdit ? ('/api/v1/categories/' + editingId) : '/api/v1/categories';
-                
+
                 // Determinar método HTTP
                 if (isEdit) {
                     options.method = 'PUT';
                 } else {
                     options.method = 'POST';
                 }
-                
+
                 options.body = body;
 
                 const res = await apiFetch(url, options);
@@ -598,6 +602,8 @@
                     linkedSlotsTbody.innerHTML = `<tr><td colspan="4" class="text-muted p-4">Nenhum slot vinculado.</td></tr>`;
                     return;
                 }
+
+                console.log(items)
 
                 linkedSlotsTbody.innerHTML = items.map((it, idx) => `
       <tr data-slot-id="${it.slot_id}">

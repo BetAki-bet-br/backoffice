@@ -12,7 +12,6 @@
 
         <div class="d-flex gap-2">
             <button class="btn btn-primary" id="btnNew">Novo slot</button>
-            <button class="btn btn-outline-primary" id="btnSyncComtrade">Sync Comtrade</button>
             <button class="btn btn-outline-secondary" id="btnReload">Atualizar</button>
         </div>
     </div>
@@ -379,41 +378,8 @@
                 await load(null);
             }
 
-            async function syncComtrade() {
-                if (!confirm('Sincronizar jogos da Comtrade e pré-cadastrar slots?')) return;
-
-                const btn = document.getElementById('btnSyncComtrade');
-                btn.disabled = true;
-                btn.textContent = 'Sincronizando...';
-
-                const syncBase = await apiFetch('/api/v1/portal-games/sync', {
-                    method: 'POST'
-                });
-                if (!syncBase.ok) {
-                    btn.disabled = false;
-                    btn.textContent = 'Sync Comtrade';
-                    toast('Falha ao sincronizar base (' + syncBase.status + ')', 'danger');
-                    return;
-                }
-
-                const syncSlots = await apiFetch('/api/v1/slots/sync-from-portal', {
-                    method: 'POST'
-                });
-                btn.disabled = false;
-                btn.textContent = 'Sync Comtrade';
-
-                if (!syncSlots.ok) {
-                    toast('Falha ao pré-cadastrar slots (' + syncSlots.status + ')', 'danger');
-                    return;
-                }
-
-                toast('Sync Comtrade concluído.');
-                await load(null);
-            }
-
             // UI events
             document.getElementById('btnNew').addEventListener('click', openNew);
-            document.getElementById('btnSyncComtrade').addEventListener('click', syncComtrade);
             document.getElementById('btnReload').addEventListener('click', () => load(null));
             document.getElementById('btnSearch').addEventListener('click', () => load(null));
             document.getElementById('btnClear').addEventListener('click', () => {
