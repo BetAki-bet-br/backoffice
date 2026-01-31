@@ -16,6 +16,8 @@ use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 use App\Jobs\SyncCategoriesJob;
 
+use App\Models\SyncJob;
+
 class CategoryController extends Controller
 {
     /** @OA\Get(
@@ -330,8 +332,17 @@ class CategoryController extends Controller
         $portalId = (int) ($request->input('portal_id') ?? config('services.base_api.portal_id', 1));
         $levelId = $request->input('level_id') ? (int) $request->input('level_id') : null;
 
-        SyncCategoriesJob::dispatch($portalId, $levelId);
+        $job = SyncJob::create([
+            'name' => 'Category Sync',
+            'status' => 'pending',
+            'message' => "Syncing categories for Portal ID: $portalId" . ($levelId ? " and Level ID: $levelId" : ""),
+        ]);
 
-        return response()->json(['message' => 'Category synchronization has been queued.']);
+        SyncCategoriesJob::dispatch($portalId, $levelId, $job->id);
+
+        return response()->json([
+            'message' => 'Category synchronization has been queued.',
+            'sync_job_id' => $job->id
+        ]);
     }
 }

@@ -289,6 +289,7 @@
             // slots vinculados (estado do modal)
             // Map slot_id -> { slot_id, position, slot: {id,title,provider,provider_game_id,status} }
             const linkedMap = new Map();
+            let slotSearchResults = [];
 
             function badge(status) {
                 const s = (status || '').toLowerCase();
@@ -694,9 +695,9 @@
                         position: s.pivot?.position ?? 0,
                         slot: {
                             id: s.id,
-                            title: s.title,
-                            provider: s.provider,
-                            provider_game_id: s.provider_game_id,
+                            title: s.name,
+                            provider: s.productName,
+                            provider_game_id: s.externalId,
                             status: s.status
                         }
                     });
@@ -734,6 +735,7 @@
 
                 const data = await res.json();
                 const rows = data.data || [];
+                slotSearchResults = rows; // Cache results
 
                 if (!rows.length) {
                     slotResultsTbody.innerHTML =
@@ -744,8 +746,8 @@
                 slotResultsTbody.innerHTML = rows.slice(0, 12).map(s => `
       <tr>
         <td>
-          <div class="fw-semibold">${s.title}</div>
-          <div class="text-muted small">${s.provider} • ${s.provider_game_id} • ${s.status}</div>
+          <div class="fw-semibold">${s.name}</div>
+          <div class="text-muted small">${s.productName || ''} • ${s.externalId || ''}</div>
         </td>
         <td class="text-end">
           <button class="btn btn-sm btn-outline-primary" data-add-slot data-slot-id="${s.id}">Adicionar</button>
@@ -827,6 +829,38 @@
 
             document.getElementById('btnSave').addEventListener('click', save);
 
+            let pollingInterval = null;
+
+            function checkJobStatus(jobId) {
+                const btn = document.getElementById('btnSync');
+                const originalText = 'Sincronizar Categorias';
+
+                pollingInterval = setInterval(async () => {
+                    const res = await apiFetch(`/api/v1/sync-jobs/${jobId}`);
+                    if (!res.ok) {
+                        console.error('Failed to poll job status');
+                        return;
+                    }
+                    const job = await res.json();
+
+                    if (job.status === 'running') {
+                        btn.textContent = 'Sincronizando...';
+                        btn.disabled = true;
+                    } else if (job.status === 'completed') {
+                        clearInterval(pollingInterval);
+                        toast('Sincronização de categorias concluída.');
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                        await load(null);
+                    } else if (job.status === 'failed') {
+                        clearInterval(pollingInterval);
+                        toast('Falha na sincronização de categorias.', 'danger');
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }
+                }, 3000); // Poll every 3 seconds
+            }
+
             async function syncCategories() {
                 if (!confirm(
                         'Deseja sincronizar categorias da API externa? Isso pode criar novas categorias e atualizar nomes existentes.'
@@ -843,7 +877,7 @@
                 const btn = document.getElementById('btnSync');
                 const originalText = btn.textContent;
                 btn.disabled = true;
-                btn.textContent = 'Sincronizando...';
+                btn.textContent = 'Enfileirando...';
 
                 try {
                     const payload = {
@@ -861,14 +895,18 @@
 
                     if (!res.ok) {
                         toast('Erro ao iniciar a sincronização.', 'danger');
+                        btn.disabled = false;
+                        btn.textContent = originalText;
                     } else {
+                        const data = await res.json();
                         toast(`Sincronização iniciada em segundo plano.`);
-                        await load(null);
+                        if (data.sync_job_id) {
+                            checkJobStatus(data.sync_job_id);
+                        }
                     }
                 } catch (e) {
                     console.error(e);
                     toast('Erro de conexão.', 'danger');
-                } finally {
                     btn.disabled = false;
                     btn.textContent = originalText;
                 }
@@ -901,14 +939,19 @@
                 if (!btn) return;
 
                 const slotId = btn.getAttribute('data-slot-id');
-                const row = btn.closest('tr');
+                const slotData = slotSearchResults.find(s => String(s.id) === slotId);
 
-                const title = row.querySelector('.fw-semibold')?.textContent?.trim() || '';
-                const meta = row.querySelector('.text-muted')?.textContent?.trim() || '';
+                if (!slotData) {
+                    toast('Erro ao adicionar: slot não encontrado no cache.', 'danger');
+                    return;
+                }
+
                 addSlotToLinked(slotId, {
-                    id: Number(slotId),
-                    title,
-                    provider: meta
+                    id: slotData.id,
+                    title: slotData.name,
+                    provider: slotData.productName,
+                    provider_game_id: slotData.externalId,
+                    status: slotData.status
                 });
             });
 
