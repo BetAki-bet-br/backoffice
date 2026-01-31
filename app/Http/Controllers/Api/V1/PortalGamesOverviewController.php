@@ -37,6 +37,8 @@ class PortalGamesOverviewController extends Controller
 
         $query = PortalGame::query()
             ->where('portal_id', $portalId)
+            ->where('payload->maintenanceModeEnabled', false)
+            ->where('payload->realPlayRestricted', false)
             ->when(!empty($data['q']), function ($qq) use ($data) {
                 $term = $data['q'];
 

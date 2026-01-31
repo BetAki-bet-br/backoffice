@@ -53,9 +53,10 @@ class CategoryController extends Controller
                 ->filter()
                 ->unique()
                 ->values();
-
             $portalGames = PortalGame::query()
                 ->whereIn('external_id', $externalIds)
+                ->where('payload->maintenanceModeEnabled', false)
+                ->where('payload->realPlayRestricted', false)
                 ->get(['external_id', 'payload'])
                 ->keyBy('external_id');
 
@@ -202,6 +203,8 @@ class CategoryController extends Controller
         if ($externalIds->isNotEmpty()) {
             $portalGames = PortalGame::query()
                 ->whereIn('external_id', $externalIds)
+                ->where('payload->maintenanceModeEnabled', false)
+                ->where('payload->realPlayRestricted', false)
                 ->get(['external_id', 'payload'])
                 ->keyBy('external_id');
 
