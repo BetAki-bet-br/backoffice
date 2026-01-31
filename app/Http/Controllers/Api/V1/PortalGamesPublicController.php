@@ -28,8 +28,6 @@ class PortalGamesPublicController extends Controller
 
         $games = PortalGame::query()
             ->where('portal_id', $portalId)
-            ->where('payload->maintenanceModeEnabled', false)
-            ->where('payload->realPlayRestricted', false)
             ->get(['payload']);
 
         $providersMap = [];
@@ -87,8 +85,6 @@ class PortalGamesPublicController extends Controller
         $games = PortalGame::query()
             ->where('portal_id', $portalId)
             ->where('payload->productId', $providerId)
-            ->where('payload->maintenanceModeEnabled', false)
-            ->where('payload->realPlayRestricted', false)
             ->orderBy('name')
             ->get();
 

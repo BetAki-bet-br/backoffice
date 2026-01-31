@@ -56,9 +56,4 @@ class Slot extends Model
     {
         return $this->hasOne(GameExtra::class, 'external_id', 'external_id');
     }
-
-    public function portalGame()
-    {
-        return $this->hasOne(PortalGame::class, 'external_id', 'provider_game_id');
-    }
 }

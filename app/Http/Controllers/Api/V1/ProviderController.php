@@ -66,10 +66,6 @@ class ProviderController extends Controller
         // O external_id do provider corresponde ao productId nos tags do slot
         $games = Slot::whereJsonContains('tags->productId', (int)$provider->external_id)
             ->where('status', 'active')
-            ->whereHas('portalGame', function ($q) {
-                $q->where('payload->maintenanceModeEnabled', false)
-                  ->where('payload->realPlayRestricted', false);
-            })
             ->orderBy('title')
             ->get();
 

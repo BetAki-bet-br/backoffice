@@ -55,12 +55,8 @@ class SlotController extends Controller
 
         $portalGamesByExternalId = PortalGame::query()
             ->whereIn('external_id', $externalIds)
-            ->where('payload->maintenanceModeEnabled', false)
-            ->where('payload->realPlayRestricted', false)
             ->get()
             ->keyBy('external_id');
-
-        $items = $items->filter(fn (Slot $slot) => $portalGamesByExternalId->has($slot->provider_game_id));
 
         $items = $items->map(function (Slot $slot) use ($extrasByExternalId, $portalGamesByExternalId) {
             $extra = $extrasByExternalId->get($slot->provider_game_id);
@@ -107,25 +103,15 @@ class SlotController extends Controller
             ->whereIn('provider_game_id', $externalIds)
             ->get();
 
-        $slotExternalIds = $slots
-            ->pluck('provider_game_id')
-            ->filter()
-            ->unique()
-            ->values();
-
         $extrasByExternalId = GameExtra::query()
-            ->whereIn('external_id', $slotExternalIds)
+            ->whereIn('external_id', $externalIds)
             ->get()
             ->keyBy('external_id');
 
         $portalGamesByExternalId = PortalGame::query()
-            ->whereIn('external_id', $slotExternalIds)
-            ->where('payload->maintenanceModeEnabled', false)
-            ->where('payload->realPlayRestricted', false)
+            ->whereIn('external_id', $externalIds)
             ->get()
             ->keyBy('external_id');
-
-        $slots = $slots->filter(fn (Slot $slot) => $portalGamesByExternalId->has($slot->provider_game_id));
 
         $slots = $slots->map(function (Slot $slot) use ($extrasByExternalId, $portalGamesByExternalId) {
             $extra = $extrasByExternalId->get($slot->provider_game_id);
@@ -187,8 +173,6 @@ class SlotController extends Controller
 
         $portalGame = PortalGame::query()
             ->where('external_id', $slot->provider_game_id)
-            ->where('payload->maintenanceModeEnabled', false)
-            ->where('payload->realPlayRestricted', false)
             ->first();
 
         $slot->setAttribute('rtp', $extra?->rtp);
