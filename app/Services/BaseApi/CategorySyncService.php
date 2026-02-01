@@ -89,45 +89,32 @@ class CategorySyncService
             }
         }
 
-        // 1. Try to find by external_id first (most reliable)
-        $externalIdStr = (string) $externalId;
-        $category = Category::where('meta->external_id', $externalIdStr)->first();
+        // Use updateOrCreate to find by slug or create a new one
+        $category = Category::updateOrCreate(
+            ['slug' => $slug],
+            ['name' => $name]
+        );
 
-        // 2. If not found, try to find by slug (fallback for existing records)
-        if (!$category && !empty($slug)) {
-            $category = Category::where('slug', $slug)->first();
-        }
+        // Prepare meta data, merging with existing if any
+        $metaData = array_merge($category->meta ?? [], [
+            'external_id' => (string) $externalId,
+            'parent_id' => $parentId,
+            'category_type_id' => $item['categoryTypeId'] ?? null,
+            'title' => $item['gameName'] ?? $item['title'] ?? null,
+            'level_type' => $item['levelType'] ?? null,
+            'sub_level_structure' => !empty($item['subLevel']),
+            'original_type' => 'game-list',
+            'source' => 'sync',
+        ]);
 
-        $meta = $category->meta ?? [];
-        $meta['external_id'] = $externalIdStr;
-        $meta['parent_id'] = $parentId;
-        $meta['category_type_id'] = $item['categoryTypeId'] ?? null;
-        $meta['title'] = $item['gameName'] ?? $item['title'] ?? null;
-        $meta['level_type'] = $item['levelType'] ?? null;
-        $meta['sub_level_structure'] = !empty($item['subLevel']);
-        $meta['original_type'] = 'game-list'; // Default mapping
-        $meta['source'] = 'sync';
-
-        if (!$category) {
-            $category = new Category();
-
-            $originalSlug = $slug;
-            $counter = 1;
-            while (Category::where('slug', $slug)->exists()) {
-                $slug = $originalSlug . '-' . $counter++;
-            }
-            $category->slug = $slug;
-
-            $category->name = $name;
-            $category->status = 'active';
+        if ($category->wasRecentlyCreated) {
+            // Set defaults for new categories
+            $category->status = 'inactive';
             $category->position = 0;
-
-            if ($currentVertical) {
-                $category->verticals = [$currentVertical];
-            }
-
+            $category->verticals = $currentVertical ? [$currentVertical] : [];
             $this->stats['created']++;
         } else {
+            // Update verticals for existing categories
             $verticals = $category->verticals ?? [];
             if ($currentVertical && !in_array($currentVertical, $verticals)) {
                 $verticals[] = $currentVertical;
@@ -136,9 +123,11 @@ class CategorySyncService
             $this->stats['updated']++;
         }
 
+        // Always update name and meta
         $category->name = $name;
-        $category->meta = $meta;
+        $category->meta = $metaData;
         $category->save();
+
 
         // The lobby payload contains the games directly within the category item
         $games = $item['gameMains'] ?? [];
