@@ -604,8 +604,6 @@
                     return;
                 }
 
-                console.log(items)
-
                 linkedSlotsTbody.innerHTML = items.map((it, idx) => `
       <tr data-slot-id="${it.slot_id}">
         <td class="text-center align-middle handle" style="cursor: grab; width: 40px; color: #aaa;">
@@ -746,8 +744,8 @@
                 slotResultsTbody.innerHTML = rows.slice(0, 12).map(s => `
       <tr>
         <td>
-          <div class="fw-semibold">${s.name}</div>
-          <div class="text-muted small">${s.productName || ''} • ${s.externalId || ''}</div>
+          <div class="fw-semibold">${s.title}</div>
+          <div class="text-muted small">${s.provider || ''} • ALE-${s.tags.id || ''}</div>
         </td>
         <td class="text-end">
           <button class="btn btn-sm btn-outline-primary" data-add-slot data-slot-id="${s.id}">Adicionar</button>
@@ -961,6 +959,12 @@
                 if (btnRemove) {
                     const slotId = btnRemove.getAttribute('data-slot-id');
                     linkedMap.delete(String(slotId));
+
+                    const items = Array.from(linkedMap.values()).sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+                    items.forEach((it, idx) => {
+                        it.position = idx;
+                    });
+
                     renderLinkedSlots();
                     return;
                 }
