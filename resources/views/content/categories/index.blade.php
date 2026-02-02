@@ -676,7 +676,7 @@
                 linkedMap.clear();
                 linkedSlotsTbody.innerHTML = `<tr><td colspan="4" class="text-muted p-4">Carregando…</td></tr>`;
 
-                const res = await apiFetch('/api/v1/categories/' + categoryId);
+                const res = await apiFetch('/api/v1/categories/' + categoryId + '?slots_limit=-1');
                 if (!res.ok) {
                     toast('Falha ao carregar slots da categoria (' + res.status + ')', 'danger');
                     return;

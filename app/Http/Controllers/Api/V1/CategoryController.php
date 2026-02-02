@@ -190,8 +190,10 @@ class CategoryController extends Controller
 
         $category->load(['slots' => function ($query) use ($slotsLimit, $slotsPage) {
             $query->orderBy('category_slot.position');
-            $query->limit($slotsLimit);
-            $query->offset(($slotsPage - 1) * $slotsLimit);
+            if ($slotsLimit > 0) {
+                $query->limit($slotsLimit);
+                $query->offset(($slotsPage - 1) * $slotsLimit);
+            }
         }]);
 
         $externalIds = $category->slots
@@ -227,7 +229,14 @@ class CategoryController extends Controller
             });
 
             $games = $category->slots
-                ->map(fn($slot) => $portalGamesWithExtras->get($slot->provider_game_id)?->payload)
+                ->map(function ($slot) use ($portalGamesWithExtras) {
+                    $payload = $portalGamesWithExtras->get($slot->provider_game_id)?->payload;
+                    if (!$payload) return null;
+
+                    $payload['id'] = $slot->id;
+                    $payload['pivot'] = ['position' => $slot->pivot->position];
+                    return $payload;
+                })
                 ->filter()
                 ->values();
         }

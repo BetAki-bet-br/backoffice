@@ -29,15 +29,6 @@ class CategorySyncService
         // Make a single call to get the entire lobby structure
         $list = $this->client->getLobby($portalId, $levelId);
 
-        Log::debug('CategorySyncService: Raw lobby response', ['response' => $list]);
-
-        Log::info('CategorySyncService: Lobby response received', [
-            'portalId' => $portalId,
-            'levelId' => $levelId,
-            'top_level_category_count' => count($list),
-            'sample_item' => $list[0] ?? null,
-        ]);
-
         if (!is_array($list)) {
             $list = [];
         }
@@ -89,14 +80,10 @@ class CategorySyncService
             }
         }
 
-        // Use updateOrCreate to find by slug or create a new one
-        $category = Category::updateOrCreate(
-            ['slug' => $slug],
-            ['name' => $name]
-        );
+        $existingCategory = Category::withoutGlobalScopes()->where('slug', $slug)->first();
 
         // Prepare meta data, merging with existing if any
-        $metaData = array_merge($category->meta ?? [], [
+        $metaData = array_merge($existingCategory->meta ?? [], [
             'external_id' => (string) $externalId,
             'parent_id' => $parentId,
             'category_type_id' => $item['categoryTypeId'] ?? null,
@@ -107,26 +94,27 @@ class CategorySyncService
             'source' => 'sync',
         ]);
 
-        if ($category->wasRecentlyCreated) {
-            // Set defaults for new categories
-            $category->status = 'inactive';
-            $category->position = 0;
-            $category->verticals = $currentVertical ? [$currentVertical] : [];
-            $this->stats['created']++;
-        } else {
-            // Update verticals for existing categories
-            $verticals = $category->verticals ?? [];
-            if ($currentVertical && !in_array($currentVertical, $verticals)) {
-                $verticals[] = $currentVertical;
-                $category->verticals = $verticals;
-            }
-            $this->stats['updated']++;
+        $verticals = $existingCategory->verticals ?? [];
+        if ($currentVertical && !in_array($currentVertical, $verticals)) {
+            $verticals[] = $currentVertical;
         }
 
-        // Always update name and meta
-        $category->name = $name;
-        $category->meta = $metaData;
-        $category->save();
+        $category = Category::withoutGlobalScopes()->updateOrCreate(
+            ['slug' => $slug],
+            [
+                'name' => $name,
+                'meta' => $metaData,
+                'status' => $existingCategory ? $existingCategory->status : 'active',
+                'position' => $existingCategory->position ?? 0,
+                'verticals' => $verticals,
+            ]
+        );
+
+        if ($category->wasRecentlyCreated) {
+            $this->stats['created']++;
+        } else {
+            $this->stats['updated']++;
+        }
 
 
         // The lobby payload contains the games directly within the category item

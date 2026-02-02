@@ -406,7 +406,7 @@ class LobbyLayoutController extends Controller
         $games = $overrides['games'] ?? $this->mapSlotsToGameMains($category->slots, $portalGames);
 
         $gameCount = $category->slots->count();
-        $games = array_slice($games, 0, 10);
+        $games = array_slice($games, 0, 16);
 
         return $this->makeGenericSection([], [
             'id' => $category->id,
