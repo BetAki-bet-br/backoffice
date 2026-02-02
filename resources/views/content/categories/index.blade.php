@@ -610,7 +610,7 @@
            <span class="fs-5">≡</span>
         </td>
         <td class="align-middle">
-          <div class="fw-semibold">${it.slot?.title || ('Slot #' + it.slot_id)}</div>
+          <div class="fw-semibold">${it.slot?.name || ('Slot #' + it.slot_id)}</div>
           <div class="text-muted small">${it.slot?.provider || ''} ${it.slot?.provider_game_id ? '• '+it.slot.provider_game_id : ''}</div>
         </td>
         <td class="align-middle text-center">
@@ -693,7 +693,7 @@
                         position: s.pivot?.position ?? 0,
                         slot: {
                             id: s.id,
-                            title: s.name,
+                            name: s.name,
                             provider: s.productName,
                             provider_game_id: s.externalId,
                             status: s.status
@@ -946,8 +946,8 @@
 
                 addSlotToLinked(slotId, {
                     id: slotData.id,
-                    title: slotData.name,
-                    provider: slotData.productName,
+                    name: slotData.title,
+                    provider: slotData.provider,
                     provider_game_id: slotData.externalId,
                     status: slotData.status
                 });
