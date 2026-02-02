@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SyncProvidersJob;
+use App\Models\Domain\Casino\GameExtra;
+use App\Models\Domain\Casino\PortalGame;
 use App\Models\Domain\Casino\Provider;
 use App\Models\Domain\Casino\Slot;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use OpenApi\Annotations as OA;
-use App\Jobs\SyncProvidersJob;
 
 class ProviderController extends Controller
 {
@@ -69,8 +72,14 @@ class ProviderController extends Controller
             ->orderBy('title')
             ->get();
 
+        $portalGames = $this->loadPortalGames(
+            $games->pluck('provider_game_id')
+        );
+
+        $enrichedGames = $this->mapSlotsToGameMains($games, $portalGames);
+
         $data = $provider->toArray();
-        $data['games'] = $games;
+        $data['games'] = $enrichedGames;
 
         return response()->json($data);
     }
@@ -159,5 +168,57 @@ class ProviderController extends Controller
         SyncProvidersJob::dispatch($portalId)->onConnection('database');
 
         return response()->json(['message' => 'Provider synchronization has been queued.']);
+    }
+
+    private function loadPortalGames($externalIds): Collection
+    {
+        $ids = collect($externalIds)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return collect();
+        }
+
+        // Carrega PortalGames e GameExtras
+        $portalGames = PortalGame::query()
+            ->whereIn('external_id', $ids)
+            ->get(['external_id', 'payload'])
+            ->keyBy('external_id');
+
+        $gameExtras = \App\Models\Domain\Casino\GameExtra::query()
+            ->whereIn('external_id', $ids)
+            ->get(['external_id', 'rtp', 'volatility', 'min_bet'])
+            ->keyBy('external_id');
+
+        // Merge extra data into payload
+        return $portalGames->map(function ($pg) use ($gameExtras) {
+            $extra = $gameExtras->get($pg->external_id);
+            $payload = $pg->payload ?? [];
+            
+            if ($extra) {
+                $payload['rtp'] = $extra->rtp;
+                $payload['volatility'] = \App\Support\Casino\GameExtraResolver::mapVolatility($extra->volatility);
+                $payload['minBet'] = $extra->min_bet;
+            }
+            
+            $pg->payload = $payload;
+            return $pg;
+        });
+    }
+
+    private function mapSlotsToGameMains($slots, Collection $portalGames): array
+    {
+        return collect($slots)
+            ->map(function ($slot) use ($portalGames) {
+                if (!$slot?->provider_game_id) {
+                    return null;
+                }
+                return $portalGames->get($slot->provider_game_id)?->payload;
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 }
