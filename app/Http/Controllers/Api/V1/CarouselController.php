@@ -3,63 +3,130 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\Domain\Banners\Banner;
-use Illuminate\Http\Request;
+use App\Models\Domain\Carousels\Carousel;
+use App\Http\Resources\CarouselSlideResource;
+use App\Http\Requests\Carousels\StoreCarouselRequest;
+use App\Http\Requests\Carousels\UpdateCarouselRequest;
+use App\Services\FileUploadService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Str;
 
 class CarouselController extends Controller
 {
-    public function casino(Request $request)
+    /**
+     * Display a listing of the resource for admin.
+     */
+    public function index(): JsonResponse
     {
-        return response()->json($this->buildSlides($request));
+        $carousels = Carousel::query()->withCount('slides')->latest()->paginate(20);
+        return response()->json($carousels);
     }
 
-    public function live(Request $request)
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(StoreCarouselRequest $request): JsonResponse
     {
-        return response()->json($this->buildSlides($request));
-    }
+        $data = $request->validated();
+        
+        if (empty($data['slug'])) {
+            $data['slug'] = Str::slug($data['name']);
+        }
 
-    private function buildSlides(Request $request): array
-    {
-        $now = now();
-        $locale = $request->get('locale');
+        $carousel = \DB::transaction(function () use ($data) {
+            $carousel = Carousel::create($data);
 
-        $banners = Banner::query()
-            ->where('status', 'published')
-            ->where(function ($q) use ($now) {
-                $q->whereNull('publish_at')
-                    ->orWhere('publish_at', '<=', $now);
-            })
-            ->where(function ($q) use ($now) {
-                $q->whereNull('expire_at')
-                    ->orWhere('expire_at', '>=', $now);
-            })
-            ->with('translations')
-            ->orderByDesc('id')
-            ->get();
-
-        return $banners->map(function (Banner $banner) use ($locale) {
-            $translation = null;
-
-            if ($locale) {
-                $translation = $banner->translations->firstWhere('locale', $locale);
+            if (isset($data['slides'])) {
+                foreach ($data['slides'] as $slideData) {
+                    if (isset($slideData['image'])) {
+                        $slideData['image_url'] = FileUploadService::uploadBannerImage($slideData['image']);
+                    }
+                    $carousel->slides()->create($slideData);
+                }
             }
+            return $carousel;
+        });
 
-            $translation ??= $banner->translations->first();
+        return response()->json($carousel->load('slides'), 201);
+    }
 
-            $media = $translation?->media ?? $banner->media ?? [];
-            $imageUrl = $media['desktop'] ?? $media['mobile'] ?? null;
-            if (!$imageUrl) return null;
+    /**
+     * Display the specified resource for public API.
+     */
+    public function show(string $slug): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
+    {
+        $carousel = Carousel::where('slug', $slug)->firstOrFail();
+        return CarouselSlideResource::collection($carousel->slides);
+    }
 
-            $alt = $translation?->alt_text ?? $translation?->title ?? '';
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(UpdateCarouselRequest $request, Carousel $carousel): JsonResponse
+    {
+        $data = $request->validated();
+        
+        \DB::transaction(function () use ($carousel, $data) {
+            if (empty($data['slug'])) {
+                $data['slug'] = Str::slug($data['name']);
+            }
+            $carousel->update($data);
 
-            return [
-                'href' => $banner->link_url ?? '',
-                'imageUrl' => $imageUrl,
-                'alt' => $alt,
-            ];
-        })
-        ->filter()
-        ->values()
-        ->all();
+            if (isset($data['slides'])) {
+                $currentSlideIds = $carousel->slides->pluck('id')->toArray();
+                $submittedSlideIds = collect($data['slides'])->pluck('id')->filter()->toArray();
+
+                $slidesToDeleteIds = array_diff($currentSlideIds, $submittedSlideIds);
+                if (!empty($slidesToDeleteIds)) {
+                    $slidesBeingDeleted = $carousel->slides()->whereIn('id', $slidesToDeleteIds)->get();
+                    foreach ($slidesBeingDeleted as $slide) {
+                        if ($slide->image_url) {
+                            FileUploadService::deleteImageByUrl($slide->image_url);
+                        }
+                    }
+                    $carousel->slides()->whereIn('id', $slidesToDeleteIds)->delete();
+                }
+
+                foreach ($data['slides'] as $slideData) {
+                    if (isset($slideData['image'])) {
+                        $slideData['image_url'] = FileUploadService::uploadBannerImage($slideData['image']);
+                        unset($slideData['image']);
+                    }
+
+                    $slideId = $slideData['id'] ?? null;
+                    if ($slideId && in_array($slideId, $currentSlideIds)) {
+                        $slide = $carousel->slides()->find($slideId);
+                        if ($slide) {
+                            if (isset($slideData['image_url']) && $slide->image_url && $slide->image_url !== $slideData['image_url']) {
+                                FileUploadService::deleteImageByUrl($slide->image_url);
+                            }
+                            $slide->update(array_diff_key($slideData, ['id' => 0]));
+                        }
+                    } else {
+                        unset($slideData['id']); 
+                        $carousel->slides()->create($slideData);
+                    }
+                }
+            }
+        });
+
+        return response()->json($carousel->fresh('slides'));
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Carousel $carousel): JsonResponse
+    {
+        \DB::transaction(function() use ($carousel) {
+            foreach ($carousel->slides as $slide) {
+                if ($slide->image_url) {
+                    FileUploadService::deleteImageByUrl($slide->image_url);
+                }
+            }
+            $carousel->delete();
+        });
+        
+        return response()->noContent();
     }
 }

@@ -57,11 +57,8 @@ Route::prefix('v1')->group(function () {
     Route::get('settings/public', [SettingController::class, 'publicIndex'])
         ->name('settings.public');
 
-    Route::get('carousels/casino', [CarouselController::class, 'casino'])
-        ->name('carousels.casino');
-
-    Route::get('carousels/live', [CarouselController::class, 'live'])
-        ->name('carousels.live');
+    Route::get('carousels/{slug}', [CarouselController::class, 'show'])
+        ->name('carousels.show');
 
     Route::get('lobbies/casino', [LobbyLayoutController::class, 'casino'])
         ->name('lobbies.casino');
@@ -172,6 +169,11 @@ Route::prefix('v1')->group(function () {
             ->except(['index', 'show'])
             ->parameters(['banners' => 'banner'])
             ->names('banners');
+
+        // Carousels
+        Route::apiResource('carousels', CarouselController::class)
+            ->except('show')
+            ->parameters(['carousels' => 'carousel']);
 
         // Roles
         Route::apiResource('roles', RoleController::class)
