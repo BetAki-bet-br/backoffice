@@ -418,6 +418,7 @@
                 const rows = Array.isArray(data) ? data : (data.data || []);
                 // Sort by position for initial render
                 rows.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+                console.log('Loaded providers:', rows);
                 render(rows);
             }
 
@@ -458,6 +459,7 @@
 
                 const data = await res.json();
                 gamesTitle.textContent = `Jogos de ${data.name}`;
+                console.log('Provider details with games:', data);
 
                 const games = data.games || [];
                 if (!games.length) {
@@ -468,9 +470,9 @@
                 gamesTbody.innerHTML = games.map(g => `
         <tr>
             <td class="ps-3">${g.id}</td>
-            <td class="fw-bold">${g.title}</td>
-            <td><code>${g.provider_game_id}</code></td>
-            <td>${badge(g.status)}</td>
+            <td class="fw-bold">${g.name}</td>
+            <td><code>${g.externalId}</code></td>
+            <td>${badge(!g.realPlayRestricted ? 'active' : 'inactive')}</td>
         </tr>
       `).join('');
             }
@@ -511,35 +513,37 @@
                 btn.disabled = true;
                 btn.textContent = 'Sincronizando...';
 
-                      try {
+                try {
 
-                          const res = await apiFetch('/api/v1/providers/sync', { method: 'POST' });
+                    const res = await apiFetch('/api/v1/providers/sync', {
+                        method: 'POST'
+                    });
 
-                          if(res.ok) {
+                    if (res.ok) {
 
-                              toast(`Sincronização iniciada em segundo plano.`);
+                        toast(`Sincronização iniciada em segundo plano.`);
 
-                              load();
+                        load();
 
-                          } else {
+                    } else {
 
-                              toast('Erro ao iniciar a sincronização.', 'danger');
+                        toast('Erro ao iniciar a sincronização.', 'danger');
 
-                          }
+                    }
 
-                      } catch(e) {
+                } catch (e) {
 
-                          toast('Erro de conexão', 'danger');
+                    toast('Erro de conexão', 'danger');
 
-                      } finally {
+                } finally {
 
-                          btn.disabled = false;
+                    btn.disabled = false;
 
-                          btn.textContent = 'Sincronizar (Scan)';
+                    btn.textContent = 'Sincronizar (Scan)';
 
-                      }
+                }
 
-                  }
+            }
 
             // Events
             document.getElementById('btnReload').addEventListener('click', load);
