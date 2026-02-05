@@ -418,7 +418,6 @@
                 const rows = Array.isArray(data) ? data : (data.data || []);
                 // Sort by position for initial render
                 rows.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-                console.log('Loaded providers:', rows);
                 render(rows);
             }
 
@@ -459,7 +458,6 @@
 
                 const data = await res.json();
                 gamesTitle.textContent = `Jogos de ${data.name}`;
-                console.log('Provider details with games:', data);
 
                 const games = data.games || [];
                 if (!games.length) {
