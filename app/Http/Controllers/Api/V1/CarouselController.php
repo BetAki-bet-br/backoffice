@@ -79,7 +79,11 @@ class CarouselController extends Controller
 
             if (isset($data['slides'])) {
                 $currentSlideIds = $carousel->slides->pluck('id')->toArray();
-                $submittedSlideIds = collect($data['slides'])->pluck('id')->filter()->toArray();
+
+                $submittedSlideIds = collect($data['slides'])
+                    ->pluck('id')
+                    ->filter(fn ($id) => ! empty($id))
+                    ->toArray();
 
                 $slidesToDeleteIds = array_diff($currentSlideIds, $submittedSlideIds);
                 if (! empty($slidesToDeleteIds)) {
@@ -93,22 +97,36 @@ class CarouselController extends Controller
                 }
 
                 foreach ($data['slides'] as $slideData) {
-                    if (isset($slideData['image'])) {
-                        $slideData['image_url'] = CarouselSlideUploadService::uploadImage($slideData['image']);
-                        unset($slideData['image']);
-                    }
                     $slideId = $slideData['id'] ?? null;
-                    if ($slideId && in_array($slideId, $currentSlideIds)) {
-                        $slide = $carousel->slides()->find($slideId);
-                        if ($slide) {
-                            if (isset($slideData['image_url']) && $slide->image_url && $slide->image_url !== $slideData['image_url']) {
-                                FileUploadService::deleteImageByUrl($slide->image_url);
-                            }
-                            $slide->update(array_diff_key($slideData, ['id' => 0]));
+
+                    $slide = ($slideId && in_array($slideId, $currentSlideIds))
+                        ? $carousel->slides()->find($slideId)
+                        : null;
+
+                    if (isset($slideData['image']) && $slideData['image'] instanceof \Illuminate\Http\UploadedFile) {
+
+                        if ($slide && $slide->image_url) {
+                            FileUploadService::deleteImageByUrl($slide->image_url);
                         }
 
-                    } else {
+                        $slideData['image_url'] = CarouselSlideUploadService::uploadImage($slideData['image']);
+                    } elseif ($slide && array_key_exists('image_url', $slideData) && is_null($slideData['image_url'])) {
+                        if ($slide->image_url) {
+                            FileUploadService::deleteImageByUrl($slide->image_url);
+                        }
+                    }
+                    if (isset($slideData['image'])) {
+                        unset($slideData['image']);
+                    }
+
+                    if ($slide) {
+
                         unset($slideData['id']);
+                        $slide->update($slideData);
+                    } else {
+                        if (isset($slideData['id'])) {
+                            unset($slideData['id']);
+                        }
                         $carousel->slides()->create($slideData);
                     }
                 }

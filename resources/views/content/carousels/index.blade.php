@@ -130,7 +130,7 @@
                             <input type="text" class="form-control" data-field="href" placeholder="https://...">
                         </div>
                         <div class="col-12 col-lg-6">
-                            <label class="form-label">Alt Text</label>
+                            <label class="form-label">Título</label>
                             <input type="text" class="form-control" data-field="alt"
                                 placeholder="Texto alternativo da imagem">
                         </div>
@@ -264,7 +264,6 @@
                 document.getElementById('f_name').value = item.name || '';
                 document.getElementById('f_slug').value = item.slug || '';
 
-                // Clear and fill slides
                 const slidesWrap = document.getElementById('slidesWrap');
                 slidesWrap.innerHTML = '';
                 if (item.slides && item.slides.length) {
@@ -286,21 +285,25 @@
                     formData.append(`slides[${index}][alt]`, form.querySelector('[data-field=alt]').value);
                     formData.append(`slides[${index}][duration]`, form.querySelector('[data-field=duration]').value);
                     formData.append(`slides[${index}][order]`, form.querySelector('[data-field=order]').value);
+
                     const publishAtValue = inputToIso(form.querySelector('[data-field=publish_at]').value);
-                    formData.append(`slides[${index}][publish_at]`, publishAtValue);
+                    formData.append(`slides[${index}][publish_at]`, publishAtValue ||
+                        ''); // Garante envio mesmo se vazio
+
                     const expireAtValue = inputToIso(form.querySelector('[data-field=expire_at]').value);
-                    formData.append(`slides[${index}][expire_at]`, expireAtValue);
+                    formData.append(`slides[${index}][expire_at]`, expireAtValue || '');
+
                     formData.append(`slides[${index}][is_active]`, form.querySelector('[data-field=is_active]')
                         .checked ? 1 : 0);
 
-                    // Handle image url and file
-                    const imageUrlInput = form.querySelector('[data-field=image_url]');
+                    // --- CORREÇÃO AQUI ---
                     const imageFileInput = form.querySelector('[data-field=image_file]');
-
-                    // Only append image_url if no new file is selected and there's an existing URL
+                    const imageUrlInput = form.querySelector(
+                        '[data-field=image_url]');
                     if (imageFileInput && imageFileInput.files[0]) {
                         formData.append(`slides[${index}][image]`, imageFileInput.files[0]);
-                    } else if (imageUrlInput.value) { // Check if image_url has a value (existing image)
+                    } else if (imageUrlInput && imageUrlInput.value) {
+
                         formData.append(`slides[${index}][image_url]`, imageUrlInput.value);
                     }
                 });
@@ -475,7 +478,7 @@
                 }
 
                 // As the index doesn't load relations, we need to fetch the full data for editing
-                apiFetch('/api/v1/carousels/' + item.slug).then(res => res.json()).then(slides => {
+                apiFetch('/api/v1/carousels/' + item.slug + '?include_disabled=true').then(res => res.json()).then(slides => {
                     item.slides = slides.data; // The resource returns { data: [...] }
                     fillForm(item);
                     initSortable();
