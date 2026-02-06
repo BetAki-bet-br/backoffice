@@ -38,8 +38,11 @@ class UpdateCarouselRequest extends FormRequest
             'slides.*.alt' => 'required_with:slides|string|max:255',
             'slides.*.duration' => 'nullable|string|max:50',
             'slides.*.order' => 'required_with:slides|integer|min:0',
+            'slides.*.is_active' => 'nullable|boolean',
             'slides.*.image_url' => 'nullable|string|max:255',
             'slides.*.image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:2048',
+            'slides.*.publish_at' => 'nullable|date',
+            'slides.*.expire_at' => 'nullable|date|after:slides.*.publish_at',
         ];
     }
 }

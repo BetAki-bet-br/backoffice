@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\Domain\Carousels\Carousel;
-use App\Http\Resources\CarouselSlideResource;
 use App\Http\Requests\Carousels\StoreCarouselRequest;
 use App\Http\Requests\Carousels\UpdateCarouselRequest;
+use App\Http\Resources\CarouselSlideResource;
+use App\Models\Domain\Carousels\Carousel;
+use App\Services\CarouselSlideUploadService;
 use App\Services\FileUploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
@@ -19,6 +20,7 @@ class CarouselController extends Controller
     public function index(): JsonResponse
     {
         $carousels = Carousel::query()->withCount('slides')->latest()->paginate(20);
+
         return response()->json($carousels);
     }
 
@@ -28,7 +30,7 @@ class CarouselController extends Controller
     public function store(StoreCarouselRequest $request): JsonResponse
     {
         $data = $request->validated();
-        
+
         if (empty($data['slug'])) {
             $data['slug'] = Str::slug($data['name']);
         }
@@ -39,11 +41,13 @@ class CarouselController extends Controller
             if (isset($data['slides'])) {
                 foreach ($data['slides'] as $slideData) {
                     if (isset($slideData['image'])) {
-                        $slideData['image_url'] = FileUploadService::uploadBannerImage($slideData['image']);
+                        $slideData['image_url'] = CarouselSlideUploadService::uploadImage($slideData['image']);
                     }
+
                     $carousel->slides()->create($slideData);
                 }
             }
+
             return $carousel;
         });
 
@@ -56,6 +60,7 @@ class CarouselController extends Controller
     public function show(string $slug): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
     {
         $carousel = Carousel::where('slug', $slug)->firstOrFail();
+
         return CarouselSlideResource::collection($carousel->slides);
     }
 
@@ -65,7 +70,7 @@ class CarouselController extends Controller
     public function update(UpdateCarouselRequest $request, Carousel $carousel): JsonResponse
     {
         $data = $request->validated();
-        
+
         \DB::transaction(function () use ($carousel, $data) {
             if (empty($data['slug'])) {
                 $data['slug'] = Str::slug($data['name']);
@@ -77,7 +82,7 @@ class CarouselController extends Controller
                 $submittedSlideIds = collect($data['slides'])->pluck('id')->filter()->toArray();
 
                 $slidesToDeleteIds = array_diff($currentSlideIds, $submittedSlideIds);
-                if (!empty($slidesToDeleteIds)) {
+                if (! empty($slidesToDeleteIds)) {
                     $slidesBeingDeleted = $carousel->slides()->whereIn('id', $slidesToDeleteIds)->get();
                     foreach ($slidesBeingDeleted as $slide) {
                         if ($slide->image_url) {
@@ -89,10 +94,9 @@ class CarouselController extends Controller
 
                 foreach ($data['slides'] as $slideData) {
                     if (isset($slideData['image'])) {
-                        $slideData['image_url'] = FileUploadService::uploadBannerImage($slideData['image']);
+                        $slideData['image_url'] = CarouselSlideUploadService::uploadImage($slideData['image']);
                         unset($slideData['image']);
                     }
-
                     $slideId = $slideData['id'] ?? null;
                     if ($slideId && in_array($slideId, $currentSlideIds)) {
                         $slide = $carousel->slides()->find($slideId);
@@ -102,8 +106,9 @@ class CarouselController extends Controller
                             }
                             $slide->update(array_diff_key($slideData, ['id' => 0]));
                         }
+
                     } else {
-                        unset($slideData['id']); 
+                        unset($slideData['id']);
                         $carousel->slides()->create($slideData);
                     }
                 }
@@ -118,7 +123,7 @@ class CarouselController extends Controller
      */
     public function destroy(Carousel $carousel): JsonResponse
     {
-        \DB::transaction(function() use ($carousel) {
+        \DB::transaction(function () use ($carousel) {
             foreach ($carousel->slides as $slide) {
                 if ($slide->image_url) {
                     FileUploadService::deleteImageByUrl($slide->image_url);
@@ -126,7 +131,7 @@ class CarouselController extends Controller
             }
             $carousel->delete();
         });
-        
+
         return response()->noContent();
     }
 }

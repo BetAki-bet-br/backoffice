@@ -16,6 +16,15 @@ class CarouselSlide extends Model
         'alt',
         'duration',
         'order',
+        'is_active',
+        'publish_at',
+        'expire_at',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'publish_at' => 'datetime',
+        'expire_at' => 'datetime',
     ];
 
     /**
