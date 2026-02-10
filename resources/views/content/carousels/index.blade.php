@@ -179,6 +179,47 @@
     </template>
 
     @push('scripts')
+        <style>
+            .file-upload-wrapper {
+                border-radius: 8px;
+                padding: 15px;
+                background-color: #f8f9fa;
+            }
+
+            .file-upload-container {
+                position: relative;
+            }
+
+            .current-image {
+                border: 2px solid #dee2e6;
+                border-radius: 4px;
+                padding: 10px;
+                background-color: #fff;
+                display: inline-block;
+            }
+
+            .form-control[type="file"] {
+                padding: 10px;
+                border: 2px dashed #dee2e6;
+                border-radius: 4px;
+                transition: border-color 0.3s ease;
+            }
+
+            .form-control[type="file"]:hover {
+                border-color: #0d6efd;
+            }
+
+            .form-control[type="file"]:focus {
+                border-color: #0d6efd;
+                box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+            }
+
+            .img-thumbnail {
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 4px;
+            }
+        </style>
         <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
         <script>
             function inputToIso(v) {
