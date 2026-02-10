@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use OpenApi\Annotations as OA;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Domain\Banners\Banner;
 use App\Http\Requests\Banners\BannerRequest;
+use App\Models\Domain\Banners\Banner;
 use App\Services\FileUploadService;
+use Illuminate\Http\Request;
+use OpenApi\Annotations as OA;
 
 class BannerController extends Controller
 {
@@ -17,6 +17,7 @@ class BannerController extends Controller
      *   tags={"Banners"},
      *   security={{"bearerAuth": {}}},
      *   summary="Listar banners (cursor paginate)",
+     *
      *   @OA\Response(response=200, description="OK", @OA\JsonContent(ref="#/components/schemas/BannerIndex"))
      * )
      */
@@ -35,14 +36,22 @@ class BannerController extends Controller
         }
 
         if ($request->filled('q')) {
-            $q->where('slug', 'like', '%' . $request->input('q') . '%');
+            $searchTerm = $request->input('q');
+            // Check for an exact match first
+            $exactMatchQuery = (clone $q)->where('slug', $searchTerm);
+            if ($exactMatchQuery->exists()) {
+                $q->where('slug', $searchTerm);
+            } else {
+                // Fallback to partial match
+                $q->where('slug', 'like', '%'.$searchTerm.'%');
+            }
         }
 
         if ($request->filled('countries')) {
             $countries = explode(',', $request->input('countries'));
             $countries = array_map('trim', $countries);
             if (count($countries) > 0) {
-                 $q->where(function($query) use ($countries) {
+                $q->where(function ($query) use ($countries) {
                     foreach ($countries as $country) {
                         $query->orWhereJsonContains('countries', $country);
                     }
@@ -59,7 +68,9 @@ class BannerController extends Controller
      *   tags={"Banners"},
      *   security={{"bearerAuth": {}}},
      *   summary="Criar banner",
+     *
      *   @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/BannerStoreRequest")),
+     *
      *   @OA\Response(response=201, description="Criado", @OA\JsonContent(ref="#/components/schemas/Banner"))
      * )
      */
@@ -68,12 +79,12 @@ class BannerController extends Controller
         $banner = \DB::transaction(function () use ($request) {
             $data = $request->validated();
             $data['created_by'] = $request->user()->id;
-            
+
             // Handle file upload if cover_url file is provided
             if ($request->hasFile('cover_url')) {
                 $data['cover_url'] = FileUploadService::uploadBannerImage($request->file('cover_url'));
             }
-            
+
             $banner = Banner::create($data);
 
             foreach (($data['translations'] ?? []) as $t) {
@@ -92,8 +103,11 @@ class BannerController extends Controller
      *   tags={"Banners"},
      *   security={{"bearerAuth": {}}},
      *   summary="Atualizar banner",
+     *
      *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *   @OA\RequestBody(required=true, @OA\JsonContent(ref="#/components/schemas/BannerStoreRequest")),
+     *
      *   @OA\Response(response=200, description="OK", @OA\JsonContent(ref="#/components/schemas/Banner"))
      * )
      */
@@ -102,7 +116,7 @@ class BannerController extends Controller
         $banner = \DB::transaction(function () use ($request, $banner) {
             $data = $request->validated();
             $data['updated_by'] = $request->user()->id;
-            
+
             // Handle cover_url removal
             if ($request->boolean('remove_cover_url')) {
                 // Delete old image if exists
@@ -121,7 +135,7 @@ class BannerController extends Controller
                 // Upload new image
                 $data['cover_url'] = FileUploadService::uploadBannerImage($request->file('cover_url'));
             }
-            
+
             $banner->update($data);
 
             if (isset($data['translations'])) {
@@ -143,15 +157,17 @@ class BannerController extends Controller
      *   tags={"Banners"},
      *   security={{"bearerAuth": {}}},
      *   summary="Publicar imediatamente (override de agendamento)",
+     *
      *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *   @OA\Response(response=200, description="OK", @OA\JsonContent(ref="#/components/schemas/Banner"))
      * )
      */
     public function publish(Request $request, Banner $banner)
     {
         $banner->update([
-            'status'       => 'published',
-            'publish_at'   => now(),
+            'status' => 'published',
+            'publish_at' => now(),
             'published_by' => $request->user()->id,
         ]);
 
@@ -166,6 +182,7 @@ class BannerController extends Controller
     public function destroy(Request $request, Banner $banner)
     {
         $banner->delete();
+
         return response()->noContent();
     }
 }
