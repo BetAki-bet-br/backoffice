@@ -186,7 +186,7 @@
 
                 currentSections = gameListCategories.map(c => ({
                     type: 'game-list',
-                    title: c.name, // Use the category's own name
+                    title: c.name,
                     categoryId: c.id,
                     metadata: {}
                 }));
@@ -210,29 +210,29 @@
                     handle: '.handle',
                     ghostClass: 'bg-light',
                     onEnd: function(evt) {
-                        // Reorder currentSections array based on DOM
+
                         const oldIndex = evt.oldIndex;
                         const newIndex = evt.newIndex;
 
                         if (oldIndex === newIndex) return;
 
-                        // Move item in array
                         const movedItem = currentSections.splice(oldIndex, 1)[0];
                         currentSections.splice(newIndex, 0, movedItem);
 
-                        // Re-render to ensure all event listeners and indices are correct
+
                         renderSections();
                     }
                 });
             }
 
             async function loadResources() {
-                // Fetch Categories
                 try {
-                    // Fetch all active categories (we might want to filter by vertical, but fetch all for now and filter in UI)
-                    const resCat = await apiFetch('/api/v1/categories?status=active&per_page=100');
+
+                    const resCat = await apiFetch('/api/v1/categories?status=active&per_page=9999');
                     if (resCat.ok) {
                         const data = await resCat.json();
+
+                        console.log('Categorias carregadas:', data.data);
                         loadedResources.categories = data.data || [];
                     }
 
@@ -275,14 +275,7 @@
                     if (!res.ok) throw new Error('Falha ao carregar config');
 
                     const data = await res.json();
-                    currentSections = data.sections || []; // The API returns { sections: [...] }
-
-                    // If no sections configured (empty), maybe we want to show default? 
-                    // The API returns defaults if config is empty? 
-                    // Actually the LobbyLayoutController logic:
-                    // if (empty($sectionsConfig)) return buildDefaultSections...
-                    // But the LobbyController@show returns the raw setting value.
-                    // If the raw setting is empty, it returns ['sections' => []].
+                    currentSections = data.sections || [];
 
                     renderSections();
 
@@ -458,24 +451,11 @@
                 if (type === 'game-list') {
                     document.getElementById('groupCategory').classList.remove('d-none');
 
-                    const vertical = verticalSelector.value;
-                    const previouslySelected = secCategoryId.value;
-
-                    // Repopulate categories based on vertical
                     secCategoryId.innerHTML = '<option value="">Selecione...</option>';
                     loadedResources.categories
-                        .filter(c => {
-                            const catsVerticals = c.verticals || (c.vertical ? [c.vertical] : []);
-                            return catsVerticals.includes(vertical);
-                        })
                         .forEach(c => {
                             secCategoryId.innerHTML += `<option value="${c.id}">${c.name}</option>`;
                         });
-
-                    // Restore selection if possible
-                    if (previouslySelected) {
-                        secCategoryId.value = previouslySelected;
-                    }
                 }
                 if (type === 'top-10-list') document.getElementById('groupTopList').classList.remove('d-none');
                 if (type === 'mais-premiados') document.getElementById('groupAwarded').classList.remove('d-none');

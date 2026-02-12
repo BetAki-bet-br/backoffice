@@ -123,7 +123,10 @@ class CategorySyncService
         if (!empty($games) && is_array($games)) {
             Log::info("Category {$category->id} ({$name}) has ".count($games)." games from Lobby API payload.");
 
-            $slotIds = [];
+            $slotsToUpsert = [];
+            $portalGamesToUpsert = [];
+            $gamePositionMap = [];
+
             foreach ($games as $gameIndex => $gameData) {
                 if (!is_array($gameData) || empty($gameData['externalId']) || empty($gameData['name'])) {
                     Log::warning('Skipping invalid game data from payload.', ['category_id' => $category->id, 'game_data' => $gameData]);
@@ -152,49 +155,78 @@ class CategorySyncService
                     }
                 }
 
-                // 1. Update/Create Slot
-                $slot = Slot::updateOrCreate(
-                    [
-                        'provider' => $providerName,
-                        'provider_game_id' => $gameExternalId,
-                    ],
-                    [
-                        'title' => $gameTitle,
-                        'status' => 'active',
-                        'tags' => [
-                            'gameTypeName' => $gameData['gameTypeName'] ?? null,
-                            'gameTypeId' => $gameData['gameTypeId'] ?? null,
-                            'productId' => $gameData['productId'] ?? null,
-                            'productSupplierId' => $gameData['productSupplierId'] ?? null,
-                            'id' => $gameData['id'] ?? null,
-                            'demoPlayRestricted' => $gameData['demoPlayRestricted'] ?? null,
-                            'realPlayRestricted' => $gameData['realPlayRestricted'] ?? null,
-                            'maintenanceModeEnabled' => $gameData['maintenanceModeEnabled'] ?? null,
-                        ],
-                    ]
-                );
+                // Prepare data for upsert
+                $slotsToUpsert[] = [
+                    'provider' => $providerName,
+                    'provider_game_id' => $gameExternalId,
+                    'title' => $gameTitle,
+                    'status' => 'active',
+                    'tags' => json_encode([ // JSON encode for upsert
+                        'gameTypeName' => $gameData['gameTypeName'] ?? null,
+                        'gameTypeId' => $gameData['gameTypeId'] ?? null,
+                        'productId' => $gameData['productId'] ?? null,
+                        'productSupplierId' => $gameData['productSupplierId'] ?? null,
+                        'id' => $gameData['id'] ?? null,
+                        'demoPlayRestricted' => $gameData['demoPlayRestricted'] ?? null,
+                        'realPlayRestricted' => $gameData['realPlayRestricted'] ?? null,
+                        'maintenanceModeEnabled' => $gameData['maintenanceModeEnabled'] ?? null,
+                    ]),
+                ];
 
-                // 2. Update/Create PortalGame
-                PortalGame::updateOrCreate(
-                    [
-                        'portal_id' => $portalId,
-                        'external_id' => $gameExternalId,
-                    ],
-                    [
-                        'name' => $gameTitle,
-                        'product_name' => $providerName,
-                        'supplier_name' => $gameData['productSupplierName'] ?? null,
-                        'payload' => $gameData,
-                    ]
-                );
+                $portalGamesToUpsert[] = [
+                    'portal_id' => $portalId,
+                    'external_id' => $gameExternalId,
+                    'name' => $gameTitle,
+                    'product_name' => $providerName,
+                    'supplier_name' => $gameData['productSupplierName'] ?? null,
+                    'payload' => json_encode($gameData), // JSON encode for upsert
+                ];
 
-                $slotIds[$slot->id] = ['position' => $gameIndex];
+                // Map composite key to position
+                $compositeKey = $providerName . '|' . $gameExternalId;
+                $gamePositionMap[$compositeKey] = $gameIndex;
             }
 
-            if (!empty($slotIds)) {
-                Log::info("Syncing slots for category {$category->id}", ['slot_ids_to_sync' => count($slotIds)]);
-                $category->slots()->sync($slotIds);
-                $this->stats['games_synced'] += count($slotIds);
+            if (!empty($slotsToUpsert)) {
+                // 1. Upsert Slots and PortalGames atomically
+                Slot::upsert(
+                    $slotsToUpsert,
+                    ['provider', 'provider_game_id'],
+                    ['title', 'status', 'tags']
+                );
+
+                PortalGame::upsert(
+                    $portalGamesToUpsert,
+                    ['portal_id', 'external_id'],
+                    ['name', 'product_name', 'supplier_name', 'payload']
+                );
+
+                // 2. Fetch the IDs of the upserted slots
+                $slots = Slot::where(function ($query) use ($slotsToUpsert) {
+                    foreach ($slotsToUpsert as $slot) {
+                        $query->orWhere(function ($q) use ($slot) {
+                            $q->where('provider', $slot['provider'])
+                              ->where('provider_game_id', $slot['provider_game_id']);
+                        });
+                    }
+                })->select('id', 'provider', 'provider_game_id')->get();
+
+                // 3. Build the array for syncing
+                $slotIdsToSync = [];
+                foreach ($slots as $slot) {
+                    $compositeKey = $slot->provider . '|' . $slot->provider_game_id;
+                    if (isset($gamePositionMap[$compositeKey])) {
+                        $position = $gamePositionMap[$compositeKey];
+                        $slotIdsToSync[$slot->id] = ['position' => $position];
+                    }
+                }
+
+                // 4. Sync slots to the category
+                if (!empty($slotIdsToSync)) {
+                    Log::info("Syncing slots for category {$category->id}", ['slot_ids_to_sync' => count($slotIdsToSync)]);
+                    $category->slots()->sync($slotIdsToSync);
+                    $this->stats['games_synced'] += count($slotIdsToSync);
+                }
             }
         }
 
@@ -212,17 +244,22 @@ class CategorySyncService
         $count = count($this->providersCache);
         if ($count > 0) {
             Log::info("Upserting {$count} providers...");
+            $providersToUpsert = [];
             foreach ($this->providersCache as $id => $data) {
-                Provider::updateOrCreate(
-                    ['external_id' => $id],
-                    [
-                        'name' => $data['name'],
-                        'game_count' => count($data['games']),
-                        'status' => 'active',
-                        'verticals' => $data['verticals'],
-                    ]
-                );
+                $providersToUpsert[] = [
+                    'external_id' => $id,
+                    'name' => $data['name'],
+                    'game_count' => count($data['games']),
+                    'status' => 'active',
+                    'verticals' => json_encode($data['verticals']),
+                ];
             }
+
+            Provider::upsert(
+                $providersToUpsert,
+                ['external_id'],
+                ['name', 'game_count', 'status', 'verticals']
+            );
         }
         return $count;
     }
