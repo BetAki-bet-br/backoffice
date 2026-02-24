@@ -1,0 +1,30 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "external_id": "pragmatic",
+      "name": "Pragmatic Play",
+      "games_count": 150,
+      "verticals": ["slots"],
+      "status": "active"
+    },
+    {
+      "id": 2,
+      "external_id": "evolution",
+      "name": "Evolution Gaming",
+      "games_count": 80,
+      "verticals": ["live"],
+      "status": "active"
+    },
+    {
+      "id": 3,
+      "external_id": "pgsoft",
+      "name": "PG Soft",
+      "games_count": 45,
+      "verticals": ["slots"],
+      "status": "inactive"
+    }
+  ],
+  "next_cursor": null,
+  "prev_cursor": null
+}

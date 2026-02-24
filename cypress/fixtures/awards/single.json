@@ -1,0 +1,11 @@
+{
+  "data": {
+    "id": 1,
+    "title": "Premiados Janeiro",
+    "vertical": "slots",
+    "status": "published",
+    "period_start": "2025-01-01",
+    "period_end": "2025-01-31",
+    "criteria": { "metric": "win_amount", "min_win": 100 }
+  }
+}

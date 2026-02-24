@@ -1,0 +1,9 @@
+{
+  "data": {
+    "id": 1,
+    "name": "Admin Test",
+    "email": "admin@test.com",
+    "status": "active",
+    "roles": ["admin"]
+  }
+}

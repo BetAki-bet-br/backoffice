@@ -1,0 +1,10 @@
+{
+  "data": {
+    "id": 1,
+    "name": "Menu Principal",
+    "slug": "menu-principal",
+    "order": 1,
+    "status": "active",
+    "meta": {}
+  }
+}

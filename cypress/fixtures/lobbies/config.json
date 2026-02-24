@@ -1,0 +1,23 @@
+{
+  "data": {
+    "vertical": "slots",
+    "sections": [
+      {
+        "id": 1,
+        "type": "game-list",
+        "title": "Populares",
+        "resource_id": 1,
+        "display_count": 12,
+        "order": 1
+      },
+      {
+        "id": 2,
+        "type": "top-10-list",
+        "title": "Top 10 da Semana",
+        "resource_id": 1,
+        "display_count": 10,
+        "order": 2
+      }
+    ]
+  }
+}

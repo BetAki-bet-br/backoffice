@@ -1,0 +1,18 @@
+{
+  "data": {
+    "id": 1,
+    "key": "main-footer",
+    "status": "published",
+    "country": "BR",
+    "brand": "default",
+    "publish_at": "2025-01-01T00:00:00Z",
+    "translations": [
+      {
+        "locale": "pt-BR",
+        "legal_title": "Termos de Uso",
+        "legal_text": "Lorem ipsum dolor sit amet.",
+        "disclaimer": "Jogue com responsabilidade."
+      }
+    ]
+  }
+}
