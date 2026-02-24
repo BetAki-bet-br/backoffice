@@ -6,17 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Casino\CategoryRequest;
 use App\Http\Requests\Casino\CategorySlotsSyncRequest;
 use App\Http\Resources\CategoryResource;
-use App\Http\Resources\SlotResource;
+use App\Jobs\SyncCategoriesJob;
 use App\Models\Domain\Casino\Category;
-use App\Models\Domain\Casino\PortalGame;
 use App\Models\Domain\Casino\GameExtra;
+use App\Models\Domain\Casino\PortalGame;
 use App\Models\Domain\Casino\Slot;
+use App\Models\SyncJob;
 use App\Services\FileUploadService;
 use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
-use App\Jobs\SyncCategoriesJob;
-
-use App\Models\SyncJob;
 
 class CategoryController extends Controller
 {
@@ -25,33 +23,33 @@ class CategoryController extends Controller
      *  tags={"Categories"},
      *  security={{"bearerAuth": {}}},
      *  summary="Listar categorias",
+     *
      *  @OA\Parameter(name="q", in="query", @OA\Schema(type="string")),
      *  @OA\Parameter(name="status", in="query", @OA\Schema(type="string", enum={"active","inactive"})),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function index(Request $request)
     {
         $vertical = $request->vertical;
-        if ($vertical === 'slot') $vertical = 'slots';
+        if ($vertical === 'slot') {
+            $vertical = 'slots';
+        }
 
         $q = Category::query()
             ->withCount('slots')
-            ->when($request->filled('q'), fn($qq) =>
-                $qq->where('name', 'ilike', '%'.$request->q.'%')
-                   ->orWhere('slug', 'ilike', '%'.$request->q.'%'))
-            ->when($request->filled('status'), fn($qq) =>
-                $qq->where('status', $request->status))
-            ->when($vertical, fn($qq) =>
-                $qq->whereJsonContains('verticals', $vertical))
-            ->when($request->filled('type'), fn($qq) =>
-                $qq->where('type', $request->type))
+            ->when($request->filled('q'), fn ($qq) => $qq->where('name', 'ilike', '%'.$request->q.'%')
+                ->orWhere('slug', 'ilike', '%'.$request->q.'%'))
+            ->when($request->filled('status'), fn ($qq) => $qq->where('status', $request->status))
+            ->when($vertical, fn ($qq) => $qq->whereJsonContains('verticals', $vertical))
+            ->when($request->filled('type'), fn ($qq) => $qq->where('type', $request->type))
             ->orderBy('name');
 
         if ($request->get('format') === 'sublevel') {
             $categories = $q->has('slots', '>', 1)->with('slots')->get();
 
             $externalIds = $categories
-                ->flatMap(fn($cat) => $cat->slots->pluck('provider_game_id'))
+                ->flatMap(fn ($cat) => $cat->slots->pluck('provider_game_id'))
                 ->filter()
                 ->unique()
                 ->values();
@@ -71,7 +69,7 @@ class CategoryController extends Controller
                     ->map(function (Slot $slot) use ($portalGames, $gameExtras) {
                         $portal = $portalGames->get($slot->provider_game_id);
                         $payload = $portal?->payload;
-                        
+
                         if ($payload) {
                             $extra = $gameExtras->get($slot->provider_game_id);
                             if ($extra) {
@@ -80,7 +78,7 @@ class CategoryController extends Controller
                                 $payload['min_bet'] = $extra->min_bet;
                             }
                         }
-                        
+
                         return $payload;
                     })
                     ->filter()
@@ -109,6 +107,7 @@ class CategoryController extends Controller
      *  path="/api/v1/categories/slots",
      *  tags={"Categories"},
      *  summary="Listar categorias de slots (sem jogos)",
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function slots()
@@ -120,6 +119,7 @@ class CategoryController extends Controller
      *  path="/api/v1/categories/live",
      *  tags={"Categories"},
      *  summary="Listar categorias de live casino (sem jogos)",
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function live()
@@ -134,7 +134,7 @@ class CategoryController extends Controller
             ->where('status', 'active')
             ->where(function ($query) {
                 $query->whereNull('meta->is_placeholder')
-                      ->orWhere('meta->is_placeholder', '!=', true);
+                    ->orWhere('meta->is_placeholder', '!=', true);
             })
             ->whereHas('slots', null, '>', 1)
             ->orderBy('name')
@@ -148,7 +148,9 @@ class CategoryController extends Controller
      *  tags={"Categories"},
      *  security={{"bearerAuth": {}}},
      *  summary="Criar categoria",
+     *
      *  @OA\RequestBody(required=true),
+     *
      *  @OA\Response(response=201, description="Criado")
      * ) */
     public function store(CategoryRequest $request)
@@ -161,7 +163,7 @@ class CategoryController extends Controller
             $data['cover_url'] = FileUploadService::uploadCategoryImage($request->file('cover_url'));
         }
 
-        $category = \DB::transaction(fn() => Category::create($data));
+        $category = \DB::transaction(fn () => Category::create($data));
 
         return response()->json($category, 201);
     }
@@ -171,17 +173,21 @@ class CategoryController extends Controller
      *  tags={"Categories"},
      *  security={{"bearerAuth": {}}},
      *  summary="Detalhar categoria",
+     *
      *  @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *  @OA\Parameter(name="with_slots", in="query", required=false, @OA\Schema(type="boolean", default="true", description="Incluir slots associados")),
      *  @OA\Parameter(name="slots_limit", in="query", required=false, @OA\Schema(type="integer", default=50, description="Limite de slots retornados")),
      *  @OA\Parameter(name="slots_page", in="query", required=false, @OA\Schema(type="integer", default=1, description="Página de slots")),
+     * example for all categories with slots:
+     * /api/v1/categories/{id}?with_slots=true&slots_limit=100&
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function show(Request $request, Category $category)
     {
         $withSlots = $request->boolean('with_slots', true);
 
-        if (!$withSlots) {
+        if (! $withSlots) {
             return response()->json(CategoryResource::make($category));
         }
 
@@ -225,16 +231,20 @@ class CategoryController extends Controller
                 }
 
                 $pg->payload = $payload;
+
                 return $pg;
             });
 
             $games = $category->slots
                 ->map(function ($slot) use ($portalGamesWithExtras) {
                     $payload = $portalGamesWithExtras->get($slot->provider_game_id)?->payload;
-                    if (!$payload) return null;
+                    if (! $payload) {
+                        return null;
+                    }
 
                     $payload['id'] = $slot->id;
                     $payload['pivot'] = ['position' => $slot->pivot->position];
+
                     return $payload;
                 })
                 ->filter()
@@ -252,8 +262,11 @@ class CategoryController extends Controller
      *  tags={"Categories"},
      *  security={{"bearerAuth": {}}},
      *  summary="Atualizar categoria",
+     *
      *  @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *  @OA\RequestBody(required=true),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function update(CategoryRequest $request, Category $category)
@@ -271,7 +284,7 @@ class CategoryController extends Controller
             $data['cover_url'] = FileUploadService::uploadCategoryImage($request->file('cover_url'));
         }
 
-        \DB::transaction(fn() => $category->update($data));
+        \DB::transaction(fn () => $category->update($data));
 
         return response()->json($category->refresh());
     }
@@ -281,12 +294,15 @@ class CategoryController extends Controller
      *  tags={"Categories"},
      *  security={{"bearerAuth": {}}},
      *  summary="Remover categoria",
+     *
      *  @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *  @OA\Response(response=204, description="Sem conteúdo")
      * ) */
     public function destroy(Category $category)
     {
         $category->delete();
+
         return response()->noContent();
     }
 
@@ -295,25 +311,32 @@ class CategoryController extends Controller
      *  tags={"Categories"},
      *  security={{"bearerAuth": {}}},
      *  summary="Sincronizar slots da categoria (com posição por item)",
+     *
      *  @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *  @OA\RequestBody(
      *    required=true,
+     *
      *    @OA\JsonContent(
+     *
      *      @OA\Property(property="items", type="array",
+     *
      *        @OA\Items(
+     *
      *          @OA\Property(property="slot_id", type="integer", example=1),
      *          @OA\Property(property="position", type="integer", example=1)
      *        )
      *      )
      *    )
      *  ),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function syncSlots(CategorySlotsSyncRequest $request, Category $category)
     {
         $payload = collect($request->validated()['items'])
             ->keyBy('slot_id')
-            ->map(fn($i) => ['position' => (int) ($i['position'] ?? 0)])
+            ->map(fn ($i) => ['position' => (int) ($i['position'] ?? 0)])
             ->all();
 
         \DB::transaction(function () use ($category, $payload) {
@@ -328,12 +351,16 @@ class CategoryController extends Controller
      *  tags={"Categories"},
      *  security={{"bearerAuth": {}}},
      *  summary="Sincronizar categorias da API externa",
+     *
      *  @OA\RequestBody(
      *    required=false,
+     *
      *    @OA\JsonContent(
+     *
      *      @OA\Property(property="portal_id", type="integer", example=1)
      *    )
      *  ),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function sync(Request $request)
@@ -344,14 +371,14 @@ class CategoryController extends Controller
         $job = SyncJob::create([
             'name' => 'Category Sync',
             'status' => 'pending',
-            'message' => "Syncing categories for Portal ID: $portalId" . ($levelId ? " and Level ID: $levelId" : ""),
+            'message' => "Syncing categories for Portal ID: $portalId".($levelId ? " and Level ID: $levelId" : ''),
         ]);
 
         SyncCategoriesJob::dispatch($portalId, $levelId, $job->id);
 
         return response()->json([
             'message' => 'Category synchronization has been queued.',
-            'sync_job_id' => $job->id
+            'sync_job_id' => $job->id,
         ]);
     }
 }

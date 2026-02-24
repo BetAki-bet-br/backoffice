@@ -225,16 +225,23 @@
                 });
             }
 
+            async function fetchAllPages(url) {
+                const results = [];
+                let nextUrl = url;
+                while (nextUrl) {
+                    const res = await apiFetch(nextUrl);
+                    if (!res.ok) break;
+                    const data = await res.json();
+                    results.push(...(data.data || []));
+                    nextUrl = data.next_page_url || null;
+                }
+                return results;
+            }
+
             async function loadResources() {
                 try {
 
-                    const resCat = await apiFetch('/api/v1/categories?status=active&per_page=9999');
-                    if (resCat.ok) {
-                        const data = await resCat.json();
-
-                        console.log('Categorias carregadas:', data.data);
-                        loadedResources.categories = data.data || [];
-                    }
+                    loadedResources.categories = await fetchAllPages('/api/v1/categories?status=active');
 
                     // Fetch TopLists
                     const resTL = await apiFetch('/api/v1/top-lists?status=published');
