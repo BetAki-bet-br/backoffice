@@ -38,6 +38,7 @@ Este documento fornece uma visão técnica completa do projeto **Betaki Admin AP
 ## 🔧 Stack Tecnológico
 
 ### Backend
+
 - **Framework**: Laravel 12
 - **PHP**: 8.2+
 - **Banco de Dados**: PostgreSQL 16
@@ -48,13 +49,15 @@ Este documento fornece uma visão técnica completa do projeto **Betaki Admin AP
 - **API Docs**: L5-Swagger (OpenAPI 3.0.3)
 
 ### Frontend (Assets)
+
 - **Vite**: v7.0.7
 - **TailwindCSS**: v4.0.0
 - **Axios**: v1.11.0
 
 ### DevTools
+
 - **Testing**: PHPUnit 11.5.3
-- **Code Quality**: 
+- **Code Quality**:
   - PHPStan (static analysis)
   - Larastan (PHPStan + Laravel)
   - Laravel Pint (code formatting)
@@ -186,6 +189,7 @@ Request → Route → Controller → Service/Repository → Model → DB
 ```
 
 **Exemplo**:
+
 ```php
 // routes/api.php
 Route::apiResource('slots', SlotController::class);
@@ -216,11 +220,11 @@ class PortalGamesSyncService {
     public static function make(): self {
         return new self(BasePortalApiClient::fromConfig());
     }
-    
+
     public function syncPortal(int $portalId): array {
         $json = $this->client->getPortalGames($portalId);
         $list = $json['gameMainList'] ?? [];
-        
+
         // Processamento e upsert
         PortalGame::upsert($rows, ...);
     }
@@ -243,6 +247,7 @@ Models/Domain/
 ```
 
 Benefícios:
+
 - Separação clara de contextos
 - Facilita manutenção em projetos grandes
 - Modelos relacionados ficarão próximos
@@ -282,38 +287,43 @@ Menus (1) → (N) MenuItems (hierarchical)
 ### Principais Modelos
 
 #### **User** (`app/Models/User.php`)
+
 ```php
 class User extends Authenticatable {
     use HasApiTokens, HasRoles, HasFactory, Notifiable;
-    
+
     protected $fillable = ['name', 'email', 'password', 'status'];
     protected $guard_name = 'api';  // Guard do Spatie
 }
 ```
+
 - **Relações**: Roles (Spatie), Tokens (Sanctum), created_by/updated_by em vários modelos
 - **Guard**: `api`
 - **Hash**: bcrypt automático
 
 #### **Slot** (`app/Models/Domain/Casino/Slot.php`)
+
 ```php
 class Slot extends Model {
     protected $fillable = [
-        'title', 'cover_url', 'status', 'provider', 
+        'title', 'cover_url', 'status', 'provider',
         'provider_game_id', 'tags', 'position'
     ];
     protected $casts = ['tags' => 'array'];
-    
+
     public function categories() {
         return $this->belongsToMany(Category::class, 'category_slot')
             ->withPivot('position');
     }
 }
 ```
+
 - **SoftDeletes**: Deletar logicamente
 - **Muitos-para-muitos**: Categories, TopLists com pivot data
 - **Relacionamento**: GameExtra (by external_id)
 
 #### **Category** (`app/Models/Domain/Casino/Category.php`)
+
 ```php
 class Category extends Model {
     protected $casts = [
@@ -322,20 +332,23 @@ class Category extends Model {
     ];
 }
 ```
+
 - **JSON Columns**: `vertical` (tipo de jogo), `meta` (external_id, etc)
 - **Slots**: many-to-many
 
 #### **PortalGame** (`app/Models/Domain/Casino/PortalGame.php`)
+
 - **Propósito**: Cache de jogos sincronizados da API base
 - **Colunas**: `external_id`, `portal_id`, `name`, `supplier_name`, `payload` (JSON)
 - **Sem Model**: Apenas para sincronização (raw queries)
 
 #### **Setting** (`app/Models/Setting.php`)
+
 ```php
 class Setting extends Model {
     protected $fillable = ['key', 'group', 'type', 'value', 'is_public'];
     protected $casts = ['value' => 'array'];
-    
+
     public function getScalarValue(): mixed {
         return match($this->type) {
             'string'  => is_array($v) ? $v['value'] : $v,
@@ -345,23 +358,26 @@ class Setting extends Model {
     }
 }
 ```
+
 - **Tipos**: string, number, boolean, array
 - **Público**: `is_public` (para endpoints públicos)
 
 #### **Banner** (`app/Models/Domain/Banners/Banner.php`)
+
 - **Translatable**: Has many `BannerTranslations`
 - **Status**: draft, scheduled, published
 - **Publishing**: Job `PublishScheduledBannersJob`
 
 #### **Footer** (`app/Models/Domain/Navigation/Footer.php`)
+
 ```php
 class Footer extends Model {
     use SoftDeletes;
-    
+
     public function links() {
         return $this->hasMany(FooterLink::class);
     }
-    
+
     public function translations() {
         return $this->hasMany(FooterTranslation::class);
     }
@@ -375,6 +391,7 @@ class Footer extends Model {
 ### Estrutura de Rotas
 
 #### **Públicas** (sem autenticação)
+
 ```
 GET    /api/v1/banners              # Listar banners
 GET    /api/v1/banners/{id}         # Ver banner
@@ -390,6 +407,7 @@ GET    /api/v1/settings/public      # Configurações públicas
 ```
 
 #### **Autenticadas** (Bearer Token)
+
 ```
 GET    /api/v1/auth/me              # Dados do usuário
 POST   /api/v1/auth/logout          # Logout
@@ -433,6 +451,7 @@ PUT    /api/v1/settings/{id}        # Editar setting
 ### Padrões de Resposta
 
 #### **Sucesso**
+
 ```json
 {
   "id": 1,
@@ -443,6 +462,7 @@ PUT    /api/v1/settings/{id}        # Editar setting
 ```
 
 #### **Erro**
+
 ```json
 {
   "error": {
@@ -453,6 +473,7 @@ PUT    /api/v1/settings/{id}        # Editar setting
 ```
 
 #### **Paginação (Cursor)**
+
 ```json
 {
   "data": [...],
@@ -467,12 +488,12 @@ PUT    /api/v1/settings/{id}        # Editar setting
 
 ### Métodos HTTP
 
-| Método | Uso | Status |
-|--------|-----|--------|
-| GET | Listar/Buscar | 200 OK |
-| POST | Criar | 201 Created |
-| PUT/PATCH | Atualizar | 200 OK |
-| DELETE | Deletar | 204 No Content |
+| Método    | Uso           | Status         |
+| --------- | ------------- | -------------- |
+| GET       | Listar/Buscar | 200 OK         |
+| POST      | Criar         | 201 Created    |
+| PUT/PATCH | Atualizar     | 200 OK         |
+| DELETE    | Deletar       | 204 No Content |
 
 ### Validação (Form Requests)
 
@@ -490,6 +511,7 @@ class SlotRequest extends FormRequest {
 ```
 
 **Erro de Validação**:
+
 ```json
 {
   "message": "The given data was invalid.",
@@ -507,6 +529,7 @@ class SlotRequest extends FormRequest {
 - **Annotations**: Comentários `@OA\*` nos controllers e requests
 
 Exemplo:
+
 ```php
 /**
  * @OA\Get(
@@ -526,6 +549,7 @@ public function index(Request $request) { ... }
 ### Laravel Sanctum (Token-based)
 
 #### **Login**
+
 ```bash
 POST /api/v1/auth/login
 {
@@ -542,27 +566,30 @@ Resposta:
 ```
 
 #### **Usar Token**
+
 ```http
 Authorization: Bearer 1|9HQ5gNSOurJz...
 ```
 
 #### **Logout**
+
 ```bash
 POST /api/v1/auth/logout
 ```
 
 Implementação:
+
 ```php
 // app/Http/Controllers/AuthController.php
 public function login(LoginRequest $request) {
     $user = User::where('email', $request->email)->first();
-    
+
     if (!$user || !Hash::check($request->password, $user->password)) {
         return response()->json([
             'error' => ['code' => 'INVALID_CREDENTIALS']
         ], 401);
     }
-    
+
     $token = $user->createToken('admin-panel', ['*'], now()->addDays(60));
     return response()->json([...]);
 }
@@ -571,12 +598,14 @@ public function login(LoginRequest $request) {
 ### Spatie/laravel-permission (RBAC)
 
 #### **Estrutura**
+
 ```
 User (N:M) ↔ Role (N:M) ↔ Permission
 User (N:M) ↔ Permission (direto)
 ```
 
 #### **Uso**
+
 ```php
 // Atribuir role
 $user->assignRole('admin');
@@ -592,12 +621,15 @@ Route::post('banners/{id}/publish', [BannerController::class, 'publish'])
 ```
 
 #### **Roles Padrão**
+
 (Definido em seeders - verificar `RolePermissionSeeder`)
+
 - `admin`: Todas as permissions
 - `manager`: Gerenciar conteúdo
 - `viewer`: Apenas leitura
 
 #### **Guard**
+
 - User model usa `guard_name = 'api'` (Sanctum)
 - Config: `config/permission.php`
 
@@ -610,6 +642,7 @@ Route::post('banners/{id}/publish', [BannerController::class, 'publish'])
 O projeto sincroniza dados com uma **API Base externa** (`services.base_api.url`).
 
 #### **BasePortalApiClient**
+
 ```php
 class BasePortalApiClient {
     public function getPortalGames(int $portalId): array { ... }
@@ -618,6 +651,7 @@ class BasePortalApiClient {
 ```
 
 **Configuração**:
+
 ```php
 // config/services.php
 'base_api' => [
@@ -631,6 +665,7 @@ class BasePortalApiClient {
 #### **Serviços de Sincronização**
 
 ##### **PortalGamesSyncService**
+
 - **O quê**: Sincroniza jogos da API base para tabela `portal_games`
 - **Como**: Faz upsert baseado em `external_id`
 - **Endpoint**: `POST /api/v1/portal-games/sync`
@@ -642,6 +677,7 @@ $result = PortalGamesSyncService::make()->syncPortal($portalId);
 ```
 
 ##### **CategorySyncService**
+
 - **O quê**: Sincroniza categorias de jogos
 - **Lógica**: Cria/atualiza via `meta->external_id`
 - **Fallback**: Slug único se external_id não existir
@@ -652,12 +688,14 @@ $stats = CategorySyncService::make()->syncPortal($portalId);
 ```
 
 ##### **ProviderSyncService**
+
 - **O quê**: Sincroniza produtoras/providers de jogos
 - **Mapping**: `productId` → `external_id`, `productName` → `name`
 
 ### Jobs em Background
 
 #### **PublishScheduledBannersJob**
+
 ```php
 class PublishScheduledBannersJob implements ShouldQueue {
     public function handle() {
@@ -679,6 +717,7 @@ class PublishScheduledBannersJob implements ShouldQueue {
 ### Criando um Novo Endpoint
 
 #### **1. Criar Migration**
+
 ```bash
 php artisan make:migration create_posts_table
 ```
@@ -694,6 +733,7 @@ Schema::create('posts', function (Blueprint $table) {
 ```
 
 #### **2. Criar Model**
+
 ```bash
 php artisan make:model Domain/Banners/Post
 ```
@@ -703,7 +743,7 @@ namespace App\Models\Domain\Banners;
 
 class Post extends Model {
     protected $fillable = ['title', 'content', 'user_id'];
-    
+
     public function author() {
         return $this->belongsTo(User::class, 'user_id');
     }
@@ -711,6 +751,7 @@ class Post extends Model {
 ```
 
 #### **3. Criar Form Request (Validação)**
+
 ```bash
 php artisan make:request Banners/PostRequest
 ```
@@ -722,7 +763,7 @@ class PostRequest extends FormRequest {
     public function authorize(): bool {
         return true;
     }
-    
+
     public function rules(): array {
         return [
             'title' => 'required|string|max:255',
@@ -733,6 +774,7 @@ class PostRequest extends FormRequest {
 ```
 
 #### **4. Criar Controller**
+
 ```bash
 php artisan make:controller Api/V1/PostController --api --model=Domain/Banners/Post
 ```
@@ -753,7 +795,7 @@ class PostController extends Controller {
             ->cursorPaginate(20);
         return response()->json($posts);
     }
-    
+
     /**
      * @OA\Post(path="/api/v1/posts", tags={"Posts"})
      */
@@ -768,17 +810,20 @@ class PostController extends Controller {
 ```
 
 #### **5. Registrar Rota**
+
 ```php
 // routes/api.php
 Route::apiResource('posts', PostController::class);
 ```
 
 #### **6. Gerar Docs**
+
 ```bash
 php artisan l5-swagger:generate
 ```
 
 #### **7. Testar**
+
 ```bash
 php artisan test
 ```
@@ -786,6 +831,7 @@ php artisan test
 ### Padrões de Implementação
 
 #### **Query Scope**
+
 ```php
 // Model
 class Post extends Model {
@@ -799,25 +845,28 @@ $posts = Post::active()->get();
 ```
 
 #### **Eager Loading**
+
 ```php
 // Sempre fazer para evitar N+1
 $posts = Post::with('author', 'comments')->get();
 ```
 
 #### **Transactions para Múltiplas Operações**
+
 ```php
 $post = DB::transaction(function () use ($request) {
     $post = Post::create($request->validated());
-    
+
     foreach ($request->tags as $tag) {
         $post->tags()->create($tag);
     }
-    
+
     return $post->load('tags');
 });
 ```
 
 #### **Seeding Data**
+
 ```bash
 php artisan db:seed
 php artisan db:seed --class=PostSeeder
@@ -830,6 +879,7 @@ php artisan db:seed --class=PostSeeder
 ### Setup Inicial
 
 #### **1. Clone e Instale**
+
 ```bash
 git clone <repo>
 cd backoffice
@@ -838,6 +888,7 @@ npm install
 ```
 
 #### **2. Configure .env**
+
 ```bash
 cp .env.example .env
 ```
@@ -869,11 +920,13 @@ L5_SWAGGER_GENERATE_ALWAYS=true
 ```
 
 #### **3. Suba Containers**
+
 ```bash
 docker compose up -d
 ```
 
 #### **4. Configure Aplicação**
+
 ```bash
 php artisan key:generate
 php artisan migrate
@@ -882,21 +935,22 @@ php artisan l5-swagger:generate
 ```
 
 #### **5. Acesse**
+
 - App: `http://localhost:8080`
 - API: `http://localhost:8080/api/v1`
 - Docs: `http://localhost:8080/api/documentation`
 
 ### Variáveis de Ambiente
 
-| Chave | Padrão | Descrição |
-|-------|--------|-----------|
-| `APP_ENV` | local | Environment (local, staging, production) |
-| `APP_DEBUG` | true | Debug mode |
-| `DB_CONNECTION` | pgsql | Database driver |
-| `QUEUE_CONNECTION` | redis | Queue driver |
-| `CACHE_STORE` | database | Cache store |
-| `BASE_API_URL` | — | URL da API externa |
-| `L5_SWAGGER_GENERATE_ALWAYS` | true | Regenerar docs em cada request |
+| Chave                        | Padrão   | Descrição                                |
+| ---------------------------- | -------- | ---------------------------------------- |
+| `APP_ENV`                    | local    | Environment (local, staging, production) |
+| `APP_DEBUG`                  | true     | Debug mode                               |
+| `DB_CONNECTION`              | pgsql    | Database driver                          |
+| `QUEUE_CONNECTION`           | redis    | Queue driver                             |
+| `CACHE_STORE`                | database | Cache store                              |
+| `BASE_API_URL`               | —        | URL da API externa                       |
+| `L5_SWAGGER_GENERATE_ALWAYS` | true     | Regenerar docs em cada request           |
 
 ### Docker Compose
 
@@ -910,6 +964,7 @@ Services:
 ```
 
 **Comandos Úteis**:
+
 ```bash
 docker compose up -d              # Iniciar
 docker compose down               # Parar
@@ -923,15 +978,15 @@ docker compose exec app bash      # Entrar no container
 
 ### Nomeação
 
-| Tipo | Padrão | Exemplo |
-|------|--------|---------|
-| Classes | PascalCase | `SlotController`, `PortalGame` |
-| Métodos | camelCase | `getSlots()`, `syncPortal()` |
-| Variáveis | snake_case | `$portal_id`, `$game_data` |
-| Constantes | UPPER_SNAKE_CASE | `DEFAULT_TIMEOUT`, `API_VERSION` |
-| Arquivos | PascalCase | `SlotController.php`, `BannerRequest.php` |
-| Rotas | kebab-case | `/api/v1/portal-games/sync` |
-| Banco | snake_case | `portal_games`, `category_slot` |
+| Tipo       | Padrão           | Exemplo                                   |
+| ---------- | ---------------- | ----------------------------------------- |
+| Classes    | PascalCase       | `SlotController`, `PortalGame`            |
+| Métodos    | camelCase        | `getSlots()`, `syncPortal()`              |
+| Variáveis  | snake_case       | `$portal_id`, `$game_data`                |
+| Constantes | UPPER_SNAKE_CASE | `DEFAULT_TIMEOUT`, `API_VERSION`          |
+| Arquivos   | PascalCase       | `SlotController.php`, `BannerRequest.php` |
+| Rotas      | kebab-case       | `/api/v1/portal-games/sync`               |
+| Banco      | snake_case       | `portal_games`, `category_slot`           |
 
 ### Organização de Imports
 
@@ -977,7 +1032,7 @@ public function getPortalGames(int $portalId): array {
 ```php
 /**
  * Sincronizar jogos da API base.
- * 
+ *
  * @param int $portalId ID do portal
  * @return array Estatísticas de sincronização
  */
@@ -1190,11 +1245,13 @@ cache
 Localização: `database/migrations/`
 
 **Convenção de nomes**:
+
 ```
 YYYY_MM_DD_HHMMSS_action_table.php
 ```
 
 **Exemplo**:
+
 ```php
 // 2025_11_03_203428_create_banners_table.php
 Schema::create('banners', function (Blueprint $table) {
@@ -1209,6 +1266,7 @@ Schema::create('banners', function (Blueprint $table) {
 ```
 
 **Executar**:
+
 ```bash
 php artisan migrate              # Todas as pendentes
 php artisan migrate:rollback     # Desfazer último batch
@@ -1232,6 +1290,7 @@ class DatabaseSeeder extends Seeder {
 ```
 
 **Executar**:
+
 ```bash
 php artisan db:seed
 php artisan db:seed --class=RolePermissionSeeder
@@ -1242,15 +1301,19 @@ php artisan db:seed --class=RolePermissionSeeder
 **IMPORTANTE**: Em ambiente Docker, todos os comandos relacionados ao banco de dados (exceto a **criação de migrations**) devem ser executados **dentro do container do PHP**.
 
 #### **Criação de Migrations** (local)
+
 ✅ Pode ser executado na máquina local (fora do container):
+
 ```bash
 php artisan make:migration create_posts_table
 php artisan make:migration add_field_to_posts_table
 ```
 
 #### **Executar Migrations** (dentro do container)
+
 ❌ **NÃO fazer** na máquina local
 ✅ **Fazer** dentro do container:
+
 ```bash
 # Entrar no container
 docker compose exec app bash
@@ -1263,8 +1326,10 @@ php artisan migrate:reset        # Desfazer todas as migrations
 ```
 
 #### **Executar Seeds** (dentro do container)
+
 ❌ **NÃO fazer** na máquina local
 ✅ **Fazer** dentro do container:
+
 ```bash
 # Entrar no container
 docker compose exec app bash
@@ -1275,6 +1340,7 @@ php artisan db:seed --class=RolePermissionSeeder  # Seeder específico
 ```
 
 #### **Refresh Completo** (dentro do container)
+
 ```bash
 docker compose exec app bash
 
@@ -1283,6 +1349,7 @@ php artisan migrate:refresh --seed
 ```
 
 #### **Por quê?**
+
 1. **Conexão com BD**: O container tem acesso direto ao PostgreSQL via `db` (hostname no docker-compose)
 2. **Variáveis de Ambiente**: O `.env` está configurado para o container
 3. **Dependências**: O container tem PHP e todas as dependências instaladas
@@ -1291,6 +1358,7 @@ php artisan migrate:refresh --seed
 ### Relacionamentos
 
 #### **One-to-Many**
+
 ```php
 // Model
 public function slots() {
@@ -1302,6 +1370,7 @@ $category->slots()->attach($slotId);
 ```
 
 #### **Many-to-Many**
+
 ```php
 public function categories() {
     return $this->belongsToMany(Category::class, 'category_slot')
@@ -1314,6 +1383,7 @@ $slot->categories()->attach($categoryId, ['position' => 1]);
 ```
 
 #### **Polymorphic** (se usar)
+
 ```php
 public function created_by() {
     return $this->morphTo();
@@ -1334,6 +1404,7 @@ tests/
 ```
 
 ### Exemplo: Feature Test
+
 ```php
 // tests/Feature/SlotApiTest.php
 namespace Tests\Feature;
@@ -1341,30 +1412,31 @@ namespace Tests\Feature;
 class SlotApiTest extends TestCase {
     public function test_list_slots() {
         $response = $this->getJson('/api/v1/slots');
-        
+
         $response->assertStatus(200)
             ->assertJsonStructure(['data']);
     }
-    
+
     public function test_create_slot_requires_auth() {
         $response = $this->postJson('/api/v1/slots', []);
         $response->assertStatus(401);
     }
-    
+
     public function test_create_slot_with_permission() {
         $user = User::factory()->create();
-        
+
         $response = $this->actingAs($user)
             ->postJson('/api/v1/slots', [
                 'title' => 'Book of Ra',
             ]);
-        
+
         $response->assertStatus(201);
     }
 }
 ```
 
 ### Executar Testes
+
 ```bash
 php artisan test                    # Todos
 php artisan test --filter=Slot      # Específico
@@ -1376,12 +1448,14 @@ php artisan test tests/Feature/SlotApiTest.php
 ## 📊 Monitoring e Logs
 
 ### Laravel Pail (Logs em Tempo Real)
+
 ```bash
 php artisan pail
 php artisan pail --filter=SlotController
 ```
 
 ### Horizon (Queue Monitor)
+
 ```bash
 # Web dashboard
 http://localhost:8080/horizon
@@ -1393,6 +1467,7 @@ php artisan horizon:continue
 ```
 
 ### Logging
+
 ```php
 use Illuminate\Support\Facades\Log;
 
@@ -1407,6 +1482,7 @@ Log::error('Erro na sincronização', ['exception' => $e]);
 ## 🚀 Deployment
 
 ### Checklist Pre-Deploy
+
 - [ ] Variáveis `.env` configuradas
 - [ ] Migrations executadas: `php artisan migrate`
 - [ ] Seeds executadas: `php artisan db:seed`
@@ -1417,8 +1493,9 @@ Log::error('Erro na sincronização', ['exception' => $e]);
 - [ ] Routes cached: `php artisan route:cache`
 
 ### Builds Docker
+
 ```bash
-docker build -f docker/php/Dockerfile -t betaki-api:latest .
+pythdocker build -f docker/php/Dockerfile -t betaki-api:latest .
 
 docker compose -f docker-compose.yml up -d
 
@@ -1431,6 +1508,7 @@ docker compose -f docker-compose.yml up -d
 ## 🐛 Debugging
 
 ### Modo Debug
+
 ```php
 // Ligar no .env
 APP_DEBUG=true
@@ -1443,6 +1521,7 @@ dump($variable);
 ```
 
 ### Tinker (REPL)
+
 ```bash
 php artisan tinker
 
@@ -1453,6 +1532,7 @@ php artisan tinker
 ```
 
 ### Error Handling
+
 ```php
 // app/Exceptions/Handler.php
 public function render($request, Throwable $exception) {
@@ -1492,6 +1572,6 @@ public function render($request, Throwable $exception) {
 
 ---
 
-**Última atualização**: 19 de Janeiro de 2026  
-**Versão do Projeto**: 1.0.0  
+**Última atualização**: 19 de Janeiro de 2026
+**Versão do Projeto**: 1.0.0
 **Stack**: Laravel 12 / PHP 8.4 / PostgreSQL 16
