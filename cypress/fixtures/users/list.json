@@ -1,0 +1,27 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Admin Test",
+      "email": "admin@test.com",
+      "status": "active",
+      "roles": ["admin"]
+    },
+    {
+      "id": 2,
+      "name": "Editor User",
+      "email": "editor@test.com",
+      "status": "active",
+      "roles": ["editor"]
+    },
+    {
+      "id": 3,
+      "name": "Suspended User",
+      "email": "suspended@test.com",
+      "status": "suspended",
+      "roles": []
+    }
+  ],
+  "next_cursor": null,
+  "prev_cursor": null
+}

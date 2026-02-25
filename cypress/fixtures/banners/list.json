@@ -1,0 +1,54 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "slug": "promo-verao",
+      "vertical": "casino",
+      "countries": ["BR", "PT"],
+      "status": "published",
+      "publish_at": "2025-01-01T00:00:00Z",
+      "expire_at": "2025-12-31T23:59:59Z",
+      "link": "https://example.com/promo",
+      "utm_source": "email",
+      "utm_medium": "banner",
+      "utm_campaign": "verao2025",
+      "cover_url": "https://via.placeholder.com/800x200",
+      "media": { "desktop": "https://via.placeholder.com/1200x400", "mobile": "https://via.placeholder.com/600x300" },
+      "translations": [{ "locale": "pt-BR", "data": { "title": "Promoção de Verão" } }]
+    },
+    {
+      "id": 2,
+      "slug": "bonus-boas-vindas",
+      "vertical": "sportbook",
+      "countries": ["BR"],
+      "status": "draft",
+      "publish_at": null,
+      "expire_at": null,
+      "link": "https://example.com/bonus",
+      "utm_source": null,
+      "utm_medium": null,
+      "utm_campaign": null,
+      "cover_url": null,
+      "media": {},
+      "translations": []
+    },
+    {
+      "id": 3,
+      "slug": "live-casino-vip",
+      "vertical": "live_casino",
+      "countries": ["BR", "PT", "AO"],
+      "status": "archived",
+      "publish_at": "2024-06-01T00:00:00Z",
+      "expire_at": "2024-06-30T23:59:59Z",
+      "link": null,
+      "utm_source": null,
+      "utm_medium": null,
+      "utm_campaign": null,
+      "cover_url": "https://via.placeholder.com/800x200",
+      "media": {},
+      "translations": []
+    }
+  ],
+  "next_cursor": "eyJpZCI6M30",
+  "prev_cursor": null
+}

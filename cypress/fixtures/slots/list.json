@@ -1,0 +1,30 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "title": "Sweet Bonanza",
+      "status": "active",
+      "provider": "Pragmatic Play",
+      "provider_game_id": "vs20fruitsw",
+      "cover_url": "https://via.placeholder.com/200x200"
+    },
+    {
+      "id": 2,
+      "title": "Gates of Olympus",
+      "status": "active",
+      "provider": "Pragmatic Play",
+      "provider_game_id": "vs20olympgate",
+      "cover_url": "https://via.placeholder.com/200x200"
+    },
+    {
+      "id": 3,
+      "title": "Big Bass Bonanza",
+      "status": "inactive",
+      "provider": "Pragmatic Play",
+      "provider_game_id": "vs10bbbonanza",
+      "cover_url": null
+    }
+  ],
+  "next_cursor": "eyJpZCI6M30",
+  "prev_cursor": null
+}

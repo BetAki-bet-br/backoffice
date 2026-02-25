@@ -1,0 +1,18 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Home Banner",
+      "slug": "home-banner",
+      "slides_count": 3
+    },
+    {
+      "id": 2,
+      "name": "Promoções",
+      "slug": "promocoes",
+      "slides_count": 5
+    }
+  ],
+  "next_cursor": null,
+  "prev_cursor": null
+}

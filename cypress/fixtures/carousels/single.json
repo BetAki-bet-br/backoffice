@@ -1,0 +1,31 @@
+{
+  "data": {
+    "id": 1,
+    "name": "Home Banner",
+    "slug": "home-banner",
+    "slides": [
+      {
+        "id": 1,
+        "href": "https://example.com/slide1",
+        "alt": "Slide 1",
+        "image_url": "https://via.placeholder.com/1200x400",
+        "duration": 5000,
+        "publish_at": "2025-01-01T00:00:00Z",
+        "expire_at": "2025-12-31T23:59:59Z",
+        "is_active": true,
+        "order": 1
+      },
+      {
+        "id": 2,
+        "href": "https://example.com/slide2",
+        "alt": "Slide 2",
+        "image_url": "https://via.placeholder.com/1200x400",
+        "duration": 5000,
+        "publish_at": null,
+        "expire_at": null,
+        "is_active": true,
+        "order": 2
+      }
+    ]
+  }
+}

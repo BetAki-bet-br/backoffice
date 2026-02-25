@@ -1,0 +1,22 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "title": "Premiados Janeiro",
+      "vertical": "slots",
+      "status": "published",
+      "period_start": "2025-01-01",
+      "period_end": "2025-01-31"
+    },
+    {
+      "id": 2,
+      "title": "Premiados Fevereiro",
+      "vertical": "live",
+      "status": "draft",
+      "period_start": "2025-02-01",
+      "period_end": "2025-02-28"
+    }
+  ],
+  "next_cursor": null,
+  "prev_cursor": null
+}

@@ -1,0 +1,10 @@
+{
+  "data": {
+    "id": 1,
+    "external_id": "pragmatic",
+    "name": "Pragmatic Play",
+    "games_count": 150,
+    "verticals": ["slots"],
+    "status": "active"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "key": "main-footer",
+      "status": "published",
+      "country": "BR",
+      "brand": "default",
+      "publish_at": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": 2,
+      "key": "footer-pt",
+      "status": "draft",
+      "country": "PT",
+      "brand": "default",
+      "publish_at": null
+    }
+  ],
+  "next_cursor": null,
+  "prev_cursor": null
+}

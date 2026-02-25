@@ -1,0 +1,14 @@
+{
+  "data": {
+    "id": 1,
+    "title": "Top 10 Janeiro",
+    "slug": "top-10-janeiro",
+    "status": "published",
+    "vertical": "slots",
+    "type": "manual",
+    "valid_from": "2025-01-01",
+    "valid_until": "2025-01-31",
+    "criteria": {},
+    "slots_count": 10
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "nome": "Populares",
+      "slug": "populares",
+      "verticals": ["slots"],
+      "tipo": "game-list",
+      "status": "active",
+      "slots_count": 12
+    },
+    {
+      "id": 2,
+      "nome": "Novidades",
+      "slug": "novidades",
+      "verticals": ["slots", "live"],
+      "tipo": "game-list",
+      "status": "active",
+      "slots_count": 8
+    },
+    {
+      "id": 3,
+      "nome": "Top 10 Semana",
+      "slug": "top-10-semana",
+      "verticals": ["slots"],
+      "tipo": "top-10-list",
+      "status": "inactive",
+      "slots_count": 10
+    }
+  ],
+  "next_cursor": null,
+  "prev_cursor": null
+}

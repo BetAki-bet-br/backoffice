@@ -1,0 +1,35 @@
+{
+  "data": [
+    {
+      "external_id": "vs20fruitsw",
+      "rtp": 96.51,
+      "volatility": "high",
+      "min_bet": 0.20,
+      "exists_in_base": true,
+      "base_name": "Sweet Bonanza",
+      "provider": "Pragmatic Play"
+    },
+    {
+      "external_id": "vs20olympgate",
+      "rtp": 96.50,
+      "volatility": "high",
+      "min_bet": 0.20,
+      "exists_in_base": true,
+      "base_name": "Gates of Olympus",
+      "provider": "Pragmatic Play"
+    },
+    {
+      "external_id": "unknown123",
+      "rtp": 95.00,
+      "volatility": "medium",
+      "min_bet": 0.10,
+      "exists_in_base": false,
+      "base_name": null,
+      "provider": null
+    }
+  ],
+  "current_page": 1,
+  "last_page": 1,
+  "per_page": 15,
+  "total": 3
+}
