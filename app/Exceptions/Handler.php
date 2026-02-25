@@ -103,12 +103,42 @@ class Handler extends ExceptionHandler
             ], 429);
         }
 
-        // Erros de banco (genérico)
+        // Erros de banco
         if ($e instanceof QueryException) {
+            $sqlState = $e->errorInfo[0] ?? null;
+            $driverCode = (int) ($e->errorInfo[1] ?? 0);
+
+            // Unique constraint violation (MySQL 1062, PG 23505, SQLite 19/2067)
+            if ($sqlState === '23505' || $driverCode === 1062 || $driverCode === 2067 || $driverCode === 19) {
+                $field = $this->extractConstraintField($e->getMessage());
+                $msg = $field
+                    ? "O valor informado para '{$field}' já está em uso."
+                    : 'Registro duplicado. Verifique os dados e tente novamente.';
+
+                return response()->json([
+                    'error' => [
+                        'code'     => 'DUPLICATE_ENTRY',
+                        'message'  => $msg,
+                        'trace_id' => $traceId,
+                    ],
+                ], 409);
+            }
+
+            // Foreign key constraint violation (MySQL 1451/1452, PG 23503)
+            if ($sqlState === '23503' || $driverCode === 1451 || $driverCode === 1452) {
+                return response()->json([
+                    'error' => [
+                        'code'     => 'FOREIGN_KEY_VIOLATION',
+                        'message'  => 'Não é possível completar a operação pois existem registros relacionados.',
+                        'trace_id' => $traceId,
+                    ],
+                ], 409);
+            }
+
             return response()->json([
                 'error' => [
                     'code'     => 'DATABASE_ERROR',
-                    'message'  => $debug ? $e->getMessage() : 'A database error occurred.',
+                    'message'  => $debug ? $e->getMessage() : 'Ocorreu um erro no banco de dados.',
                     'trace_id' => $traceId,
                 ],
             ], 500);
@@ -132,9 +162,32 @@ class Handler extends ExceptionHandler
         return response()->json([
             'error' => [
                 'code'     => 'SERVER_ERROR',
-                'message'  => $debug ? $e->getMessage() : 'Internal server error.',
+                'message'  => $debug ? $e->getMessage() : 'Erro interno do servidor.',
                 'trace_id' => $traceId,
             ],
         ], 500);
+    }
+
+    /**
+     * Tenta extrair o nome do campo de uma mensagem de constraint violation.
+     */
+    private function extractConstraintField(string $message): ?string
+    {
+        // MySQL: "Duplicate entry '...' for key 'table.column_unique'"
+        if (preg_match("/for key '(?:[^.]+\.)?([^']+)'/i", $message, $m)) {
+            return str_replace(['_unique', '_UNIQUE'], '', $m[1]);
+        }
+
+        // PostgreSQL: "duplicate key value violates unique constraint ... Key (column)="
+        if (preg_match('/Key \(([^)]+)\)/i', $message, $m)) {
+            return $m[1];
+        }
+
+        // SQLite: "UNIQUE constraint failed: table.column"
+        if (preg_match('/UNIQUE constraint failed: \w+\.(\w+)/i', $message, $m)) {
+            return $m[1];
+        }
+
+        return null;
     }
 }

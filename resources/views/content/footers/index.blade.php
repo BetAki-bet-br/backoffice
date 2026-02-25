@@ -443,8 +443,7 @@
 
     const res = await apiFetch(url, { method, body: JSON.stringify(payload) });
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      return showSaveError(body ? JSON.stringify(body) : ('Erro ao salvar (' + res.status + ')'));
+      return await showApiError(saveError, res, 'Erro ao salvar footer');
     }
 
     toast(isEdit ? 'Footer atualizado.' : 'Footer criado.');
@@ -455,7 +454,7 @@
   async function destroyFooter(id) {
     if (!confirm('Excluir footer #' + id + '?')) return;
     const res = await apiFetch('/api/v1/footers/' + id, { method: 'DELETE' });
-    if (!res.ok) return toast('Falha ao excluir (' + res.status + ')', 'danger');
+    if (!res.ok) return await toastApiError(res, 'excluir footer');
     toast('Footer excluído.');
     await load(null);
   }
@@ -463,8 +462,7 @@
   async function publishFooter(id) {
     const res = await apiFetch('/api/v1/footers/' + id + '/publish', { method: 'POST' });
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      return toast('Falha ao publicar: ' + (body ? JSON.stringify(body) : res.status), 'danger');
+      return await toastApiError(res, 'publicar footer');
     }
     toast('Footer publicado.');
     await load(null);
@@ -588,8 +586,7 @@
     });
 
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      return showSyncError(body ? JSON.stringify(body) : ('Erro ao salvar links (' + res.status + ')'));
+      return await showApiError(syncError, res, 'Erro ao salvar links');
     }
 
     toast('Links sincronizados.');

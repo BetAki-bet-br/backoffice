@@ -567,9 +567,7 @@
                 const res = await apiFetch(url, options);
 
                 if (!res.ok) {
-                    const body = await res.json().catch(() => null);
-                    saveError.textContent = body ? JSON.stringify(body) : ('Erro ao salvar (' + res.status + ')');
-                    saveError.classList.remove('d-none');
+                    await showApiError(saveError, res, 'Erro ao salvar categoria');
                     return;
                 }
 
@@ -585,7 +583,7 @@
                     method: 'DELETE'
                 });
                 if (!res.ok) {
-                    toast('Falha ao excluir (' + res.status + ')', 'danger');
+                    await toastApiError(res, 'excluir categoria');
                     return;
                 }
                 toast('Categoria excluída.');
@@ -792,9 +790,7 @@
                 });
 
                 if (!res.ok) {
-                    const body = await res.json().catch(() => null);
-                    syncError.textContent = body ? JSON.stringify(body) : ('Erro ao salvar slots (' + res.status + ')');
-                    syncError.classList.remove('d-none');
+                    await showApiError(syncError, res, 'Erro ao salvar slots');
                     return;
                 }
 
@@ -892,7 +888,7 @@
                     });
 
                     if (!res.ok) {
-                        toast('Erro ao iniciar a sincronização.', 'danger');
+                        await toastApiError(res, 'sincronizar categorias');
                         btn.disabled = false;
                         btn.textContent = originalText;
                     } else {

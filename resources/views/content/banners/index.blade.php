@@ -627,9 +627,7 @@
 
     const res = await apiFetch(url, options);
     if (!res.ok) {
-      const resBody = await res.json().catch(() => null);
-      saveError.textContent = resBody ? JSON.stringify(resBody) : ('Erro ao salvar (' + res.status + ')');
-      saveError.classList.remove('d-none');
+      await showApiError(saveError, res, 'Erro ao salvar banner');
       return;
     }
 
@@ -641,7 +639,7 @@
   async function publish(id) {
     const res = await apiFetch('/api/v1/banners/' + id + '/publish', { method: 'POST' });
     if (!res.ok) {
-      toast('Falha ao publicar (' + res.status + ')', 'danger');
+      await toastApiError(res, 'publicar banner');
       return;
     }
     toast('Banner publicado.');
@@ -653,7 +651,7 @@
 
     const res = await apiFetch('/api/v1/banners/' + id, { method: 'DELETE' });
     if (!res.ok) {
-      toast('Falha ao excluir (' + res.status + ') — sua API pode não ter destroy()', 'danger');
+      await toastApiError(res, 'excluir banner');
       return;
     }
 

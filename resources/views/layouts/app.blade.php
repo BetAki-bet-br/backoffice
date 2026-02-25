@@ -38,6 +38,80 @@
     return res;
   }
 
+  /**
+   * Extrai mensagem amigável de um body de resposta da API.
+   * Suporta: Laravel validation (422), { error: { message } }, { message }, etc.
+   */
+  function extractApiError(body, fallback) {
+    if (!body) return fallback || 'Erro desconhecido.';
+
+    // Laravel validation padrão: { errors: { field: [...] } }
+    if (body.errors && typeof body.errors === 'object') {
+      const msgs = Object.values(body.errors).flat();
+      if (msgs.length) return msgs.join(' ');
+    }
+
+    // Handler format: { error: { message, details } }
+    if (body.error) {
+      if (typeof body.error === 'string') return body.error;
+      // Se tem details (validação via Handler), mostra mensagens dos campos
+      if (body.error.details && typeof body.error.details === 'object') {
+        const msgs = Object.values(body.error.details).flat();
+        if (msgs.length) return msgs.join(' ');
+      }
+      if (body.error.message) return body.error.message;
+    }
+
+    // { message: "..." }
+    if (body.message && typeof body.message === 'string') return body.message;
+
+    return fallback || 'Erro desconhecido.';
+  }
+
+  /**
+   * Extrai erros de validação por campo de uma resposta 422 do Laravel.
+   * Retorna: { field_name: "Primeira mensagem de erro", ... }
+   */
+  function extractFieldErrors(body) {
+    // Suporta Laravel padrão { errors: {} } e Handler { error: { details: {} } }
+    const errors = body?.errors || body?.error?.details;
+    if (!errors || typeof errors !== 'object') return {};
+    const result = {};
+    for (const [field, messages] of Object.entries(errors)) {
+      result[field] = Array.isArray(messages) ? messages[0] : messages;
+    }
+    return result;
+  }
+
+  /**
+   * Exibe erros da API em um elemento de erro do modal, com detalhes por campo para 422.
+   */
+  async function showApiError(errorEl, res, fallbackMsg) {
+    const body = await res.json().catch(() => null);
+    const msg = extractApiError(body, fallbackMsg || ('Erro (' + res.status + ')'));
+
+    if (res.status === 422 && (body?.errors || body?.error?.details)) {
+      const fieldList = Object.entries(extractFieldErrors(body))
+        .map(([f, m]) => '<strong>' + f + ':</strong> ' + m)
+        .join('<br>');
+      errorEl.innerHTML = fieldList || msg;
+    } else {
+      errorEl.textContent = msg;
+    }
+
+    errorEl.classList.remove('d-none');
+  }
+
+  /**
+   * Exibe erro da API como toast com mensagem amigável.
+   */
+  async function toastApiError(res, context) {
+    const body = await res.json().catch(() => null);
+    const msg = extractApiError(body, 'Erro ao ' + context + ' (' + res.status + ')');
+    const type = res.status === 422 ? 'warning' : 'danger';
+    toast(msg, type);
+  }
+
   function toast(message, type = 'success') {
     const id = 'toast_' + Math.random().toString(16).slice(2);
     const containerId = 'toastContainer';

@@ -145,10 +145,9 @@
                 const res = await apiFetch('/api/v1/game-extras/overview?' + params.toString());
 
                 if (!res.ok) {
-                    const body = await res.json().catch(() => null);
                     tbody.innerHTML =
                         `<tr><td colspan="8" class="text-danger p-4">Erro ao carregar (${res.status}).</td></tr>`;
-                    if (body?.error?.message) toast(body.error.message, 'danger');
+                    await toastApiError(res, 'carregar game extras');
                     return;
                 }
 
@@ -177,8 +176,7 @@
                 btn.textContent = 'Sincronizar base';
 
                 if (!res.ok) {
-                    const body = await res.json().catch(() => null);
-                    toast(body?.error?.message || `Erro ao sincronizar (${res.status})`, 'danger');
+                    await toastApiError(res, 'sincronizar base');
                     return;
                 }
 

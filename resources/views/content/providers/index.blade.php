@@ -274,7 +274,7 @@
 
                 if (!res.ok) {
 
-                    toast('Erro ao reordenar provedores', 'danger');
+                    await toastApiError(res, 'reordenar provedores');
 
                     load(); // Reload to revert to original order if save failed
 
@@ -495,7 +495,7 @@
                 });
 
                 if (!res.ok) {
-                    toast('Erro ao salvar', 'danger');
+                    await showApiError(saveError, res, 'Erro ao salvar provedor');
                     return;
                 }
 
@@ -525,7 +525,7 @@
 
                     } else {
 
-                        toast('Erro ao iniciar a sincronização.', 'danger');
+                        await toastApiError(res, 'sincronizar provedores');
 
                     }
 

@@ -352,9 +352,7 @@
                 const res = await apiFetch(url, options);
 
                 if (!res.ok) {
-                    const body = await res.json().catch(() => null);
-                    saveError.textContent = body ? JSON.stringify(body) : ('Erro ao salvar (' + res.status + ')');
-                    saveError.classList.remove('d-none');
+                    await showApiError(saveError, res, 'Erro ao salvar slot');
                     return;
                 }
 
@@ -370,7 +368,7 @@
                     method: 'DELETE'
                 });
                 if (!res.ok) {
-                    toast('Falha ao excluir (' + res.status + ')', 'danger');
+                    await toastApiError(res, 'excluir slot');
                     return;
                 }
 

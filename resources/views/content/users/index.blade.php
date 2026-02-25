@@ -355,8 +355,8 @@
 
     const res = await apiFetch(url, { method, body: JSON.stringify(payload) });
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      return showSaveError(body ? JSON.stringify(body) : ('Erro ao salvar (' + res.status + ')'));
+      await showApiError(saveError, res, 'Erro ao salvar usuário');
+      return;
     }
 
     toast(editingId ? 'Usuário atualizado.' : 'Usuário criado.');

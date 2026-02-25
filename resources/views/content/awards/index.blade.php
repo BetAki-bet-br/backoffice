@@ -439,8 +439,8 @@
                     body: JSON.stringify(payload)
                 });
                 if (!res.ok) {
-                    const body = await res.json().catch(() => null);
-                    return showSaveError(body ? JSON.stringify(body) : ('Erro ao salvar (' + res.status + ')'));
+                    await showApiError(saveError, res, 'Erro ao salvar lote');
+                    return;
                 }
 
                 toast(isEdit ? 'Lote atualizado.' : 'Lote criado.');
@@ -459,7 +459,7 @@
                 const res = await apiFetch('/api/v1/awards/batches/' + id, {
                     method: 'DELETE'
                 });
-                if (!res.ok) return toast('Falha ao excluir (' + res.status + ')', 'danger');
+                if (!res.ok) return await toastApiError(res, 'excluir lote');
 
                 toast('Lote excluído.');
                 await load(null);
@@ -470,8 +470,7 @@
                     method: 'POST'
                 });
                 if (!res.ok) {
-                    const body = await res.json().catch(() => null);
-                    return toast('Falha ao publicar: ' + (body ? JSON.stringify(body) : res.status), 'danger');
+                    return await toastApiError(res, 'publicar lote');
                 }
                 toast('Lote publicado.');
                 await load(null);
@@ -482,8 +481,7 @@
                     method: 'POST'
                 });
                 if (!res.ok) {
-                    const body = await res.json().catch(() => null);
-                    return toast('Falha ao arquivar: ' + (body ? JSON.stringify(body) : res.status), 'danger');
+                    return await toastApiError(res, 'arquivar lote');
                 }
                 toast('Lote arquivado.');
                 await load(null);
@@ -637,9 +635,7 @@
                 });
 
                 if (!res.ok) {
-                    const body = await res.json().catch(() => null);
-                    syncError.textContent = body ? JSON.stringify(body) : ('Erro ao salvar (' + res.status + ')');
-                    syncError.classList.remove('d-none');
+                    await showApiError(syncError, res, 'Erro ao salvar winners');
                     return;
                 }
 

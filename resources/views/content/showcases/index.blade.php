@@ -423,9 +423,7 @@
 
     const res = await apiFetch(url, { method, body: JSON.stringify(payload) });
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      saveError.textContent = body ? JSON.stringify(body) : ('Erro ao salvar (' + res.status + ')');
-      saveError.classList.remove('d-none');
+      await showApiError(saveError, res, 'Erro ao salvar showcase');
       return;
     }
 
@@ -438,7 +436,7 @@
     if (!confirm('Excluir showcase #' + id + '?')) return;
     const res = await apiFetch('/api/v1/showcases/' + id, { method: 'DELETE' });
     if (!res.ok) {
-      toast('Falha ao excluir (' + res.status + ')', 'danger');
+      await toastApiError(res, 'excluir showcase');
       return;
     }
     toast('Showcase excluído.');
@@ -578,9 +576,7 @@
     });
 
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      syncError.textContent = body ? JSON.stringify(body) : ('Erro ao salvar slots (' + res.status + ')');
-      syncError.classList.remove('d-none');
+      await showApiError(syncError, res, 'Erro ao salvar slots');
       return;
     }
 

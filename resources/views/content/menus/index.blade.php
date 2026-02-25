@@ -245,7 +245,7 @@
                 });
 
                 if (!res.ok) {
-                    toast('Erro ao salvar ordem.', 'danger');
+                    await toastApiError(res, 'salvar ordenação');
                     return;
                 }
 
@@ -378,9 +378,7 @@
                 });
 
                 if (!res.ok) {
-                    const body = await res.json().catch(() => null);
-                    saveError.textContent = body ? JSON.stringify(body) : ('Erro ao salvar (' + res.status + ')');
-                    saveError.classList.remove('d-none');
+                    await showApiError(saveError, res, 'Erro ao salvar menu');
                     return;
                 }
 
@@ -396,7 +394,7 @@
                     method: 'DELETE'
                 });
                 if (!res.ok) {
-                    toast('Falha ao excluir (' + res.status + ')', 'danger');
+                    await toastApiError(res, 'excluir menu');
                     return;
                 }
 

@@ -426,9 +426,7 @@
     const res = await apiFetch(url, { method, body: JSON.stringify(payload) });
 
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      saveError.textContent = body ? JSON.stringify(body) : ('Erro ao salvar (' + res.status + ')');
-      saveError.classList.remove('d-none');
+      await showApiError(saveError, res, 'Erro ao salvar top list');
       return;
     }
 
@@ -441,7 +439,7 @@
     if (!confirm('Excluir top list #' + id + '?')) return;
     const res = await apiFetch('/api/v1/top-lists/' + id, { method: 'DELETE' });
     if (!res.ok) {
-      toast('Falha ao excluir (' + res.status + ')', 'danger');
+      await toastApiError(res, 'excluir top list');
       return;
     }
     toast('Top list excluída.');
@@ -451,8 +449,7 @@
   async function publish(id) {
     const res = await apiFetch('/api/v1/top-lists/' + id + '/publish', { method: 'POST' });
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      toast('Falha ao publicar: ' + (body ? JSON.stringify(body) : res.status), 'danger');
+      await toastApiError(res, 'publicar top list');
       return;
     }
     toast('Top list publicada.');
@@ -638,9 +635,7 @@
     });
 
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      syncError.textContent = body ? JSON.stringify(body) : ('Erro ao salvar slots (' + res.status + ')');
-      syncError.classList.remove('d-none');
+      await showApiError(syncError, res, 'Erro ao salvar slots');
       return;
     }
 

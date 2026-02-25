@@ -519,12 +519,16 @@
                 }
 
                 // As the index doesn't load relations, we need to fetch the full data for editing
-                apiFetch('/api/v1/carousels/' + item.slug + '?include_disabled=true').then(res => res.json()).then(slides => {
+                apiFetch('/api/v1/carousels/' + item.slug + '?include_disabled=true').then(async res => {
+                    if (!res.ok) { toast('Erro ao carregar slides (' + res.status + ')', 'danger'); return; }
+                    return res.json();
+                }).then(slides => {
+                    if (!slides) return;
                     item.slides = slides.data; // The resource returns { data: [...] }
                     fillForm(item);
                     initSortable();
                     modal.show();
-                });
+                }).catch(() => toast('Erro de conexão ao carregar slides.', 'danger'));
             }
 
             async function save() {
@@ -548,9 +552,7 @@
                 const res = await apiFetch(url, options);
 
                 if (!res.ok) {
-                    const resBody = await res.json().catch(() => null);
-                    saveError.textContent = resBody ? JSON.stringify(resBody) : ('Erro ao salvar (' + res.status + ')');
-                    saveError.classList.remove('d-none');
+                    await showApiError(saveError, res, 'Erro ao salvar carousel');
                     return;
                 }
 
@@ -566,7 +568,7 @@
                     method: 'DELETE'
                 });
                 if (!res.ok) {
-                    toast('Falha ao excluir (' + res.status + ')', 'danger');
+                    await toastApiError(res, 'excluir carousel');
                     return;
                 }
 

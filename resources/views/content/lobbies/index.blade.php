@@ -272,7 +272,12 @@
 
                 try {
                     const res = await apiFetch(`/api/v1/lobbies/${vertical}/config`);
-                    if (!res.ok) throw new Error('Falha ao carregar config');
+                    if (!res.ok) {
+                        sectionsList.innerHTML =
+                            '<div class="p-4 text-center text-danger">Erro ao carregar configuração.</div>';
+                        await toastApiError(res, 'carregar configuração');
+                        return;
+                    }
 
                     const data = await res.json();
                     currentSections = data.sections || [];
@@ -536,7 +541,10 @@
                         })
                     });
 
-                    if (!res.ok) throw new Error('Falha ao salvar');
+                    if (!res.ok) {
+                        await toastApiError(res, 'salvar configuração');
+                        return;
+                    }
 
                     toast('Configuração salva com sucesso!');
                 } catch (e) {
