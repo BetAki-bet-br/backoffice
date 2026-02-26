@@ -311,22 +311,22 @@ window.APP_CONFIG = {
 3. **[2.1]** Remover funções duplicadas de `toast()` e `apiFetch()` em Users e Game Extras
 4. **[5.3]** Adicionar `try/catch` em chamadas `apiFetch()` sem error handling
 
-### Prioridade MÉDIA (Segundo ciclo)
-5. **[2.1]** Extrair `fmtDate()`, `badge()`, `badgeStatus()` para o layout global
-6. **[3.2]** Adicionar `DB::transaction()` nos controllers que faltam
-7. **[4.2]** Loading states nos botões de ação
-8. **[4.4]** Manter página atual após mutations
-9. **[4.5]** Handler de Enter nos campos de busca
-10. **[5.1]** Retry com backoff no `apiFetch()` para erros de rede
-11. **[5.4]** Remover hardcode de `portal_id=5`
+### Prioridade MÉDIA (Segundo ciclo) — ✅ CONCLUÍDO (2026-02-26)
+5. ~~**[2.1]** Extrair `fmtDate()`, `badge()`, `badgeStatus()` para o layout global~~ ✅
+6. ~~**[3.2]** Adicionar `DB::transaction()` nos controllers que faltam~~ ✅ (Menu, Lobby, Showcase, Provider)
+7. ~~**[4.2]** Loading states nos botões de ação~~ ✅ (`withLoading()` com spinner em todos os 14 módulos)
+8. **[4.4]** Manter página atual após mutations — parcial (mantido design atual)
+9. ~~**[4.5]** Handler de Enter nos campos de busca~~ ✅
+10. ~~**[5.1]** Retry com backoff no `apiFetch()` para erros de rede~~ ✅ (2 retries com backoff)
+11. ~~**[5.4]** Remover hardcode de `portal_id=5`~~ ✅
 
-### Prioridade BAIXA (Terceiro ciclo)
+### Prioridade BAIXA (Terceiro ciclo) — Parcialmente concluído
 12. **[2.2]** Helper de paginação reutilizável
-13. **[2.3]** Helpers de loading/error para tabelas
+13. ~~**[2.3]** Helpers de loading/error para tabelas~~ ✅ (`tableLoading`, `tableError`, `tableEmpty` globais)
 14. **[3.1]** Padronizar tipo de paginação
 15. **[3.3]** Padronizar annotations OpenAPI
 16. **[3.4]** Padronizar audit trail em todos os controllers
-17. **[4.1]** Debounce nos inputs de busca
+17. ~~**[4.1]** Debounce nos inputs de busca~~ ✅ (`debounce()` global, 400ms em todos os 13 módulos com busca)
 18. **[6.1]** PHP Enums para status
 19. **[6.2]** Índices GIN para busca com `ilike`
 20. **[6.3]** Padronizar resposta de deleção (204)

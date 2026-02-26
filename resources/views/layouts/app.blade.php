@@ -61,9 +61,30 @@
   /** Loading state para botão de ação. */
   function withLoading(btn, asyncFn) {
     btn.disabled = true;
-    const original = btn.textContent;
-    btn.textContent = 'Processando…';
-    return asyncFn().finally(() => { btn.disabled = false; btn.textContent = original; });
+    const original = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Processando…';
+    return asyncFn().finally(() => { btn.disabled = false; btn.innerHTML = original; });
+  }
+
+  /** Exibe linha de carregamento em tbody. */
+  function tableLoading(tbody, cols) {
+    tbody.innerHTML = '<tr><td colspan="' + cols + '" class="text-center text-muted p-4">Carregando…</td></tr>';
+  }
+
+  /** Exibe linha de erro em tbody. */
+  function tableError(tbody, cols, status) {
+    tbody.innerHTML = '<tr><td colspan="' + cols + '" class="text-center text-danger p-4">Erro ao carregar dados' + (status ? ' (' + status + ')' : '') + '</td></tr>';
+  }
+
+  /** Exibe linha de tabela vazia em tbody. */
+  function tableEmpty(tbody, cols, msg) {
+    tbody.innerHTML = '<tr><td colspan="' + cols + '" class="text-center text-muted p-4">' + escapeHtml(msg || 'Nenhum registro encontrado.') + '</td></tr>';
+  }
+
+  /** Cria debounce para inputs de busca. */
+  function debounce(fn, ms) {
+    let timer;
+    return function(...args) { clearTimeout(timer); timer = setTimeout(() => fn.apply(this, args), ms); };
   }
 
   async function apiFetch(url, options = {}) {
@@ -81,15 +102,27 @@
 
     if (token) headers['Authorization'] = 'Bearer ' + token;
 
-    const res = await fetch(url, { ...options, headers });
+    const maxRetries = 2;
+    let lastError;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const res = await fetch(url, { ...options, headers });
 
-    if (res.status === 401) {
-      clearToken();
-      window.location.href = '/login';
-      return res;
+        if (res.status === 401) {
+          clearToken();
+          window.location.href = '/login';
+          return res;
+        }
+
+        return res;
+      } catch (err) {
+        lastError = err;
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
+        }
+      }
     }
-
-    return res;
+    throw lastError;
   }
 
   /**

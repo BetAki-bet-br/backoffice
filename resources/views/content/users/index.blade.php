@@ -338,8 +338,9 @@
     if (e.key === 'Enter') { e.preventDefault(); loadUsers(); }
   });
   document.getElementById('btnClear').addEventListener('click', () => { document.getElementById('q').value=''; loadUsers(null); });
-  document.getElementById('btnSave').addEventListener('click', saveUser);
+  document.getElementById('btnSave').addEventListener('click', function() { withLoading(this, saveUser); });
   document.getElementById('btnReloadRoles').addEventListener('click', loadRoles);
+  document.getElementById('q').addEventListener('input', debounce(() => loadUsers(null), 400));
 
   document.getElementById('prevBtn').addEventListener('click', () => {
     if (!prevCursor) return toast('Sem página anterior.', 'secondary');
@@ -356,7 +357,7 @@
     const action = btn.getAttribute('data-action');
     const id = btn.getAttribute('data-id');
     if (action === 'edit') openEdit(id);
-    if (action === 'delete') deleteUser(id);
+    if (action === 'delete') withLoading(btn, () => deleteUser(id));
   });
 
   async function init() {

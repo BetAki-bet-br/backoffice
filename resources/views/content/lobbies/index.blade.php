@@ -147,7 +147,7 @@
             // --- Event Listeners ---
             verticalSelector.addEventListener('change', () => loadConfig());
             document.getElementById('btnReload').addEventListener('click', () => loadConfig());
-            document.getElementById('btnSave').addEventListener('click', saveConfig);
+            document.getElementById('btnSave').addEventListener('click', function() { withLoading(this, saveConfig); });
             document.getElementById('btnAddSection').addEventListener('click', () => openSectionModal());
             document.getElementById('btnConfirmSection').addEventListener('click', confirmSectionModal);
             // document.getElementById('btnLoadAllCategories').addEventListener('click', loadAllCategories);
@@ -505,38 +505,26 @@
 
             async function saveConfig() {
                 const vertical = verticalSelector.value;
-                const btn = document.getElementById('btnSave');
-                const originalText = btn.innerText;
-                btn.innerText = 'Salvando...';
-                btn.disabled = true;
 
-                try {
-                    // Re-index order property based on array index just in case, though the array order defines it
-                    const sectionsWithOrder = currentSections.map((s, i) => ({
-                        ...s,
-                        order: i
-                    }));
+                // Re-index order property based on array index just in case, though the array order defines it
+                const sectionsWithOrder = currentSections.map((s, i) => ({
+                    ...s,
+                    order: i
+                }));
 
-                    const res = await apiFetch(`/api/v1/lobbies/${vertical}/config`, {
-                        method: 'PUT',
-                        body: JSON.stringify({
-                            sections: sectionsWithOrder
-                        })
-                    });
+                const res = await apiFetch(`/api/v1/lobbies/${vertical}/config`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        sections: sectionsWithOrder
+                    })
+                });
 
-                    if (!res.ok) {
-                        await toastApiError(res, 'salvar configuração');
-                        return;
-                    }
-
-                    toast('Configuração salva com sucesso!');
-                } catch (e) {
-                    console.error(e);
-                    toast('Erro ao salvar configuração.', 'danger');
-                } finally {
-                    btn.innerText = originalText;
-                    btn.disabled = false;
+                if (!res.ok) {
+                    await toastApiError(res, 'salvar configuração');
+                    return;
                 }
+
+                toast('Configuração salva com sucesso!');
             }
         </script>
     @endpush

@@ -527,8 +527,9 @@
                 load();
             });
 
-            document.getElementById('btnSave').addEventListener('click', save);
+            document.getElementById('btnSave').addEventListener('click', function() { withLoading(this, save); });
             document.getElementById('btnSync').addEventListener('click', sync);
+            document.getElementById('q').addEventListener('input', debounce(() => load(), 400));
 
             // Init
             load();

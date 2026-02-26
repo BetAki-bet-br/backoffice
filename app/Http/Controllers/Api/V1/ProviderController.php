@@ -109,9 +109,11 @@ class ProviderController extends Controller
             'verticals.*' => 'sometimes|string',
         ]);
 
-        $provider->update($validated);
+        DB::transaction(function () use ($provider, $validated) {
+            $provider->update($validated);
+        });
 
-        return response()->json($provider);
+        return response()->json($provider->refresh());
     }
 
     /** @OA\Put(

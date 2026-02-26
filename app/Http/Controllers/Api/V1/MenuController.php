@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Navigation\MenuRequest;
 use App\Models\Domain\Navigation\Menu;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Annotations as OA;
 
 class MenuController extends Controller
@@ -58,7 +59,7 @@ class MenuController extends Controller
 
         $items = $request->input('items');
 
-        \DB::transaction(function () use ($items) {
+        DB::transaction(function () use ($items) {
             foreach ($items as $item) {
                 Menu::where('id', $item['id'])->update(['position' => $item['position']]);
             }
@@ -77,9 +78,11 @@ class MenuController extends Controller
      * ) */
     public function store(MenuRequest $request)
     {
-        $data = $request->validated();
-        $data['created_by'] = $request->user()->id;
-        $menu = Menu::create($data);
+        $menu = DB::transaction(function () use ($request) {
+            $data = $request->validated();
+            $data['created_by'] = $request->user()->id;
+            return Menu::create($data);
+        });
 
         return response()->json($menu, 201);
     }
@@ -92,9 +95,11 @@ class MenuController extends Controller
 
     public function update(MenuRequest $request, Menu $menu)
     {
-        $data = $request->validated();
-        $data['updated_by'] = $request->user()->id;
-        $menu->update($data);
+        DB::transaction(function () use ($request, $menu) {
+            $data = $request->validated();
+            $data['updated_by'] = $request->user()->id;
+            $menu->update($data);
+        });
 
         return response()->json($menu->refresh());
     }

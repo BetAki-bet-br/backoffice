@@ -389,7 +389,8 @@
                 load(nextCursor);
             });
 
-            document.getElementById('btnSave').addEventListener('click', save);
+            document.getElementById('btnSave').addEventListener('click', function() { withLoading(this, save); });
+            document.getElementById('q').addEventListener('input', debounce(() => load(null), 400));
 
             tbody.addEventListener('click', (e) => {
                 const btn = e.target.closest('button[data-action]');
@@ -398,7 +399,7 @@
                 const id = btn.getAttribute('data-id');
 
                 if (action === 'edit') openEdit(id);
-                if (action === 'delete') destroy(id);
+                if (action === 'delete') withLoading(btn, () => destroy(id));
             });
 
             // initial

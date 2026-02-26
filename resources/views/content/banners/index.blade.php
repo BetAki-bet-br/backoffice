@@ -683,8 +683,9 @@
     load(nextCursor, 'next');
   });
 
-  document.getElementById('btnSave').addEventListener('click', save);
+  document.getElementById('btnSave').addEventListener('click', function() { withLoading(this, save); });
   document.getElementById('addTranslation').addEventListener('click', () => addTranslationBlock({ locale: 'pt-BR', data: {} }));
+  document.getElementById('q').addEventListener('input', debounce(() => load(null), 400));
 
   tbody.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-action]');
@@ -694,8 +695,8 @@
 
     if (action === 'edit') openEdit(id);
     if (action === 'copy') copyLink(id);
-    if (action === 'publish') publish(id);
-    if (action === 'delete') destroy(id);
+    if (action === 'publish') withLoading(btn, () => publish(id));
+    if (action === 'delete') withLoading(btn, () => destroy(id));
   });
 
   // initial load

@@ -588,7 +588,8 @@
     load(nextCursor);
   });
 
-  document.getElementById('btnSave').addEventListener('click', saveBatch);
+  document.getElementById('btnSave').addEventListener('click', function() { withLoading(this, saveBatch); });
+  document.getElementById('q').addEventListener('input', debounce(() => load(null), 400));
 
   tbody.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-action]');
@@ -599,9 +600,9 @@
 
     if (action === 'edit') openEdit(id);
     if (action === 'winners') openWinnersModal(id);
-    if (action === 'publish') publishBatch(id);
-    if (action === 'archive') archiveBatch(id);
-    if (action === 'delete') destroyBatch(id);
+    if (action === 'publish') withLoading(btn, () => publishBatch(id));
+    if (action === 'archive') withLoading(btn, () => archiveBatch(id));
+    if (action === 'delete') withLoading(btn, () => destroyBatch(id));
   });
 
   document.getElementById('btnAddRow').addEventListener('click', addEmptyRow);
@@ -620,7 +621,7 @@
     renderRows();
   });
 
-  document.getElementById('btnSyncWinners').addEventListener('click', syncWinners);
+  document.getElementById('btnSyncWinners').addEventListener('click', function() { withLoading(this, syncWinners); });
 
   load(null);
 </script>

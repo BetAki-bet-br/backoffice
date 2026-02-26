@@ -42,9 +42,11 @@ class ShowcaseController extends Controller
      * ) */
     public function store(ShowcaseRequest $request)
     {
-        $data = $request->validated();
-        $data['created_by'] = $request->user()->id;
-        $showcase = Showcase::create($data);
+        $showcase = DB::transaction(function () use ($request) {
+            $data = $request->validated();
+            $data['created_by'] = $request->user()->id;
+            return Showcase::create($data);
+        });
         return response()->json($showcase, 201);
     }
 
@@ -55,9 +57,11 @@ class ShowcaseController extends Controller
 
     public function update(ShowcaseRequest $request, Showcase $showcase)
     {
-        $data = $request->validated();
-        $data['updated_by'] = $request->user()->id;
-        $showcase->update($data);
+        DB::transaction(function () use ($request, $showcase) {
+            $data = $request->validated();
+            $data['updated_by'] = $request->user()->id;
+            $showcase->update($data);
+        });
         return response()->json($showcase->refresh());
     }
 

@@ -174,6 +174,7 @@
             document.getElementById('q').addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') { e.preventDefault(); load(1); }
             });
+            document.getElementById('q').addEventListener('input', debounce(() => load(1), 400));
             document.getElementById('btnClear').addEventListener('click', () => {
                 qInput.value = '';
                 load(1);

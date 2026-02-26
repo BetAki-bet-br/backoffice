@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Models\Domain\Casino\Category;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Annotations as OA;
 
 class LobbyController extends Controller
@@ -93,14 +94,16 @@ class LobbyController extends Controller
             'sections' => $request->input('sections')
         ];
 
-        Setting::updateOrCreate(
-            ['key' => $key],
-            [
-                'value' => $data,
-                'group' => 'lobby',
-                'type' => 'json'
-            ]
-        );
+        DB::transaction(function () use ($key, $data) {
+            Setting::updateOrCreate(
+                ['key' => $key],
+                [
+                    'value' => $data,
+                    'group' => 'lobby',
+                    'type' => 'json'
+                ]
+            );
+        });
 
         return response()->json($data);
     }

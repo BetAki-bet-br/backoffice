@@ -424,9 +424,10 @@
                 load(nextCursor);
             });
 
-            document.getElementById('btnSave').addEventListener('click', save);
+            document.getElementById('btnSave').addEventListener('click', function() { withLoading(this, save); });
+            document.getElementById('q').addEventListener('input', debounce(() => load(null), 400));
 
-            if (btnSaveOrder) btnSaveOrder.addEventListener('click', saveOrder);
+            if (btnSaveOrder) btnSaveOrder.addEventListener('click', function() { withLoading(this, saveOrder); });
 
             tbody.addEventListener('click', (e) => {
                 // Menu sorting arrows
@@ -448,7 +449,7 @@
                 const id = btn.getAttribute('data-id');
 
                 if (action === 'edit') openEdit(id);
-                if (action === 'delete') destroyMenu(id);
+                if (action === 'delete') withLoading(btn, () => destroyMenu(id));
             });
 
             load(null);

@@ -589,7 +589,8 @@
     load(nextCursor);
   });
 
-  document.getElementById('btnSave').addEventListener('click', save);
+  document.getElementById('btnSave').addEventListener('click', function() { withLoading(this, save); });
+  document.getElementById('q').addEventListener('input', debounce(() => load(null), 400));
 
   tbody.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-action]');
@@ -599,7 +600,7 @@
 
     if (action === 'edit') openEdit(id);
     if (action === 'slots') openSlotsModal(id);
-    if (action === 'delete') destroyShowcase(id);
+    if (action === 'delete') withLoading(btn, () => destroyShowcase(id));
   });
 
   document.getElementById('btnSlotSearch').addEventListener('click', searchSlots);
@@ -637,7 +638,7 @@
     renderLinkedSlots();
   });
 
-  document.getElementById('btnSyncSlots').addEventListener('click', syncSlots);
+  document.getElementById('btnSyncSlots').addEventListener('click', function() { withLoading(this, syncSlots); });
 
   // init
   load(null);

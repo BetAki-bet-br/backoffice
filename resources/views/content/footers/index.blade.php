@@ -601,7 +601,8 @@
     load(nextCursor);
   });
 
-  document.getElementById('btnSave').addEventListener('click', saveFooter);
+  document.getElementById('btnSave').addEventListener('click', function() { withLoading(this, saveFooter); });
+  document.getElementById('q').addEventListener('input', debounce(() => load(null), 400));
 
   tbody.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-action]');
@@ -612,8 +613,8 @@
 
     if (action === 'edit') openEdit(id);
     if (action === 'links') openLinksModal(id);
-    if (action === 'publish') publishFooter(id);
-    if (action === 'delete') destroyFooter(id);
+    if (action === 'publish') withLoading(btn, () => publishFooter(id));
+    if (action === 'delete') withLoading(btn, () => destroyFooter(id));
   });
 
   document.getElementById('btnAddTranslation').addEventListener('click', () => {
@@ -647,7 +648,7 @@
     renderLinks();
   });
 
-  document.getElementById('btnSyncLinks').addEventListener('click', syncLinks);
+  document.getElementById('btnSyncLinks').addEventListener('click', function() { withLoading(this, syncLinks); });
 
   load(null);
 </script>
