@@ -184,35 +184,6 @@
 
             let editingId = null;
 
-            function badge(status) {
-                const s = (status || '').toLowerCase();
-                const map = {
-                    active: 'bg-success-subtle text-success',
-                    inactive: 'bg-secondary-subtle text-secondary',
-                };
-                const cls = map[s] || 'bg-light text-muted';
-                return `<span class="badge badge-status ${cls}">${status || '—'}</span>`;
-            }
-
-            function verticalBadge(vertical) {
-
-                const v = (vertical || '').toLowerCase();
-
-                const map = {
-
-                    slots: 'bg-info-subtle text-info',
-
-                    live: 'bg-primary-subtle text-primary',
-
-                };
-
-                const cls = map[v] || 'bg-light text-muted';
-
-                return `<span class="badge ${cls}">${vertical || '—'}</span>`;
-
-            }
-
-
 
             let sortableInstance = null;
 
@@ -357,15 +328,15 @@
 
           <td class="text-muted">#${item.id}</td>
 
-          <td><code>${item.external_id}</code></td>
+          <td><code>${escapeHtml(item.external_id || '')}</code></td>
 
-          <td class="fw-semibold">${item.name || '—'}</td>
+          <td class="fw-semibold">${escapeHtml(item.name || '—')}</td>
 
           <td>${item.game_count ?? 0}</td>
 
           <td>
 
-            ${(item.verticals || []).map(verticalBadge).join(' ')}
+            ${(item.verticals || []).map(v => badge(v)).join(' ')}
 
           </td>
 
@@ -468,8 +439,8 @@
                 gamesTbody.innerHTML = games.map(g => `
         <tr>
             <td class="ps-3">${g.id}</td>
-            <td class="fw-bold">${g.name}</td>
-            <td><code>${g.externalId}</code></td>
+            <td class="fw-bold">${escapeHtml(g.name || '')}</td>
+            <td><code>${escapeHtml(g.externalId || '')}</code></td>
             <td>${badge(!g.realPlayRestricted ? 'active' : 'inactive')}</td>
         </tr>
       `).join('');
@@ -546,6 +517,9 @@
             // Events
             document.getElementById('btnReload').addEventListener('click', load);
             document.getElementById('btnSearch').addEventListener('click', load);
+            document.getElementById('q').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); load(); }
+            });
             document.getElementById('btnClear').addEventListener('click', () => {
                 document.getElementById('q').value = '';
                 document.getElementById('status').value = '';

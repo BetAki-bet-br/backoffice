@@ -205,30 +205,6 @@
 
   let editingId = null;
 
-  function badge(statusOrVertical) {
-    const s = (statusOrVertical || '').toLowerCase();
-    const map = {
-      published: 'bg-success-subtle text-success',
-      review: 'bg-info-subtle text-info',
-      draft: 'bg-warning-subtle text-warning',
-      archived: 'bg-secondary-subtle text-secondary',
-      casino: 'bg-info-subtle text-info-emphasis',
-      live_casino: 'bg-warning-subtle text-warning-emphasis',
-      sportbook: 'bg-primary-subtle text-primary',
-    };
-    const cls = map[s] || 'bg-light text-muted';
-    return `<span class="badge badge-status ${cls}">${statusOrVertical || '—'}</span>`;
-  }
-
-  function fmtDate(dt) {
-    if (!dt) return '—';
-    // dt vem como ISO
-    try {
-      const d = new Date(dt);
-      return d.toLocaleString('pt-BR');
-    } catch { return dt; }
-  }
-
   function render(rows) {
     if (!rows.length) {
       tbody.innerHTML = `<tr><td colspan="7" class="text-muted p-4">Nenhum registro.</td></tr>`;
@@ -236,14 +212,14 @@
     }
 
     tbody.innerHTML = rows.map(item => {
-      const countries = Array.isArray(item.countries) ? item.countries.join(', ') : '—';
+      const countries = Array.isArray(item.countries) ? escapeHtml(item.countries.join(', ')) : '—';
       const sched = `${fmtDate(item.publish_at)} → ${fmtDate(item.expire_at)}`;
       return `
         <tr>
           <td class="text-muted">#${item.id}</td>
           <td>
-            <div class="fw-semibold">${item.slug || '—'}</div>
-            <div class="text-muted small">${item.link_url || ''}</div>
+            <div class="fw-semibold">${escapeHtml(item.slug || '—')}</div>
+            <div class="text-muted small">${escapeHtml(item.link_url || '')}</div>
           </td>
           <td>${badge(item.vertical || '—')}</td>
           <td class="text-muted">${countries}</td>
@@ -360,13 +336,14 @@
         const fileInputContainer = document.querySelector('.file-upload-container');
         const container = document.createElement('div');
         container.className = 'current-image mb-2';
+        const safeCoverUrl = item.cover_url && item.cover_url.startsWith('http') ? escapeHtml(item.cover_url) : '';
         container.innerHTML = `
-          <img id="current-cover_url-image" 
-               src="${item.cover_url}" 
+          <img id="current-cover_url-image"
+               src="${safeCoverUrl}"
                alt="Current Imagem"
                class="img-thumbnail"
                style="max-width: 200px; max-height: 200px;">
-          <button type="button" 
+          <button type="button"
                   class="btn btn-sm btn-danger ms-2"
                   onclick="removeCurrentCoverUrl()">
             Remover Atual
@@ -375,7 +352,7 @@
         fileInputContainer.insertBefore(container, fileInputContainer.firstChild);
       } else {
         // Se existe, atualizar a imagem
-        currentImageElement.src = item.cover_url;
+        currentImageElement.src = item.cover_url && item.cover_url.startsWith('http') ? item.cover_url : '';
         currentImageContainer.style.display = 'block';
       }
     } else if (currentImageContainer) {
@@ -685,6 +662,9 @@
   document.getElementById('btnNew').addEventListener('click', openNew);
   document.getElementById('btnReload').addEventListener('click', () => load(null));
   document.getElementById('btnSearch').addEventListener('click', () => load(null));
+  document.getElementById('q').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); load(null); }
+  });
   document.getElementById('btnClear').addEventListener('click', () => {
     document.getElementById('q').value = '';
     document.getElementById('status').value = '';

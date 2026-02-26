@@ -10,6 +10,7 @@ use App\Models\Domain\Casino\Provider;
 use App\Models\Domain\Casino\Slot;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Annotations as OA;
 
 class ProviderController extends Controller
@@ -141,9 +142,11 @@ class ProviderController extends Controller
             'providers.*.position' => 'required|integer',
         ]);
 
-        foreach ($validated['providers'] as $item) {
-            Provider::where('id', $item['id'])->update(['position' => $item['position']]);
-        }
+        DB::transaction(function () use ($validated) {
+            foreach ($validated['providers'] as $item) {
+                Provider::where('id', $item['id'])->update(['position' => $item['position']]);
+            }
+        });
 
         return response()->json(['message' => 'Providers reordered successfully.']);
     }

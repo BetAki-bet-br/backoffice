@@ -137,16 +137,6 @@
 
             let editingId = null;
 
-            function badge(status) {
-                const s = (status || '').toLowerCase();
-                const map = {
-                    active: 'bg-success-subtle text-success',
-                    inactive: 'bg-secondary-subtle text-secondary',
-                };
-                const cls = map[s] || 'bg-light text-muted';
-                return `<span class="badge badge-status ${cls}">${status || '—'}</span>`;
-            }
-
             function render(rows) {
                 if (!rows.length) {
                     tbody.innerHTML = `<tr><td colspan="5" class="text-muted p-4">Nenhum registro.</td></tr>`;
@@ -157,12 +147,12 @@
       <tr>
         <td class="text-muted">#${item.id}</td>
         <td>
-          <div class="fw-semibold">${item.title || '—'}</div>
-          <div class="text-muted small">${item.cover_url || ''}</div>
+          <div class="fw-semibold">${escapeHtml(item.title || '—')}</div>
+          <div class="text-muted small">${escapeHtml(item.cover_url || '')}</div>
         </td>
         <td class="text-muted">
-          <div>${item.provider || '—'}</div>
-          <div class="small text-muted">${item.provider_game_id || ''}</div>
+          <div>${escapeHtml(item.provider || '—')}</div>
+          <div class="small text-muted">${escapeHtml(item.provider_game_id || '')}</div>
         </td>
         <td>${badge(item.status)}</td>
         <td class="text-end">
@@ -380,6 +370,9 @@
             document.getElementById('btnNew').addEventListener('click', openNew);
             document.getElementById('btnReload').addEventListener('click', () => load(null));
             document.getElementById('btnSearch').addEventListener('click', () => load(null));
+            document.getElementById('q').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); load(); }
+            });
             document.getElementById('btnClear').addEventListener('click', () => {
                 document.getElementById('q').value = '';
                 document.getElementById('status').value = '';

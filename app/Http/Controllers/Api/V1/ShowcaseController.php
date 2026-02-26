@@ -7,6 +7,7 @@ use App\Http\Requests\Casino\ShowcaseRequest;
 use App\Http\Requests\Casino\ShowcaseSlotsSyncRequest;
 use App\Models\Domain\Casino\Showcase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Annotations as OA;
 
 class ShowcaseController extends Controller
@@ -82,7 +83,10 @@ class ShowcaseController extends Controller
             ->map(fn($i) => ['position' => (int) ($i['position'] ?? 0)])
             ->all();
 
-        $showcase->slots()->sync($payload);
+        DB::transaction(function () use ($showcase, $payload) {
+            $showcase->slots()->sync($payload);
+        });
+
         return response()->json($showcase->load('slots'));
     }
 }

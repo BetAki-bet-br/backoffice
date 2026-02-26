@@ -68,33 +68,12 @@
 
     @push('scripts')
         <script>
-            function toast(message, variant = 'success') {
-                const container = document.querySelector('.toast-container');
-                const el = document.createElement('div');
-                const cls = variant === 'danger' ? 'danger' : (variant === 'warning' ? 'warning' : (variant === 'secondary' ?
-                    'secondary' : 'success'));
-                el.className = 'toast align-items-center text-bg-' + cls + ' border-0';
-                el.setAttribute('role', 'alert');
-                el.setAttribute('aria-live', 'assertive');
-                el.setAttribute('aria-atomic', 'true');
-                el.innerHTML = `
-      <div class="d-flex">
-        <div class="toast-body">${message}</div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-      </div>
-    `;
-                container.appendChild(el);
-                const t = new bootstrap.Toast(el, {
-                    delay: 2600
-                });
-                t.show();
-                el.addEventListener('hidden.bs.toast', () => el.remove());
-            }
-
             const tbody = document.getElementById('tbody');
             const pageInfo = document.getElementById('pageInfo');
 
             const qInput = document.getElementById('q');
+
+            const PORTAL_ID = {{ config('services.base_api.portal_id', 1) }};
 
             let currentPage = 1;
             let lastPage = 1;
@@ -104,7 +83,7 @@
                 const page = pageOverride ?? currentPage;
 
                 const params = new URLSearchParams();
-                params.set('portal_id', 5);
+                params.set('portal_id', PORTAL_ID);
                 if (q) params.set('q', q);
                 params.set('page', page);
                 return params;
@@ -124,14 +103,14 @@
 
                     return `
         <tr>
-          <td class="fw-semibold">${r.external_id ?? '—'}</td>
-          <td>${r.rtp ?? '—'}</td>
-          <td>${r.volatility ?? '—'}</td>
-          <td>${r.min_bet ?? '—'}</td>
+          <td class="fw-semibold">${escapeHtml(r.external_id ?? '—')}</td>
+          <td>${escapeHtml(String(r.rtp ?? '—'))}</td>
+          <td>${escapeHtml(String(r.volatility ?? '—'))}</td>
+          <td>${escapeHtml(String(r.min_bet ?? '—'))}</td>
           <td>${badge}</td>
-          <td class="text-muted">${r.base_name ?? '—'}</td>
+          <td class="text-muted">${escapeHtml(r.base_name ?? '—')}</td>
           <td>
-            <div class="small text-muted">${r.base_product_name ?? ''}</div>
+            <div class="small text-muted">${escapeHtml(r.base_product_name ?? '')}</div>
           </td>
         </tr>
       `;
@@ -141,26 +120,31 @@
             async function load(page = 1) {
                 tbody.innerHTML = `<tr><td colspan="7" class="text-muted p-4">Carregando…</td></tr>`;
 
-                const params = getParams(page);
-                const res = await apiFetch('/api/v1/game-extras/overview?' + params.toString());
+                try {
+                    const params = getParams(page);
+                    const res = await apiFetch('/api/v1/game-extras/overview?' + params.toString());
 
-                if (!res.ok) {
-                    tbody.innerHTML =
-                        `<tr><td colspan="8" class="text-danger p-4">Erro ao carregar (${res.status}).</td></tr>`;
-                    await toastApiError(res, 'carregar game extras');
-                    return;
+                    if (!res.ok) {
+                        tbody.innerHTML =
+                            `<tr><td colspan="8" class="text-danger p-4">Erro ao carregar (${res.status}).</td></tr>`;
+                        await toastApiError(res, 'carregar game extras');
+                        return;
+                    }
+
+                    const json = await res.json();
+
+                    // paginate padrão do Laravel: data, current_page, last_page, total...
+                    const rows = json.data || [];
+                    currentPage = json.current_page || 1;
+                    lastPage = json.last_page || 1;
+
+                    renderRows(rows);
+
+                    pageInfo.textContent = `Página ${currentPage} de ${lastPage} • Total: ${json.total ?? rows.length}`;
+                } catch (err) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="text-danger p-4">Erro inesperado ao carregar.</td></tr>`;
+                    toast('Erro inesperado: ' + err.message, 'danger');
                 }
-
-                const json = await res.json();
-
-                // paginate padrão do Laravel: data, current_page, last_page, total...
-                const rows = json.data || [];
-                currentPage = json.current_page || 1;
-                lastPage = json.last_page || 1;
-
-                renderRows(rows);
-
-                pageInfo.textContent = `Página ${currentPage} de ${lastPage} • Total: ${json.total ?? rows.length}`;
             }
 
             async function syncBase() {
@@ -187,6 +171,9 @@
             }
 
             document.getElementById('btnSearch').addEventListener('click', () => load(1));
+            document.getElementById('q').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); load(1); }
+            });
             document.getElementById('btnClear').addEventListener('click', () => {
                 qInput.value = '';
                 load(1);

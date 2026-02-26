@@ -136,16 +136,6 @@
             let editingId = null;
             let menuSortable = null;
 
-            function badge(status) {
-                const s = (status || '').toLowerCase();
-                const map = {
-                    active: 'bg-success-subtle text-success',
-                    inactive: 'bg-secondary-subtle text-secondary'
-                };
-                const cls = map[s] || 'bg-light text-muted';
-                return `<span class="badge badge-status ${cls}">${status || '-'}</span>`;
-            }
-
             function render(rows) {
                 if (!rows.length) {
                     tbody.innerHTML = `<tr><td colspan="6" class="text-muted p-4">Nenhum registro.</td></tr>`;
@@ -160,8 +150,8 @@
         </td>
         <td class="text-muted">#${item.id}</td>
         <td>
-          <div class="fw-semibold">${item.name || '-'}</div>
-          <div class="text-muted small">${item.slug || ''}</div>
+          <div class="fw-semibold">${escapeHtml(item.name || '-')}</div>
+          <div class="text-muted small">${escapeHtml(item.slug || '')}</div>
         </td>
         <td class="align-middle text-center">
            <div class="d-flex align-items-center justify-content-center gap-1">
@@ -263,32 +253,37 @@
             async function load(cursor = null) {
                 tbody.innerHTML = `<tr><td colspan="6" class="text-muted p-4">Carregando...</td></tr>`;
 
-                const params = new URLSearchParams();
-                if (cursor) params.set('cursor', cursor);
+                try {
+                    const params = new URLSearchParams();
+                    if (cursor) params.set('cursor', cursor);
 
-                const {
-                    q,
-                    status
-                } = getFilters();
-                if (q) params.set('q', q);
-                if (status) params.set('status', status);
+                    const {
+                        q,
+                        status
+                    } = getFilters();
+                    if (q) params.set('q', q);
+                    if (status) params.set('status', status);
 
-                const res = await apiFetch('/api/v1/menus?' + params.toString());
-                if (!res.ok) {
-                    toast('Falha ao carregar menus (' + res.status + ')', 'danger');
-                    tbody.innerHTML = `<tr><td colspan="6" class="text-danger p-4">Erro ao carregar.</td></tr>`;
-                    return;
+                    const res = await apiFetch('/api/v1/menus?' + params.toString());
+                    if (!res.ok) {
+                        toast('Falha ao carregar menus (' + res.status + ')', 'danger');
+                        tbody.innerHTML = `<tr><td colspan="6" class="text-danger p-4">Erro ao carregar.</td></tr>`;
+                        return;
+                    }
+
+                    const data = await res.json();
+                    const rows = data.data || [];
+
+                    nextCursor = data.next_cursor || null;
+                    prevCursor = data.prev_cursor || null;
+
+                    info.textContent =
+                        `Carregados: ${rows.length} - Proximo: ${nextCursor ? 'sim' : 'nao'} - Anterior: ${prevCursor ? 'sim' : 'nao'}`;
+                    render(rows);
+                } catch (err) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="text-danger p-4">Erro inesperado ao carregar.</td></tr>`;
+                    toast('Erro inesperado: ' + err.message, 'danger');
                 }
-
-                const data = await res.json();
-                const rows = data.data || [];
-
-                nextCursor = data.next_cursor || null;
-                prevCursor = data.prev_cursor || null;
-
-                info.textContent =
-                    `Carregados: ${rows.length} - Proximo: ${nextCursor ? 'sim' : 'nao'} - Anterior: ${prevCursor ? 'sim' : 'nao'}`;
-                render(rows);
             }
 
             function fillForm(item) {
@@ -368,23 +363,28 @@
                     return;
                 }
 
-                const isEdit = !!editingId;
-                const url = isEdit ? ('/api/v1/menus/' + editingId) : '/api/v1/menus';
-                const method = isEdit ? 'PUT' : 'POST';
+                try {
+                    const isEdit = !!editingId;
+                    const url = isEdit ? ('/api/v1/menus/' + editingId) : '/api/v1/menus';
+                    const method = isEdit ? 'PUT' : 'POST';
 
-                const res = await apiFetch(url, {
-                    method,
-                    body: JSON.stringify(payload)
-                });
+                    const res = await apiFetch(url, {
+                        method,
+                        body: JSON.stringify(payload)
+                    });
 
-                if (!res.ok) {
-                    await showApiError(saveError, res, 'Erro ao salvar menu');
-                    return;
+                    if (!res.ok) {
+                        await showApiError(saveError, res, 'Erro ao salvar menu');
+                        return;
+                    }
+
+                    toast(isEdit ? 'Menu atualizado.' : 'Menu criado.');
+                    modal.hide();
+                    await load(null);
+                } catch (err) {
+                    saveError.textContent = 'Erro inesperado: ' + err.message;
+                    saveError.classList.remove('d-none');
                 }
-
-                toast(isEdit ? 'Menu atualizado.' : 'Menu criado.');
-                modal.hide();
-                await load(null);
             }
 
             async function destroyMenu(id) {
@@ -405,6 +405,9 @@
             document.getElementById('btnNew').addEventListener('click', openNew);
             document.getElementById('btnReload').addEventListener('click', () => load(null));
             document.getElementById('btnSearch').addEventListener('click', () => load(null));
+            document.getElementById('q').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); load(); }
+            });
             document.getElementById('btnClear').addEventListener('click', () => {
                 document.getElementById('q').value = '';
                 document.getElementById('status').value = '';

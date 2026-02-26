@@ -12,6 +12,60 @@
     localStorage.removeItem('betaki_admin_expires_at');
   }
 
+  /** Escapa HTML para prevenir XSS em template literals. */
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+  }
+
+  /** Formata data ISO para exibição (pt-BR, UTC). */
+  function fmtDate(dt) {
+    if (!dt) return '—';
+    try { return new Date(dt).toLocaleString('pt-BR', { timeZone: 'UTC' }); }
+    catch { return dt; }
+  }
+
+  /** Badge genérico para status/vertical. */
+  function badge(labelOrStatus) {
+    const s = (labelOrStatus || '').toLowerCase();
+    const map = {
+      published: 'bg-success-subtle text-success',
+      active: 'bg-success-subtle text-success',
+      review: 'bg-info-subtle text-info',
+      draft: 'bg-warning-subtle text-warning',
+      scheduled: 'bg-info-subtle text-info',
+      archived: 'bg-secondary-subtle text-secondary',
+      inactive: 'bg-secondary-subtle text-secondary',
+      suspended: 'bg-warning-subtle text-warning',
+      disabled: 'bg-secondary-subtle text-secondary',
+      casino: 'bg-info-subtle text-info-emphasis',
+      live_casino: 'bg-warning-subtle text-warning-emphasis',
+      sportbook: 'bg-primary-subtle text-primary',
+      slots: 'bg-info-subtle text-info-emphasis',
+      live: 'bg-primary-subtle text-primary',
+      manual: 'bg-primary-subtle text-primary',
+      dynamic: 'bg-info-subtle text-info',
+      'game-list': 'bg-primary-subtle text-primary',
+      'top-10-list': 'bg-info-subtle text-info-emphasis',
+      'mais-premiados': 'bg-success-subtle text-success-emphasis',
+      'winners-list': 'bg-warning-subtle text-warning-emphasis',
+    };
+    const cls = map[s] || 'bg-light text-muted';
+    return `<span class="badge badge-status ${cls}">${escapeHtml(labelOrStatus || '—')}</span>`;
+  }
+
+  /** Badge de status (alias para badge). */
+  function badgeStatus(status) { return badge(status); }
+
+  /** Loading state para botão de ação. */
+  function withLoading(btn, asyncFn) {
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = 'Processando…';
+    return asyncFn().finally(() => { btn.disabled = false; btn.textContent = original; });
+  }
+
   async function apiFetch(url, options = {}) {
     const token = getToken();
 
@@ -92,9 +146,9 @@
 
     if (res.status === 422 && (body?.errors || body?.error?.details)) {
       const fieldList = Object.entries(extractFieldErrors(body))
-        .map(([f, m]) => '<strong>' + f + ':</strong> ' + m)
+        .map(([f, m]) => '<strong>' + escapeHtml(f) + ':</strong> ' + escapeHtml(m))
         .join('<br>');
-      errorEl.innerHTML = fieldList || msg;
+      errorEl.innerHTML = fieldList || escapeHtml(msg);
     } else {
       errorEl.textContent = msg;
     }
@@ -134,10 +188,11 @@
 
     el.innerHTML = `
       <div class="d-flex">
-        <div class="toast-body">${message}</div>
+        <div class="toast-body"></div>
         <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
       </div>
     `;
+    el.querySelector('.toast-body').textContent = message;
 
     container.appendChild(el);
     const t = new bootstrap.Toast(el, { delay: 3500 });

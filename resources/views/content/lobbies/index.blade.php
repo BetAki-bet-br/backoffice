@@ -140,23 +140,6 @@
                 winnersBatches: []
             };
 
-            function badge(status) {
-                const s = (status || '').toLowerCase();
-                const map = {
-                    active: 'bg-success-subtle text-success',
-                    inactive: 'bg-secondary-subtle text-secondary',
-                    slots: 'bg-info-subtle text-info-emphasis',
-                    live: 'bg-warning-subtle text-warning-emphasis',
-
-                    'game-list': 'bg-primary-subtle text-primary',
-                    'top-10-list': 'bg-info-subtle text-info-emphasis',
-                    'mais-premiados': 'bg-success-subtle text-success-emphasis',
-                    'winners-list': 'bg-warning-subtle text-warning-emphasis',
-                };
-                const cls = map[s] || 'bg-light text-muted';
-                return `<span class="badge ${cls}">${status || '—'}</span>`;
-            }
-
             // --- Init ---
             initSortable();
             loadResources(); // Load resource lists once (or per vertical change if needed)
@@ -356,8 +339,8 @@
                         <button class="btn btn-sm btn-light border py-0 px-1 btn-move-down" type="button" title="Mover para baixo">▼</button>
                     </div>
                     <div>
-                        <div class="fw-semibold">${label} ${title}</div>
-                        <div class="small text-muted">${detail} ${verticalBadge}</div>
+                        <div class="fw-semibold">${label} ${escapeHtml(title)}</div>
+                        <div class="small text-muted">${escapeHtml(detail)} ${verticalBadge}</div>
                     </div>
                 </div>
                 <div class="d-flex gap-2">
@@ -393,7 +376,7 @@
                 loadedResources.topLists
                     .filter(t => t.vertical === vertical)
                     .forEach(t => {
-                        secTopListId.innerHTML += `<option value="${t.id}">${t.title}</option>`;
+                        secTopListId.innerHTML += `<option value="${t.id}">${escapeHtml(t.title)}</option>`;
                     });
 
                 // Populate Batches (Assuming they have vertical field)
@@ -401,14 +384,14 @@
                 loadedResources.awardedBatches
                     .filter(b => b.vertical === vertical)
                     .forEach(b => {
-                        secAwardedBatchId.innerHTML += `<option value="${b.id}">${b.title}</option>`;
+                        secAwardedBatchId.innerHTML += `<option value="${b.id}">${escapeHtml(b.title)}</option>`;
                     });
 
                 secWinnersBatchId.innerHTML = '<option value="">Selecione...</option>';
                 loadedResources.winnersBatches
                     .filter(b => b.vertical === vertical)
                     .forEach(b => {
-                        secWinnersBatchId.innerHTML += `<option value="${b.id}">${b.title}</option>`;
+                        secWinnersBatchId.innerHTML += `<option value="${b.id}">${escapeHtml(b.title)}</option>`;
                     });
 
 
@@ -459,7 +442,7 @@
                     secCategoryId.innerHTML = '<option value="">Selecione...</option>';
                     loadedResources.categories
                         .forEach(c => {
-                            secCategoryId.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                            secCategoryId.innerHTML += `<option value="${c.id}">${escapeHtml(c.name)}</option>`;
                         });
                 }
                 if (type === 'top-10-list') document.getElementById('groupTopList').classList.remove('d-none');

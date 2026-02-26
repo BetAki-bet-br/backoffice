@@ -125,56 +125,6 @@
   // ✅ NÃO declare TOKEN_KEY aqui.
   // Vamos assumir que o layout já tem getToken()/setToken()/clearToken().
 
-  function toast(message, variant = 'success') {
-    const container = document.querySelector('.toast-container') || (() => {
-      const el = document.createElement('div');
-      el.className = 'toast-container position-fixed bottom-0 end-0 p-3';
-      el.style.zIndex = 1080;
-      document.body.appendChild(el);
-      return el;
-    })();
-
-    const el = document.createElement('div');
-    const cls = (variant === 'danger' ? 'danger' : (variant === 'warning' ? 'warning' : (variant === 'secondary' ? 'secondary' : 'success')));
-    el.className = 'toast align-items-center text-bg-' + cls + ' border-0';
-    el.setAttribute('role', 'alert');
-    el.setAttribute('aria-live', 'assertive');
-    el.setAttribute('aria-atomic', 'true');
-    el.innerHTML = `
-      <div class="d-flex">
-        <div class="toast-body">${message}</div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-      </div>
-    `;
-    container.appendChild(el);
-    const t = new bootstrap.Toast(el, { delay: 2600 });
-    t.show();
-    el.addEventListener('hidden.bs.toast', () => el.remove());
-  }
-
-  async function apiFetch(url, options = {}) {
-    const token = (typeof getToken === 'function') ? getToken() : null;
-
-    const headers = Object.assign({
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
-    }, options.headers || {});
-
-    return fetch(url, { ...options, headers });
-  }
-
-  function badgeStatus(status) {
-    const s = (status || '').toLowerCase();
-    const map = {
-      active: 'bg-success-subtle text-success',
-      suspended: 'bg-warning-subtle text-warning',
-      disabled: 'bg-secondary-subtle text-secondary',
-    };
-    const cls = map[s] || 'bg-light text-muted';
-    return `<span class="badge badge-status ${cls}">${status || '—'}</span>`;
-  }
-
   // ===== State =====
   const tbody = document.getElementById('tbody');
   const info = document.getElementById('paginationInfo');
@@ -274,11 +224,11 @@
         <tr>
           <td class="text-muted">#${u.id}</td>
           <td>
-            <div class="fw-semibold">${u.name || '—'}</div>
-            <div class="text-muted small">${u.email || '—'}</div>
+            <div class="fw-semibold">${escapeHtml(u.name || '—')}</div>
+            <div class="text-muted small">${escapeHtml(u.email || '—')}</div>
           </td>
           <td>${badgeStatus(u.status)}</td>
-          <td class="text-muted small">${roles.length ? roles.join(', ') : '—'}</td>
+          <td class="text-muted small">${roles.length ? escapeHtml(roles.join(', ')) : '—'}</td>
           <td class="text-end">
             <div class="d-flex justify-content-end gap-2">
               <button class="btn btn-sm btn-outline-secondary" data-action="edit" data-id="${u.id}">Editar</button>
@@ -384,6 +334,9 @@
   document.getElementById('btnNew').addEventListener('click', openNew);
   document.getElementById('btnReload').addEventListener('click', () => loadUsers(null));
   document.getElementById('btnSearch').addEventListener('click', () => loadUsers(null));
+  document.getElementById('q').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); loadUsers(); }
+  });
   document.getElementById('btnClear').addEventListener('click', () => { document.getElementById('q').value=''; loadUsers(null); });
   document.getElementById('btnSave').addEventListener('click', saveUser);
   document.getElementById('btnReloadRoles').addEventListener('click', loadRoles);
