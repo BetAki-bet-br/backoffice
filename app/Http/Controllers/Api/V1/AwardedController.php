@@ -7,6 +7,7 @@ use App\Http\Requests\Casino\AwardedBatchRequest;
 use App\Http\Requests\Casino\AwardedResultsSyncRequest;
 use App\Models\Domain\Casino\AwardedGameBatch;
 use App\Models\Domain\Casino\AwardedGame;
+use App\Enums\BatchStatus;
 use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 
@@ -103,7 +104,7 @@ class AwardedController extends Controller
     public function syncResults(AwardedResultsSyncRequest $request, AwardedGameBatch $batch)
     {
         // apenas rascunho ou revisão podem receber sync
-        abort_unless(in_array($batch->status, ['draft','review']), 400, 'Batch must be draft or review to sync results.');
+        abort_unless(in_array($batch->status, [BatchStatus::Draft, BatchStatus::Review]), 400, 'Batch must be draft or review to sync results.');
 
         $items = collect($request->validated()['items'])
             ->sortBy('rank')
@@ -128,8 +129,7 @@ class AwardedController extends Controller
                 ]);
             }
 
-            // coloca lote em revisão
-            $batch->update(['status' => 'review']);
+            $batch->update(['status' => BatchStatus::Review]);
         });
 
         return response()->json($batch->load('results.slot'));
@@ -144,10 +144,10 @@ class AwardedController extends Controller
      * ) */
     public function publish(Request $request, AwardedGameBatch $batch)
     {
-        abort_unless($batch->status === 'review' && $batch->results()->exists(), 400, 'Batch must be in review with results to publish.');
+        abort_unless($batch->status === BatchStatus::Review && $batch->results()->exists(), 400, 'Batch must be in review with results to publish.');
 
         $batch->update([
-            'status'       => 'published',
+            'status'       => BatchStatus::Published,
             'published_at' => now(),
             'published_by' => $request->user()->id,
         ]);
@@ -164,9 +164,9 @@ class AwardedController extends Controller
      * ) */
     public function archive(AwardedGameBatch $batch)
     {
-        abort_unless(in_array($batch->status, ['published']), 400, 'Only published batches can be archived.');
+        abort_unless($batch->status === BatchStatus::Published, 400, 'Only published batches can be archived.');
 
-        $batch->update(['status' => 'archived']);
+        $batch->update(['status' => BatchStatus::Archived]);
 
         return response()->json($batch->refresh());
     }

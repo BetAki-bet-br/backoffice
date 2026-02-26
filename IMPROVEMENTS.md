@@ -320,18 +320,18 @@ window.APP_CONFIG = {
 10. ~~**[5.1]** Retry com backoff no `apiFetch()` para erros de rede~~ ✅ (2 retries com backoff)
 11. ~~**[5.4]** Remover hardcode de `portal_id=5`~~ ✅
 
-### Prioridade BAIXA (Terceiro ciclo) — Parcialmente concluído
-12. **[2.2]** Helper de paginação reutilizável
+### Prioridade BAIXA (Terceiro ciclo) — ✅ CONCLUÍDO (2026-02-26)
+12. **[2.2]** Helper de paginação reutilizável — futuro
 13. ~~**[2.3]** Helpers de loading/error para tabelas~~ ✅ (`tableLoading`, `tableError`, `tableEmpty` globais)
-14. **[3.1]** Padronizar tipo de paginação
-15. **[3.3]** Padronizar annotations OpenAPI
-16. **[3.4]** Padronizar audit trail em todos os controllers
+14. **[3.1]** Padronizar tipo de paginação — futuro
+15. ~~**[3.3]** Padronizar annotations OpenAPI~~ ✅ (CarouselController, GameExtraController +100%, Menu +3, Showcase +2 endpoints)
+16. ~~**[3.4]** Padronizar audit trail em todos os controllers~~ ✅ (Carousel, Provider: migration + model + controller)
 17. ~~**[4.1]** Debounce nos inputs de busca~~ ✅ (`debounce()` global, 400ms em todos os 13 módulos com busca)
-18. **[6.1]** PHP Enums para status
-19. **[6.2]** Índices GIN para busca com `ilike`
-20. **[6.3]** Padronizar resposta de deleção (204)
-21. **[6.4]** Policies/Authorization em todos os módulos
-22. **[7.1]** Migrar JS inline para arquivos separados
+18. ~~**[6.1]** PHP Enums para status~~ ✅ (`ActiveStatus`, `ContentStatus`, `BatchStatus` com casts em 10 models + controllers)
+19. ~~**[6.2]** Índices GIN para busca com `ilike`~~ ✅ (pg_trgm em 12 colunas: slots, categories, menus, showcases, top_lists, users, portal_games)
+20. ~~**[6.3]** Padronizar resposta de deleção (204)~~ ✅ (já consistente em 15/15 controllers)
+21. **[6.4]** Policies/Authorization em todos os módulos — adiado
+22. **[7.1]** Migrar JS inline para arquivos separados — futuro
 
 ---
 

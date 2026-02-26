@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Enums\ContentStatus;
 
 class Footer extends Model
 {
@@ -27,6 +28,7 @@ class Footer extends Model
     protected $casts = [
         'publish_at'   => 'datetime',
         'published_at' => 'datetime',
+        'status'       => ContentStatus::class,
     ];
 
     // Relações
@@ -58,11 +60,11 @@ class Footer extends Model
     // Helpers de status
     public function isPublished(): bool
     {
-        return $this->status === 'published';
+        return $this->status === ContentStatus::Published;
     }
 
     public function isDraft(): bool
     {
-        return $this->status === 'draft';
+        return $this->status === ContentStatus::Draft;
     }
 }

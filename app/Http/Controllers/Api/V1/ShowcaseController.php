@@ -50,11 +50,28 @@ class ShowcaseController extends Controller
         return response()->json($showcase, 201);
     }
 
+    /** @OA\Get(
+     *  path="/api/v1/showcases/{showcase}",
+     *  tags={"Showcases"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Exibir vitrine com slots",
+     *  @OA\Parameter(name="showcase", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
     public function show(Showcase $showcase)
     {
         return response()->json($showcase->load('slots'));
     }
 
+    /** @OA\Put(
+     *  path="/api/v1/showcases/{showcase}",
+     *  tags={"Showcases"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Atualizar vitrine",
+     *  @OA\Parameter(name="showcase", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\RequestBody(required=true),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
     public function update(ShowcaseRequest $request, Showcase $showcase)
     {
         DB::transaction(function () use ($request, $showcase) {

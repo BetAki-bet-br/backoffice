@@ -87,12 +87,29 @@ class MenuController extends Controller
         return response()->json($menu, 201);
     }
 
+    /** @OA\Get(
+     *  path="/api/v1/menus/{menu}",
+     *  tags={"Menus"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Exibir menu com itens",
+     *  @OA\Parameter(name="menu", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
     public function show(Menu $menu)
     {
         $menu->load(['items.children.children']);
         return response()->json($menu);
     }
 
+    /** @OA\Put(
+     *  path="/api/v1/menus/{menu}",
+     *  tags={"Menus"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Atualizar menu",
+     *  @OA\Parameter(name="menu", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\RequestBody(required=true),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
     public function update(MenuRequest $request, Menu $menu)
     {
         DB::transaction(function () use ($request, $menu) {
@@ -104,6 +121,14 @@ class MenuController extends Controller
         return response()->json($menu->refresh());
     }
 
+    /** @OA\Delete(
+     *  path="/api/v1/menus/{menu}",
+     *  tags={"Menus"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Excluir menu",
+     *  @OA\Parameter(name="menu", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\Response(response=204, description="No Content")
+     * ) */
     public function destroy(Menu $menu)
     {
         $menu->delete();

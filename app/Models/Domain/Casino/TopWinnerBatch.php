@@ -4,6 +4,7 @@ namespace App\Models\Domain\Casino;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Enums\BatchStatus;
 
 class TopWinnerBatch extends Model
 {
@@ -19,6 +20,7 @@ class TopWinnerBatch extends Model
         'period_start' => 'datetime',
         'period_end'   => 'datetime',
         'published_at' => 'datetime',
+        'status'       => BatchStatus::class,
     ];
 
     public function winners()
@@ -28,6 +30,6 @@ class TopWinnerBatch extends Model
 
     public function scopeReadyToPublish($q)
     {
-        return $q->where('status','review')->whereHas('winners');
+        return $q->where('status', BatchStatus::Review)->whereHas('winners');
     }
 }

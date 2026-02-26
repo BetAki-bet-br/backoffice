@@ -109,6 +109,8 @@ class ProviderController extends Controller
             'verticals.*' => 'sometimes|string',
         ]);
 
+        $validated['updated_by'] = $request->user()->id;
+
         DB::transaction(function () use ($provider, $validated) {
             $provider->update($validated);
         });

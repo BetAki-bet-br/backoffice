@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Casino\TopListRequest;
 use App\Http\Requests\Casino\TopListSlotsSyncRequest;
 use App\Models\Domain\Casino\TopList;
+use App\Enums\ContentStatus;
 use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 
@@ -121,7 +122,7 @@ class TopListController extends Controller
     public function publish(Request $request, TopList $top_list)
     {
         $top_list->update([
-            'status'       => 'published',
+            'status'       => ContentStatus::Published,
             'published_by' => $request->user()->id,
             'valid_from'   => $top_list->valid_from ?? now(),
         ]);

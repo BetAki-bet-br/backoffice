@@ -4,6 +4,7 @@ namespace App\Models\Domain\Casino;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Enums\ActiveStatus;
 
 class Category extends Model
 {
@@ -16,6 +17,7 @@ class Category extends Model
     protected $casts = [
         'meta' => 'array',
         'verticals' => 'array',
+        'status' => ActiveStatus::class,
     ];
 
     protected $attributes = [
