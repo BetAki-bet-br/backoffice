@@ -20,7 +20,7 @@ export default class CategoriesPage extends BasePage {
   }
 
   getTypeFilter() {
-    return cy.get('#tipo');
+    return cy.get('#type');
   }
 
   searchByQuery(query) {
@@ -79,8 +79,8 @@ export default class CategoriesPage extends BasePage {
     return cy.get('#editTitle');
   }
 
-  fillNome(nome) {
-    cy.get('#f_nome').clear().type(nome);
+  fillName(name) {
+    cy.get('#f_name').clear().type(name);
     return this;
   }
 
@@ -90,7 +90,7 @@ export default class CategoriesPage extends BasePage {
   }
 
   selectType(type) {
-    cy.get('#f_tipo').select(type);
+    cy.get('#f_type').select(type);
     return this;
   }
 

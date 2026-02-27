@@ -24,7 +24,7 @@ describe('Menus', () => {
 
     cy.intercept('GET', '/api/v1/menus*q=Principal*', {
       body: {
-        data: [{ id: 1, name: 'Menu Principal', slug: 'menu-principal', order: 1, status: 'active' }],
+        data: [{ id: 1, name: 'Menu Principal', slug: 'menu-principal', position: 1, status: 'active' }],
         next_cursor: null,
         prev_cursor: null,
       },
@@ -43,7 +43,7 @@ describe('Menus', () => {
 
     cy.intercept('POST', '/api/v1/menus', {
       statusCode: 201,
-      body: { data: { id: 4, name: 'New Menu', slug: 'new-menu', order: 4, status: 'active' } },
+      body: { data: { id: 4, name: 'New Menu', slug: 'new-menu', position: 4, status: 'active' } },
     }).as('createMenu');
 
     cy.intercept('GET', '/api/v1/menus*', { fixture: 'menus/list.json' }).as('reloadMenus');

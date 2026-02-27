@@ -4,21 +4,21 @@
       "id": 1,
       "name": "Menu Principal",
       "slug": "menu-principal",
-      "order": 1,
+      "position": 1,
       "status": "active"
     },
     {
       "id": 2,
       "name": "Menu Footer",
       "slug": "menu-footer",
-      "order": 2,
+      "position": 2,
       "status": "active"
     },
     {
       "id": 3,
       "name": "Menu Mobile",
       "slug": "menu-mobile",
-      "order": 3,
+      "position": 3,
       "status": "inactive"
     }
   ],
