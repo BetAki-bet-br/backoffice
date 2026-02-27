@@ -58,6 +58,9 @@
   /** Badge de status (alias para badge). */
   function badgeStatus(status) { return badge(status); }
 
+  /** Badge de type (alias para badge). */
+  function badgeType(type) { return badge(type); }
+
   /** Loading state para botão de ação. */
   function withLoading(btn, asyncFn) {
     btn.disabled = true;
