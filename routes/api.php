@@ -212,6 +212,10 @@ Route::prefix('v1')->group(function () {
         Route::put('categories/{category}/slots', [CategoryController::class, 'syncSlots'])
             ->name('categories.slots.sync');
 
+        // Sync Jobs (polling)
+        Route::get('sync-jobs/{syncJob}', [\App\Http\Controllers\Api\V1\SyncJobController::class, 'show'])
+            ->name('sync-jobs.show');
+
         // Providers
         Route::post('providers/sync', [\App\Http\Controllers\Api\V1\ProviderController::class, 'sync'])
             ->name('providers.sync');
