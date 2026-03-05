@@ -286,9 +286,9 @@
         <tr>
           <td class="text-muted">#${item.id}</td>
           <td>
-            <div class="fw-semibold">${item.name || '—'}</div>
+            <div class="fw-semibold">${escapeHtml(item.name || '—')}</div>
           </td>
-          <td><code>${item.slug || '—'}</code></td>
+          <td><code>${escapeHtml(item.slug || '—')}</code></td>
           <td class="text-muted">${item.slides_count || 0}</td>
           <td class="text-end">
             <div class="d-flex justify-content-end gap-2">
@@ -519,12 +519,16 @@
                 }
 
                 // As the index doesn't load relations, we need to fetch the full data for editing
-                apiFetch('/api/v1/carousels/' + item.slug + '?include_disabled=true').then(res => res.json()).then(slides => {
+                apiFetch('/api/v1/carousels/' + item.slug + '?include_disabled=true').then(async res => {
+                    if (!res.ok) { toast('Erro ao carregar slides (' + res.status + ')', 'danger'); return; }
+                    return res.json();
+                }).then(slides => {
+                    if (!slides) return;
                     item.slides = slides.data; // The resource returns { data: [...] }
                     fillForm(item);
                     initSortable();
                     modal.show();
-                });
+                }).catch(() => toast('Erro de conexão ao carregar slides.', 'danger'));
             }
 
             async function save() {
@@ -548,9 +552,7 @@
                 const res = await apiFetch(url, options);
 
                 if (!res.ok) {
-                    const resBody = await res.json().catch(() => null);
-                    saveError.textContent = resBody ? JSON.stringify(resBody) : ('Erro ao salvar (' + res.status + ')');
-                    saveError.classList.remove('d-none');
+                    await showApiError(saveError, res, 'Erro ao salvar carousel');
                     return;
                 }
 
@@ -566,7 +568,7 @@
                     method: 'DELETE'
                 });
                 if (!res.ok) {
-                    toast('Falha ao excluir (' + res.status + ')', 'danger');
+                    await toastApiError(res, 'excluir carousel');
                     return;
                 }
 
@@ -578,6 +580,9 @@
             document.getElementById('btnNew').addEventListener('click', openNew);
             document.getElementById('btnReload').addEventListener('click', () => load(currentPage));
             document.getElementById('btnSearch').addEventListener('click', () => load(1));
+            document.getElementById('q').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); load(1); }
+            });
             document.getElementById('btnClear').addEventListener('click', () => {
                 document.getElementById('q').value = '';
                 load(1);
@@ -593,7 +598,8 @@
                 if (currentPage < lastPage) load(currentPage + 1);
             });
 
-            document.getElementById('btnSave').addEventListener('click', save);
+            document.getElementById('btnSave').addEventListener('click', function() { withLoading(this, save); });
+            document.getElementById('q').addEventListener('input', debounce(() => load(1), 400));
 
             tbody.addEventListener('click', (e) => {
                 const btn = e.target.closest('button[data-action]');
@@ -602,7 +608,7 @@
                 const id = btn.getAttribute('data-id');
 
                 if (action === 'edit') openEdit(id);
-                if (action === 'delete') destroy(id);
+                if (action === 'delete') withLoading(btn, () => destroy(id));
             });
 
             // initial load

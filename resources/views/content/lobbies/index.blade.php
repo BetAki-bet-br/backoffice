@@ -140,23 +140,6 @@
                 winnersBatches: []
             };
 
-            function badge(status) {
-                const s = (status || '').toLowerCase();
-                const map = {
-                    active: 'bg-success-subtle text-success',
-                    inactive: 'bg-secondary-subtle text-secondary',
-                    slots: 'bg-info-subtle text-info-emphasis',
-                    live: 'bg-warning-subtle text-warning-emphasis',
-
-                    'game-list': 'bg-primary-subtle text-primary',
-                    'top-10-list': 'bg-info-subtle text-info-emphasis',
-                    'mais-premiados': 'bg-success-subtle text-success-emphasis',
-                    'winners-list': 'bg-warning-subtle text-warning-emphasis',
-                };
-                const cls = map[s] || 'bg-light text-muted';
-                return `<span class="badge ${cls}">${status || '—'}</span>`;
-            }
-
             // --- Init ---
             initSortable();
             loadResources(); // Load resource lists once (or per vertical change if needed)
@@ -164,7 +147,7 @@
             // --- Event Listeners ---
             verticalSelector.addEventListener('change', () => loadConfig());
             document.getElementById('btnReload').addEventListener('click', () => loadConfig());
-            document.getElementById('btnSave').addEventListener('click', saveConfig);
+            document.getElementById('btnSave').addEventListener('click', function() { withLoading(this, saveConfig); });
             document.getElementById('btnAddSection').addEventListener('click', () => openSectionModal());
             document.getElementById('btnConfirmSection').addEventListener('click', confirmSectionModal);
             // document.getElementById('btnLoadAllCategories').addEventListener('click', loadAllCategories);
@@ -279,7 +262,12 @@
 
                 try {
                     const res = await apiFetch(`/api/v1/lobbies/${vertical}/config`);
-                    if (!res.ok) throw new Error('Falha ao carregar config');
+                    if (!res.ok) {
+                        sectionsList.innerHTML =
+                            '<div class="p-4 text-center text-danger">Erro ao carregar configuração.</div>';
+                        await toastApiError(res, 'carregar configuração');
+                        return;
+                    }
 
                     const data = await res.json();
                     currentSections = data.sections || [];
@@ -358,8 +346,8 @@
                         <button class="btn btn-sm btn-light border py-0 px-1 btn-move-down" type="button" title="Mover para baixo">▼</button>
                     </div>
                     <div>
-                        <div class="fw-semibold">${label} ${title}</div>
-                        <div class="small text-muted">${detail} ${verticalBadge}</div>
+                        <div class="fw-semibold">${label} ${escapeHtml(title)}</div>
+                        <div class="small text-muted">${escapeHtml(detail)} ${verticalBadge}</div>
                     </div>
                 </div>
                 <div class="d-flex gap-2">
@@ -395,7 +383,7 @@
                 loadedResources.topLists
                     .filter(t => t.vertical === vertical)
                     .forEach(t => {
-                        secTopListId.innerHTML += `<option value="${t.id}">${t.title}</option>`;
+                        secTopListId.innerHTML += `<option value="${t.id}">${escapeHtml(t.title)}</option>`;
                     });
 
                 // Populate Batches (Assuming they have vertical field)
@@ -403,14 +391,14 @@
                 loadedResources.awardedBatches
                     .filter(b => b.vertical === vertical)
                     .forEach(b => {
-                        secAwardedBatchId.innerHTML += `<option value="${b.id}">${b.title}</option>`;
+                        secAwardedBatchId.innerHTML += `<option value="${b.id}">${escapeHtml(b.title)}</option>`;
                     });
 
                 secWinnersBatchId.innerHTML = '<option value="">Selecione...</option>';
                 loadedResources.winnersBatches
                     .filter(b => b.vertical === vertical)
                     .forEach(b => {
-                        secWinnersBatchId.innerHTML += `<option value="${b.id}">${b.title}</option>`;
+                        secWinnersBatchId.innerHTML += `<option value="${b.id}">${escapeHtml(b.title)}</option>`;
                     });
 
 
@@ -461,7 +449,7 @@
                     secCategoryId.innerHTML = '<option value="">Selecione...</option>';
                     loadedResources.categories
                         .forEach(c => {
-                            secCategoryId.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                            secCategoryId.innerHTML += `<option value="${c.id}">${escapeHtml(c.name)}</option>`;
                         });
                 }
                 if (type === 'top-10-list') document.getElementById('groupTopList').classList.remove('d-none');
@@ -524,35 +512,26 @@
 
             async function saveConfig() {
                 const vertical = verticalSelector.value;
-                const btn = document.getElementById('btnSave');
-                const originalText = btn.innerText;
-                btn.innerText = 'Salvando...';
-                btn.disabled = true;
 
-                try {
-                    // Re-index order property based on array index just in case, though the array order defines it
-                    const sectionsWithOrder = currentSections.map((s, i) => ({
-                        ...s,
-                        order: i
-                    }));
+                // Re-index order property based on array index just in case, though the array order defines it
+                const sectionsWithOrder = currentSections.map((s, i) => ({
+                    ...s,
+                    order: i
+                }));
 
-                    const res = await apiFetch(`/api/v1/lobbies/${vertical}/config`, {
-                        method: 'PUT',
-                        body: JSON.stringify({
-                            sections: sectionsWithOrder
-                        })
-                    });
+                const res = await apiFetch(`/api/v1/lobbies/${vertical}/config`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        sections: sectionsWithOrder
+                    })
+                });
 
-                    if (!res.ok) throw new Error('Falha ao salvar');
-
-                    toast('Configuração salva com sucesso!');
-                } catch (e) {
-                    console.error(e);
-                    toast('Erro ao salvar configuração.', 'danger');
-                } finally {
-                    btn.innerText = originalText;
-                    btn.disabled = false;
+                if (!res.ok) {
+                    await toastApiError(res, 'salvar configuração');
+                    return;
                 }
+
+                toast('Configuração salva com sucesso!');
             }
         </script>
     @endpush

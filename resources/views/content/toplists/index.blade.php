@@ -260,33 +260,10 @@
   const cacheById = new Map();
   const linkedMap = new Map(); // slot_id -> { slot_id, position, slot }
 
-  function fmtDate(dt) {
-    if (!dt) return '—';
-    try {
-      // Retorna apenas a parte da data no formato local
-      return new Date(dt).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-    } catch {
-      return dt;
-    }
-  }
-
   function isoToInputDate(dt) {
     if (!dt) return '';
     // Extracts only the date part (YYYY-MM-DD) from an ISO string
     return dt.substring(0, 10);
-  }
-
-  function badge(statusOrVertical) {
-    const s = (statusOrVertical || '').toLowerCase();
-    const map = {
-      published: 'bg-success-subtle text-success',
-      draft: 'bg-warning-subtle text-warning',
-      archived: 'bg-secondary-subtle text-secondary',
-      slots: 'bg-info-subtle text-info-emphasis', // Added for verticals
-      live: 'bg-warning-subtle text-warning-emphasis', // Added for verticals
-    };
-    const cls = map[s] || 'bg-light text-muted';
-    return `<span class="badge badge-status ${cls}">${statusOrVertical || '—'}</span>`;
   }
 
   function render(rows) {
@@ -299,7 +276,7 @@
       <tr>
         <td class="text-muted">#${item.id}</td>
         <td>
-          <div class="fw-semibold">${item.title || '—'}</div>
+          <div class="fw-semibold">${escapeHtml(item.title || '—')}</div>
         </td>
         <td>${badge(item.status)}</td>
         <td class="text-muted small text-nowrap">${fmtDate(item.valid_from)} → ${fmtDate(item.valid_until)}</td>
@@ -426,9 +403,7 @@
     const res = await apiFetch(url, { method, body: JSON.stringify(payload) });
 
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      saveError.textContent = body ? JSON.stringify(body) : ('Erro ao salvar (' + res.status + ')');
-      saveError.classList.remove('d-none');
+      await showApiError(saveError, res, 'Erro ao salvar top list');
       return;
     }
 
@@ -441,7 +416,7 @@
     if (!confirm('Excluir top list #' + id + '?')) return;
     const res = await apiFetch('/api/v1/top-lists/' + id, { method: 'DELETE' });
     if (!res.ok) {
-      toast('Falha ao excluir (' + res.status + ')', 'danger');
+      await toastApiError(res, 'excluir top list');
       return;
     }
     toast('Top list excluída.');
@@ -451,8 +426,7 @@
   async function publish(id) {
     const res = await apiFetch('/api/v1/top-lists/' + id + '/publish', { method: 'POST' });
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      toast('Falha ao publicar: ' + (body ? JSON.stringify(body) : res.status), 'danger');
+      await toastApiError(res, 'publicar top list');
       return;
     }
     toast('Top list publicada.');
@@ -476,8 +450,8 @@
            <span class="fs-5">≡</span>
         </td>
         <td class="align-middle">
-          <div class="fw-semibold">${it.slot?.title || ('Slot #' + it.slot_id)}</div>
-          <div class="text-muted small">${it.slot?.provider || ''} ${it.slot?.provider_game_id ? '• '+it.slot.provider_game_id : ''}</div>
+          <div class="fw-semibold">${escapeHtml(it.slot?.title || ('Slot #' + it.slot_id))}</div>
+          <div class="text-muted small">${escapeHtml(it.slot?.provider || '')} ${it.slot?.provider_game_id ? '• '+escapeHtml(it.slot.provider_game_id) : ''}</div>
         </td>
         <td class="align-middle text-center">
            <div class="d-flex align-items-center justify-content-center gap-1">
@@ -552,7 +526,7 @@
     }
 
     const top = await res.json();
-    slotsSubtitle.innerHTML = `${top.title} • ${top.slug || ''} • ${badge(top.vertical)}`;
+    slotsSubtitle.innerHTML = `${escapeHtml(top.title)} • ${escapeHtml(top.slug || '')} • ${badge(top.vertical)}`;
 
     (top.slots || []).forEach(s => {
       linkedMap.set(String(s.id), {
@@ -598,8 +572,8 @@
     slotResultsTbody.innerHTML = rows.slice(0, 12).map(s => `
       <tr>
         <td>
-          <div class="fw-semibold">${s.title}</div>
-          <div class="text-muted small">${s.provider} • ${s.provider_game_id} • ${s.status}</div>
+          <div class="fw-semibold">${escapeHtml(s.title || '')}</div>
+          <div class="text-muted small">${escapeHtml(s.provider || '')} • ${escapeHtml(s.provider_game_id || '')} • ${escapeHtml(s.status || '')}</div>
         </td>
         <td>
           <input type="number" min="0" class="form-control form-control-sm" data-add-pos value="0">
@@ -638,9 +612,7 @@
     });
 
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      syncError.textContent = body ? JSON.stringify(body) : ('Erro ao salvar slots (' + res.status + ')');
-      syncError.classList.remove('d-none');
+      await showApiError(syncError, res, 'Erro ao salvar slots');
       return;
     }
 
@@ -653,6 +625,9 @@
   document.getElementById('btnNew').addEventListener('click', openNew);
   document.getElementById('btnReload').addEventListener('click', () => load(null));
   document.getElementById('btnSearch').addEventListener('click', () => load(null));
+  document.getElementById('q').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); load(null); }
+  });
   document.getElementById('btnClear').addEventListener('click', () => {
     document.getElementById('q').value = '';
     document.getElementById('status').value = '';
@@ -669,7 +644,8 @@
     load(nextCursor);
   });
 
-  document.getElementById('btnSave').addEventListener('click', save);
+  document.getElementById('btnSave').addEventListener('click', function() { withLoading(this, save); });
+  document.getElementById('q').addEventListener('input', debounce(() => load(null), 400));
 
   tbody.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-action]');
@@ -680,8 +656,8 @@
 
     if (action === 'edit') openEdit(id);
     if (action === 'slots') openSlotsModal(id);
-    if (action === 'publish') publish(id);
-    if (action === 'delete') destroyTopList(id);
+    if (action === 'publish') withLoading(btn, () => publish(id));
+    if (action === 'delete') withLoading(btn, () => destroyTopList(id));
   });
 
   document.getElementById('btnSlotSearch').addEventListener('click', searchSlots);
@@ -732,7 +708,7 @@
     renderLinkedSlots();
   });
 
-  document.getElementById('btnSyncSlots').addEventListener('click', syncSlots);
+  document.getElementById('btnSyncSlots').addEventListener('click', function() { withLoading(this, syncSlots); });
 
   // init
   load(null);

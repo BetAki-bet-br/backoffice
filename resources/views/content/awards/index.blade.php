@@ -259,32 +259,6 @@
 
             const linkedMap = new Map(); // slot_id -> item
 
-            function badge(statusOrVertical) {
-                const s = (statusOrVertical || '').toLowerCase();
-                const map = {
-                    published: 'bg-success-subtle text-success',
-                    review: 'bg-info-subtle text-info',
-                    draft: 'bg-warning-subtle text-warning',
-                    archived: 'bg-secondary-subtle text-secondary',
-                    slots: 'bg-info-subtle text-info-emphasis', // Added for verticals
-                    live: 'bg-warning-subtle text-warning-emphasis', // Added for verticals
-                };
-                const cls = map[s] || 'bg-light text-muted';
-                return `<span class="badge badge-status ${cls}">${statusOrVertical || '—'}</span>`;
-            }
-
-            function fmtDate(dt) {
-                if (!dt) return '—';
-                try {
-                    // Retorna apenas a parte da data no formato local
-                    return new Date(dt).toLocaleDateString('pt-BR', {
-                        timeZone: 'UTC'
-                    });
-                } catch {
-                    return dt;
-                }
-            }
-
             function getFilters() {
                 return {
                     q: document.getElementById('q').value.trim(),
@@ -333,7 +307,7 @@
       <tr>
         <td class="text-muted">#${b.id}</td>
         <td>
-          <div class="fw-semibold">${b.title || '—'}</div>
+          <div class="fw-semibold">${escapeHtml(b.title || '—')}</div>
         </td>
         <td>${badge(b.vertical)}</td>
         <td>${badge(b.status)}</td>
@@ -439,8 +413,8 @@
                     body: JSON.stringify(payload)
                 });
                 if (!res.ok) {
-                    const body = await res.json().catch(() => null);
-                    return showSaveError(body ? JSON.stringify(body) : ('Erro ao salvar (' + res.status + ')'));
+                    await showApiError(saveError, res, 'Erro ao salvar lote');
+                    return;
                 }
 
                 toast(isEdit ? 'Lote atualizado.' : 'Lote criado.');
@@ -459,7 +433,7 @@
                 const res = await apiFetch('/api/v1/awards/batches/' + id, {
                     method: 'DELETE'
                 });
-                if (!res.ok) return toast('Falha ao excluir (' + res.status + ')', 'danger');
+                if (!res.ok) return await toastApiError(res, 'excluir lote');
 
                 toast('Lote excluído.');
                 await load(null);
@@ -470,8 +444,7 @@
                     method: 'POST'
                 });
                 if (!res.ok) {
-                    const body = await res.json().catch(() => null);
-                    return toast('Falha ao publicar: ' + (body ? JSON.stringify(body) : res.status), 'danger');
+                    return await toastApiError(res, 'publicar lote');
                 }
                 toast('Lote publicado.');
                 await load(null);
@@ -482,8 +455,7 @@
                     method: 'POST'
                 });
                 if (!res.ok) {
-                    const body = await res.json().catch(() => null);
-                    return toast('Falha ao arquivar: ' + (body ? JSON.stringify(body) : res.status), 'danger');
+                    return await toastApiError(res, 'arquivar lote');
                 }
                 toast('Lote arquivado.');
                 await load(null);
@@ -500,8 +472,8 @@
                 linkedResultsTbody.innerHTML = items.map(it => `
       <tr>
         <td>
-          <div class="fw-semibold">${it.slot?.title || ('Slot #' + it.slot_id)}</div>
-          <div class="text-muted small">${it.slot?.provider || ''} ${it.slot?.provider_game_id ? '• ' + it.slot.provider_game_id : ''}</div>
+          <div class="fw-semibold">${escapeHtml(it.slot?.title || ('Slot #' + it.slot_id))}</div>
+          <div class="text-muted small">${escapeHtml(it.slot?.provider || '')} ${it.slot?.provider_game_id ? '• ' + escapeHtml(it.slot.provider_game_id) : ''}</div>
         </td>
         <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-prize-initial data-slot-id="${it.slot_id}" value="${it.prize_sum_initial ?? ''}"></td>
         <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-prize-final data-slot-id="${it.slot_id}" value="${it.prize_sum_final ?? ''}"></td>
@@ -524,7 +496,7 @@
                 if (!res.ok) return toast('Falha ao carregar lote (' + res.status + ')', 'danger');
 
                 const batch = await res.json();
-                resultsSubtitle.innerHTML = `${batch.title} • ${badge(batch.vertical)} • ${badge(batch.status)}`;
+                resultsSubtitle.innerHTML = `${escapeHtml(batch.title)} • ${badge(batch.vertical)} • ${badge(batch.status)}`;
 
                 (batch.results || []).forEach(r => {
                     linkedMap.set(String(r.slot_id), {
@@ -570,8 +542,8 @@
                 slotResultsTbody.innerHTML = rows.slice(0, 12).map(s => `
       <tr>
         <td>
-          <div class="fw-semibold">${s.title}</div>
-          <div class="text-muted small">${s.provider} • ${s.provider_game_id} • ${s.status}</div>
+          <div class="fw-semibold">${escapeHtml(s.title || '')}</div>
+          <div class="text-muted small">${escapeHtml(s.provider || '')} • ${escapeHtml(s.provider_game_id || '')} • ${escapeHtml(s.status || '')}</div>
         </td>
         <td class="text-end">
           <button class="btn btn-sm btn-outline-primary" data-add data-slot-id="${s.id}">Adicionar</button>
@@ -637,9 +609,7 @@
                 });
 
                 if (!res.ok) {
-                    const body = await res.json().catch(() => null);
-                    syncError.textContent = body ? JSON.stringify(body) : ('Erro ao salvar (' + res.status + ')');
-                    syncError.classList.remove('d-none');
+                    await showApiError(syncError, res, 'Erro ao salvar winners');
                     return;
                 }
 
@@ -652,6 +622,9 @@
             document.getElementById('btnNew').addEventListener('click', openNew);
             document.getElementById('btnReload').addEventListener('click', () => load(null));
             document.getElementById('btnSearch').addEventListener('click', () => load(null));
+            document.getElementById('q').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); load(null); }
+            });
             document.getElementById('btnClear').addEventListener('click', () => {
                 document.getElementById('q').value = '';
                 document.getElementById('vertical').value = '';
@@ -668,7 +641,8 @@
                 load(nextCursor);
             });
 
-            document.getElementById('btnSave').addEventListener('click', saveBatch);
+            document.getElementById('btnSave').addEventListener('click', function() { withLoading(this, saveBatch); });
+            document.getElementById('q').addEventListener('input', debounce(() => load(null), 400));
 
             tbody.addEventListener('click', (e) => {
                 const btn = e.target.closest('button[data-action]');
@@ -679,9 +653,9 @@
 
                 if (action === 'edit') openEdit(id);
                 if (action === 'results') openResultsModal(id);
-                if (action === 'publish') publishBatch(id);
-                if (action === 'archive') archiveBatch(id);
-                if (action === 'delete') destroyBatch(id);
+                if (action === 'publish') withLoading(btn, () => publishBatch(id));
+                if (action === 'archive') withLoading(btn, () => archiveBatch(id));
+                if (action === 'delete') withLoading(btn, () => destroyBatch(id));
             });
 
             document.getElementById('btnSlotSearch').addEventListener('click', searchSlots);
@@ -717,7 +691,7 @@
                 renderLinkedResults();
             });
 
-            document.getElementById('btnSyncResults').addEventListener('click', syncResults);
+            document.getElementById('btnSyncResults').addEventListener('click', function() { withLoading(this, syncResults); });
 
             // Init
             document.addEventListener('DOMContentLoaded', () => {

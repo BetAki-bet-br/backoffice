@@ -242,22 +242,6 @@
   const translations = []; // [{locale, legal_title, legal_text, disclaimer}]
   const links = []; // [{id?, block,label,url,icon,target,position,is_active}]
 
-  function badge(status) {
-    const s = (status || '').toLowerCase();
-    const map = {
-      published: 'bg-success-subtle text-success',
-      draft: 'bg-warning-subtle text-warning',
-      archived: 'bg-secondary-subtle text-secondary',
-    };
-    const cls = map[s] || 'bg-light text-muted';
-    return `<span class="badge badge-status ${cls}">${status || '—'}</span>`;
-  }
-
-  function fmtDate(dt) {
-    if (!dt) return '—';
-    try { return new Date(dt).toLocaleString('pt-BR'); } catch { return dt; }
-  }
-
   function isoToInput(dt) {
     if (!dt) return '';
     const d = new Date(dt);
@@ -314,12 +298,12 @@
       <tr>
         <td class="text-muted">#${f.id}</td>
         <td>
-          <div class="fw-semibold">${f.key || '—'}</div>
+          <div class="fw-semibold">${escapeHtml(f.key || '—')}</div>
           <div class="text-muted small">${(f.translations?.length ?? 0)} translations • ${(f.links?.length ?? 0)} links</div>
         </td>
         <td>${badge(f.status)}</td>
-        <td class="text-muted">${f.country || '—'}</td>
-        <td class="text-muted">${f.brand || '—'}</td>
+        <td class="text-muted">${escapeHtml(f.country || '—')}</td>
+        <td class="text-muted">${escapeHtml(f.brand || '—')}</td>
         <td class="text-muted small">${fmtDate(f.publish_at)}</td>
         <td class="text-end">
           <div class="d-flex justify-content-end gap-2">
@@ -341,10 +325,10 @@
 
     translationsTbody.innerHTML = translations.map((t, idx) => `
       <tr data-t-idx="${idx}">
-        <td><input class="form-control form-control-sm" data-locale value="${t.locale ?? ''}" placeholder="pt-BR"></td>
-        <td><input class="form-control form-control-sm" data-legal-title value="${t.legal_title ?? ''}"></td>
-        <td><textarea class="form-control form-control-sm" rows="2" data-legal-text>${t.legal_text ?? ''}</textarea></td>
-        <td><textarea class="form-control form-control-sm" rows="2" data-disclaimer>${t.disclaimer ?? ''}</textarea></td>
+        <td><input class="form-control form-control-sm" data-locale value="${escapeHtml(t.locale ?? '')}" placeholder="pt-BR"></td>
+        <td><input class="form-control form-control-sm" data-legal-title value="${escapeHtml(t.legal_title ?? '')}"></td>
+        <td><textarea class="form-control form-control-sm" rows="2" data-legal-text>${escapeHtml(t.legal_text ?? '')}</textarea></td>
+        <td><textarea class="form-control form-control-sm" rows="2" data-disclaimer>${escapeHtml(t.disclaimer ?? '')}</textarea></td>
         <td class="text-end">
           <button class="btn btn-sm btn-outline-danger" type="button" data-remove-translation>Remover</button>
         </td>
@@ -443,8 +427,7 @@
 
     const res = await apiFetch(url, { method, body: JSON.stringify(payload) });
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      return showSaveError(body ? JSON.stringify(body) : ('Erro ao salvar (' + res.status + ')'));
+      return await showApiError(saveError, res, 'Erro ao salvar footer');
     }
 
     toast(isEdit ? 'Footer atualizado.' : 'Footer criado.');
@@ -455,7 +438,7 @@
   async function destroyFooter(id) {
     if (!confirm('Excluir footer #' + id + '?')) return;
     const res = await apiFetch('/api/v1/footers/' + id, { method: 'DELETE' });
-    if (!res.ok) return toast('Falha ao excluir (' + res.status + ')', 'danger');
+    if (!res.ok) return await toastApiError(res, 'excluir footer');
     toast('Footer excluído.');
     await load(null);
   }
@@ -463,8 +446,7 @@
   async function publishFooter(id) {
     const res = await apiFetch('/api/v1/footers/' + id + '/publish', { method: 'POST' });
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      return toast('Falha ao publicar: ' + (body ? JSON.stringify(body) : res.status), 'danger');
+      return await toastApiError(res, 'publicar footer');
     }
     toast('Footer publicado.');
     await load(null);
@@ -482,10 +464,10 @@
         <td class="text-muted">
           <input class="form-control form-control-sm" data-id value="${l.id ?? ''}" placeholder="(novo)" readonly>
         </td>
-        <td><input class="form-control form-control-sm" data-block value="${l.block ?? ''}" placeholder="help"></td>
-        <td><input class="form-control form-control-sm" data-label value="${l.label ?? ''}" placeholder="Ajuda"></td>
-        <td><input class="form-control form-control-sm" data-url value="${l.url ?? ''}" placeholder="https://..."></td>
-        <td><input class="form-control form-control-sm" data-icon value="${l.icon ?? ''}" placeholder="bi bi-instagram"></td>
+        <td><input class="form-control form-control-sm" data-block value="${escapeHtml(l.block ?? '')}" placeholder="help"></td>
+        <td><input class="form-control form-control-sm" data-label value="${escapeHtml(l.label ?? '')}" placeholder="Ajuda"></td>
+        <td><input class="form-control form-control-sm" data-url value="${escapeHtml(l.url ?? '')}" placeholder="https://..."></td>
+        <td><input class="form-control form-control-sm" data-icon value="${escapeHtml(l.icon ?? '')}" placeholder="bi bi-instagram"></td>
         <td>
           <select class="form-select form-select-sm" data-target>
             <option value="">(none)</option>
@@ -588,8 +570,7 @@
     });
 
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      return showSyncError(body ? JSON.stringify(body) : ('Erro ao salvar links (' + res.status + ')'));
+      return await showApiError(syncError, res, 'Erro ao salvar links');
     }
 
     toast('Links sincronizados.');
@@ -601,6 +582,9 @@
   document.getElementById('btnNew').addEventListener('click', openNew);
   document.getElementById('btnReload').addEventListener('click', () => load(null));
   document.getElementById('btnSearch').addEventListener('click', () => load(null));
+  document.getElementById('q').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); load(null); }
+  });
   document.getElementById('btnClear').addEventListener('click', () => {
     document.getElementById('q').value = '';
     document.getElementById('status').value = '';
@@ -617,7 +601,8 @@
     load(nextCursor);
   });
 
-  document.getElementById('btnSave').addEventListener('click', saveFooter);
+  document.getElementById('btnSave').addEventListener('click', function() { withLoading(this, saveFooter); });
+  document.getElementById('q').addEventListener('input', debounce(() => load(null), 400));
 
   tbody.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-action]');
@@ -628,8 +613,8 @@
 
     if (action === 'edit') openEdit(id);
     if (action === 'links') openLinksModal(id);
-    if (action === 'publish') publishFooter(id);
-    if (action === 'delete') destroyFooter(id);
+    if (action === 'publish') withLoading(btn, () => publishFooter(id));
+    if (action === 'delete') withLoading(btn, () => destroyFooter(id));
   });
 
   document.getElementById('btnAddTranslation').addEventListener('click', () => {
@@ -663,7 +648,7 @@
     renderLinks();
   });
 
-  document.getElementById('btnSyncLinks').addEventListener('click', syncLinks);
+  document.getElementById('btnSyncLinks').addEventListener('click', function() { withLoading(this, syncLinks); });
 
   load(null);
 </script>

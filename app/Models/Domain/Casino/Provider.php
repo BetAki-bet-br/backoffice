@@ -3,6 +3,7 @@
 namespace App\Models\Domain\Casino;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Enums\ActiveStatus;
 
 class Provider extends Model
 {
@@ -13,10 +14,13 @@ class Provider extends Model
         'status',
         'verticals',
         'position',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
         'game_count' => 'integer',
         'verticals' => 'array',
+        'status' => ActiveStatus::class,
     ];
 }

@@ -25,7 +25,7 @@ describe('Categories', () => {
     cy.intercept('GET', '/api/v1/categories*vertical=slots*', {
       body: {
         data: [
-          { id: 1, nome: 'Populares', slug: 'populares', verticals: ['slots'], tipo: 'game-list', status: 'active', slots_count: 12 },
+          { id: 1, name: 'Populares', slug: 'populares', verticals: ['slots'], type: 'game-list', status: 'active', slots_count: 12 },
         ],
         next_cursor: null,
         prev_cursor: null,
@@ -46,7 +46,7 @@ describe('Categories', () => {
 
     cy.intercept('POST', '/api/v1/categories', {
       statusCode: 201,
-      body: { data: { id: 4, nome: 'New Category', slug: 'new-category', tipo: 'game-list', status: 'active' } },
+      body: { data: { id: 4, name: 'New Category', slug: 'new-category', type: 'game-list', status: 'active' } },
     }).as('createCategory');
 
     cy.intercept('GET', '/api/v1/categories*', { fixture: 'categories/list.json' }).as('reloadCategories');
@@ -56,7 +56,7 @@ describe('Categories', () => {
     cy.get('#editModal').should('be.visible');
     cy.get('#editTitle').should('contain.text', 'Nova');
 
-    categoriesPage.fillNome('New Category');
+    categoriesPage.fillName('New Category');
     categoriesPage.clickSave();
 
     cy.wait('@createCategory');
@@ -74,7 +74,7 @@ describe('Categories', () => {
 
     cy.intercept('PUT', '/api/v1/categories/1', {
       statusCode: 200,
-      body: { data: { id: 1, nome: 'Populares Updated', slug: 'populares', status: 'active' } },
+      body: { data: { id: 1, name: 'Populares Updated', slug: 'populares', status: 'active' } },
     }).as('updateCategory');
 
     cy.intercept('GET', '/api/v1/categories*', { fixture: 'categories/list.json' }).as('reloadCategories');
@@ -83,7 +83,7 @@ describe('Categories', () => {
 
     cy.get('#editModal').should('be.visible');
 
-    cy.get('#f_nome').clear().type('Populares Updated');
+    cy.get('#f_name').clear().type('Populares Updated');
     categoriesPage.clickSave();
 
     cy.wait('@updateCategory');
@@ -99,7 +99,7 @@ describe('Categories', () => {
       body: {
         data: {
           id: 1,
-          nome: 'Populares',
+          name: 'Populares',
           slug: 'populares',
           slots: [
             { id: 1, title: 'Sweet Bonanza', provider: 'Pragmatic Play', pivot: { position: 1 } },

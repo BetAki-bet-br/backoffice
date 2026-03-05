@@ -254,26 +254,6 @@
   // slots vinculados
   const linkedMap = new Map(); // slot_id -> { slot_id, position, slot }
 
-  function badgeStatus(status) {
-    const s = (status || '').toLowerCase();
-    const map = {
-      active: 'bg-success-subtle text-success',
-      inactive: 'bg-secondary-subtle text-secondary'
-    };
-    const cls = map[s] || 'bg-light text-muted';
-    return `<span class="badge badge-status ${cls}">${status || '—'}</span>`;
-  }
-
-  function badgeType(type) {
-    const t = (type || '').toLowerCase();
-    const map = {
-      manual: 'bg-primary-subtle text-primary',
-      dynamic: 'bg-info-subtle text-info'
-    };
-    const cls = map[t] || 'bg-light text-muted';
-    return `<span class="badge badge-status ${cls}">${type || '—'}</span>`;
-  }
-
   function render(rows) {
     if (!rows.length) {
       tbody.innerHTML = `<tr><td colspan="7" class="text-muted p-4">Nenhum registro.</td></tr>`;
@@ -284,8 +264,8 @@
       <tr>
         <td class="text-muted">#${item.id}</td>
         <td>
-          <div class="fw-semibold">${item.title || '—'}</div>
-          <div class="text-muted small">${item.slug || ''}</div>
+          <div class="fw-semibold">${escapeHtml(item.title || '—')}</div>
+          <div class="text-muted small">${escapeHtml(item.slug || '')}</div>
         </td>
         <td class="text-muted">${item.position ?? '—'}</td>
         <td>${badgeType(item.type)}</td>
@@ -423,9 +403,7 @@
 
     const res = await apiFetch(url, { method, body: JSON.stringify(payload) });
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      saveError.textContent = body ? JSON.stringify(body) : ('Erro ao salvar (' + res.status + ')');
-      saveError.classList.remove('d-none');
+      await showApiError(saveError, res, 'Erro ao salvar showcase');
       return;
     }
 
@@ -438,7 +416,7 @@
     if (!confirm('Excluir showcase #' + id + '?')) return;
     const res = await apiFetch('/api/v1/showcases/' + id, { method: 'DELETE' });
     if (!res.ok) {
-      toast('Falha ao excluir (' + res.status + ')', 'danger');
+      await toastApiError(res, 'excluir showcase');
       return;
     }
     toast('Showcase excluído.');
@@ -456,8 +434,8 @@
     linkedSlotsTbody.innerHTML = items.map(it => `
       <tr>
         <td>
-          <div class="fw-semibold">${it.slot?.title || ('Slot #' + it.slot_id)}</div>
-          <div class="text-muted small">${it.slot?.provider || ''} ${it.slot?.provider_game_id ? '• '+it.slot.provider_game_id : ''}</div>
+          <div class="fw-semibold">${escapeHtml(it.slot?.title || ('Slot #' + it.slot_id))}</div>
+          <div class="text-muted small">${escapeHtml(it.slot?.provider || '')} ${it.slot?.provider_game_id ? '• '+escapeHtml(it.slot.provider_game_id) : ''}</div>
         </td>
         <td>
           <input type="number" min="0" class="form-control form-control-sm" data-pos data-slot-id="${it.slot_id}" value="${it.position ?? 0}">
@@ -534,8 +512,8 @@
     slotResultsTbody.innerHTML = rows.slice(0, 12).map(s => `
       <tr>
         <td>
-          <div class="fw-semibold">${s.title}</div>
-          <div class="text-muted small">${s.provider} • ${s.provider_game_id} • ${s.status}</div>
+          <div class="fw-semibold">${escapeHtml(s.title || '')}</div>
+          <div class="text-muted small">${escapeHtml(s.provider || '')} • ${escapeHtml(s.provider_game_id || '')} • ${escapeHtml(s.status || '')}</div>
         </td>
         <td>
           <input type="number" min="0" class="form-control form-control-sm" data-add-pos value="0">
@@ -578,9 +556,7 @@
     });
 
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      syncError.textContent = body ? JSON.stringify(body) : ('Erro ao salvar slots (' + res.status + ')');
-      syncError.classList.remove('d-none');
+      await showApiError(syncError, res, 'Erro ao salvar slots');
       return;
     }
 
@@ -593,6 +569,9 @@
   document.getElementById('btnNew').addEventListener('click', openNew);
   document.getElementById('btnReload').addEventListener('click', () => load(null));
   document.getElementById('btnSearch').addEventListener('click', () => load(null));
+  document.getElementById('q').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); load(); }
+  });
   document.getElementById('btnClear').addEventListener('click', () => {
     document.getElementById('q').value = '';
     document.getElementById('status').value = '';
@@ -610,7 +589,8 @@
     load(nextCursor);
   });
 
-  document.getElementById('btnSave').addEventListener('click', save);
+  document.getElementById('btnSave').addEventListener('click', function() { withLoading(this, save); });
+  document.getElementById('q').addEventListener('input', debounce(() => load(null), 400));
 
   tbody.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-action]');
@@ -620,7 +600,7 @@
 
     if (action === 'edit') openEdit(id);
     if (action === 'slots') openSlotsModal(id);
-    if (action === 'delete') destroyShowcase(id);
+    if (action === 'delete') withLoading(btn, () => destroyShowcase(id));
   });
 
   document.getElementById('btnSlotSearch').addEventListener('click', searchSlots);
@@ -658,7 +638,7 @@
     renderLinkedSlots();
   });
 
-  document.getElementById('btnSyncSlots').addEventListener('click', syncSlots);
+  document.getElementById('btnSyncSlots').addEventListener('click', function() { withLoading(this, syncSlots); });
 
   // init
   load(null);
