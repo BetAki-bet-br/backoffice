@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Navigation\MenuRequest;
 use App\Models\Domain\Navigation\Menu;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Annotations as OA;
 
 class MenuController extends Controller
@@ -58,7 +59,7 @@ class MenuController extends Controller
 
         $items = $request->input('items');
 
-        \DB::transaction(function () use ($items) {
+        DB::transaction(function () use ($items) {
             foreach ($items as $item) {
                 Menu::where('id', $item['id'])->update(['position' => $item['position']]);
             }
@@ -77,28 +78,57 @@ class MenuController extends Controller
      * ) */
     public function store(MenuRequest $request)
     {
-        $data = $request->validated();
-        $data['created_by'] = $request->user()->id;
-        $menu = Menu::create($data);
+        $menu = DB::transaction(function () use ($request) {
+            $data = $request->validated();
+            $data['created_by'] = $request->user()->id;
+            return Menu::create($data);
+        });
 
         return response()->json($menu, 201);
     }
 
+    /** @OA\Get(
+     *  path="/api/v1/menus/{menu}",
+     *  tags={"Menus"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Exibir menu com itens",
+     *  @OA\Parameter(name="menu", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
     public function show(Menu $menu)
     {
         $menu->load(['items.children.children']);
         return response()->json($menu);
     }
 
+    /** @OA\Put(
+     *  path="/api/v1/menus/{menu}",
+     *  tags={"Menus"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Atualizar menu",
+     *  @OA\Parameter(name="menu", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\RequestBody(required=true),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
     public function update(MenuRequest $request, Menu $menu)
     {
-        $data = $request->validated();
-        $data['updated_by'] = $request->user()->id;
-        $menu->update($data);
+        DB::transaction(function () use ($request, $menu) {
+            $data = $request->validated();
+            $data['updated_by'] = $request->user()->id;
+            $menu->update($data);
+        });
 
         return response()->json($menu->refresh());
     }
 
+    /** @OA\Delete(
+     *  path="/api/v1/menus/{menu}",
+     *  tags={"Menus"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Excluir menu",
+     *  @OA\Parameter(name="menu", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\Response(response=204, description="No Content")
+     * ) */
     public function destroy(Menu $menu)
     {
         $menu->delete();

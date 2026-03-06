@@ -8,8 +8,10 @@ use App\Models\Domain\Casino\GameExtra;
 use App\Models\Domain\Casino\PortalGame;
 use App\Models\Domain\Casino\Provider;
 use App\Models\Domain\Casino\Slot;
+use App\Enums\ActiveStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Annotations as OA;
 
 class ProviderController extends Controller
@@ -108,9 +110,51 @@ class ProviderController extends Controller
             'verticals.*' => 'sometimes|string',
         ]);
 
-        $provider->update($validated);
+        $validated['updated_by'] = $request->user()->id;
 
-        return response()->json($provider);
+        DB::transaction(function () use ($provider, $validated) {
+            $provider->update($validated);
+        });
+
+        return response()->json($provider->refresh());
+    }
+
+    /** @OA\Post(
+     *  path="/api/v1/providers/{id}/deactivate-slots",
+     *  tags={"Providers"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Desativar em cascata todos os slots do provedor",
+     *  @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
+    public function deactivateSlots(Provider $provider)
+    {
+        $affected = DB::transaction(function () use ($provider) {
+            return Slot::where('provider', $provider->name)
+                ->where('status', ActiveStatus::Active)
+                ->update(['status' => ActiveStatus::Inactive]);
+        });
+
+        return response()->json(['affected' => $affected]);
+    }
+
+    /** @OA\Post(
+     *  path="/api/v1/providers/{id}/activate-slots",
+     *  tags={"Providers"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Reativar em cascata todos os slots do provedor",
+     *  @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
+    public function activateSlots(Provider $provider)
+    {
+        $affected = DB::transaction(function () use ($provider) {
+            return Slot::where('provider', $provider->name)
+                ->where('status', ActiveStatus::Inactive)
+                ->update(['status' => ActiveStatus::Active]);
+        });
+
+        return response()->json(['affected' => $affected]);
     }
 
     /** @OA\Put(
@@ -141,9 +185,11 @@ class ProviderController extends Controller
             'providers.*.position' => 'required|integer',
         ]);
 
-        foreach ($validated['providers'] as $item) {
-            Provider::where('id', $item['id'])->update(['position' => $item['position']]);
-        }
+        DB::transaction(function () use ($validated) {
+            foreach ($validated['providers'] as $item) {
+                Provider::where('id', $item['id'])->update(['position' => $item['position']]);
+            }
+        });
 
         return response()->json(['message' => 'Providers reordered successfully.']);
     }

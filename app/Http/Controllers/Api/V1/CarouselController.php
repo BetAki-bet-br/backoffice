@@ -11,12 +11,18 @@ use App\Services\CarouselSlideUploadService;
 use App\Services\FileUploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
+use OpenApi\Annotations as OA;
 
 class CarouselController extends Controller
 {
-    /**
-     * Display a listing of the resource for admin.
-     */
+    /** @OA\Get(
+     *  path="/api/v1/carousels",
+     *  tags={"Carousels"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Listar carrosséis (paginado)",
+     *  @OA\Parameter(name="page", in="query", @OA\Schema(type="integer")),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
     public function index(): JsonResponse
     {
         $carousels = Carousel::query()->withCount('slides')->latest()->paginate(20);
@@ -24,12 +30,18 @@ class CarouselController extends Controller
         return response()->json($carousels);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    /** @OA\Post(
+     *  path="/api/v1/carousels",
+     *  tags={"Carousels"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Criar carrossel com slides",
+     *  @OA\RequestBody(required=true),
+     *  @OA\Response(response=201, description="Criado")
+     * ) */
     public function store(StoreCarouselRequest $request): JsonResponse
     {
         $data = $request->validated();
+        $data['created_by'] = $request->user()->id;
 
         if (empty($data['slug'])) {
             $data['slug'] = Str::slug($data['name']);
@@ -54,9 +66,13 @@ class CarouselController extends Controller
         return response()->json($carousel->load('slides'), 201);
     }
 
-    /**
-     * Display the specified resource for public API.
-     */
+    /** @OA\Get(
+     *  path="/api/v1/carousels/{slug}",
+     *  tags={"Carousels"},
+     *  summary="Exibir slides do carrossel (público)",
+     *  @OA\Parameter(name="slug", in="path", required=true, @OA\Schema(type="string")),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
     public function show(string $slug): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
     {
         $carousel = Carousel::where('slug', $slug)->firstOrFail();
@@ -64,12 +80,20 @@ class CarouselController extends Controller
         return CarouselSlideResource::collection($carousel->slides);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
+    /** @OA\Put(
+     *  path="/api/v1/carousels/{carousel}",
+     *  tags={"Carousels"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Atualizar carrossel e slides",
+     *  @OA\Parameter(name="carousel", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\RequestBody(required=true),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
     public function update(UpdateCarouselRequest $request, Carousel $carousel): JsonResponse
     {
         $data = $request->validated();
+
+        $data['updated_by'] = $request->user()->id;
 
         \DB::transaction(function () use ($carousel, $data) {
             if (empty($data['slug'])) {
@@ -136,9 +160,14 @@ class CarouselController extends Controller
         return response()->json($carousel->fresh('slides'));
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
+    /** @OA\Delete(
+     *  path="/api/v1/carousels/{carousel}",
+     *  tags={"Carousels"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Excluir carrossel e slides",
+     *  @OA\Parameter(name="carousel", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\Response(response=204, description="No Content")
+     * ) */
     public function destroy(Carousel $carousel): JsonResponse
     {
         \DB::transaction(function () use ($carousel) {

@@ -51,6 +51,8 @@ describe('Awards (Jogos Premiados)', () => {
     cy.get('#editModal').should('be.visible');
 
     awardsPage.fillTitle('Premiados Março');
+    awardsPage.fillPeriodStart('2025-03-01');
+    awardsPage.fillPeriodEnd('2025-03-31');
     awardsPage.clickSave();
 
     cy.wait('@createAward');

@@ -5,6 +5,7 @@ namespace App\Models\Domain\Casino;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Domain\Casino\GameExtra;
+use App\Enums\ActiveStatus;
 
 class Slot extends Model
 {
@@ -22,6 +23,7 @@ class Slot extends Model
         'rtp' => 'float',
         'min_bet' => 'decimal:2',
         'max_bet' => 'decimal:2',
+        'status' => ActiveStatus::class,
     ];
 
     // Slot Volatility Constants

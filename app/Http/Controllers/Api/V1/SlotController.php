@@ -28,13 +28,13 @@ class SlotController extends Controller
     {
         $q = Slot::query()
             ->when($request->filled('q'), fn($qq) =>
-                $qq->where('title', 'ilike', '%'.$request->q.'%')
-                   ->orWhere('provider', 'ilike', '%'.$request->q.'%')
-                   ->orWhere('provider_game_id', 'ilike', '%'.$request->q.'%')
+                $qq->where(fn($sub) =>
+                    $sub->where('title', 'ilike', '%'.$request->q.'%')
+                        ->orWhere('provider', 'ilike', '%'.$request->q.'%')
+                        ->orWhere('provider_game_id', 'ilike', '%'.$request->q.'%')
+                )
             )
-            ->when($request->filled('status'), fn($qq) =>
-                $qq->where('status', $request->status)
-            )
+            ->where('status', $request->input('status', 'active'))
             ->orderBy('position')
             ->orderByDesc('id');
 

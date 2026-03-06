@@ -4,6 +4,7 @@ namespace App\Models\Domain\Navigation;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Enums\ActiveStatus;
 
 class Menu extends Model
 {
@@ -15,6 +16,7 @@ class Menu extends Model
 
     protected $casts = [
         'meta' => 'array',
+        'status' => ActiveStatus::class,
     ];
 
     public function items()

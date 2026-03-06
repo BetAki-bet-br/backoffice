@@ -8,6 +8,7 @@ use App\Http\Requests\Navigation\FooterRequest;
 use App\Models\Domain\Navigation\Footer;
 use App\Models\Domain\Navigation\FooterLink;
 use App\Models\Domain\Navigation\FooterTranslation;
+use App\Enums\ContentStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Annotations as OA;
@@ -392,7 +393,7 @@ class FooterController extends Controller
         /** @var \App\Models\User $user */
         $user = $request->user();
 
-        $footer->status = 'published';
+        $footer->status = ContentStatus::Published;
         $footer->publish_at = now();
         $footer->published_at = now();
         $footer->published_by = $user->id;

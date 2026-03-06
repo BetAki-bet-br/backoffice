@@ -4,6 +4,7 @@ namespace App\Models\Domain\Casino;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Enums\ContentStatus;
 
 class TopList extends Model
 {
@@ -19,6 +20,7 @@ class TopList extends Model
         'criteria'   => 'array',
         'valid_from' => 'datetime',
         'valid_until'=> 'datetime',
+        'status'     => ContentStatus::class,
     ];
 
     public function slots()

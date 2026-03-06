@@ -212,12 +212,22 @@ Route::prefix('v1')->group(function () {
         Route::put('categories/{category}/slots', [CategoryController::class, 'syncSlots'])
             ->name('categories.slots.sync');
 
+        // Sync Jobs (polling)
+        Route::get('sync-jobs/{syncJob}', [\App\Http\Controllers\Api\V1\SyncJobController::class, 'show'])
+            ->name('sync-jobs.show');
+
         // Providers
         Route::post('providers/sync', [\App\Http\Controllers\Api\V1\ProviderController::class, 'sync'])
             ->name('providers.sync');
 
         Route::put('providers/reorder', [\App\Http\Controllers\Api\V1\ProviderController::class, 'reorder'])
             ->name('providers.reorder');
+
+        Route::post('providers/{provider}/deactivate-slots', [\App\Http\Controllers\Api\V1\ProviderController::class, 'deactivateSlots'])
+            ->name('providers.deactivateSlots');
+
+        Route::post('providers/{provider}/activate-slots', [\App\Http\Controllers\Api\V1\ProviderController::class, 'activateSlots'])
+            ->name('providers.activateSlots');
 
         Route::apiResource('providers', \App\Http\Controllers\Api\V1\ProviderController::class)
             ->only(['update'])

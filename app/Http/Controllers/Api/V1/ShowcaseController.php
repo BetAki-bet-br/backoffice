@@ -7,6 +7,7 @@ use App\Http\Requests\Casino\ShowcaseRequest;
 use App\Http\Requests\Casino\ShowcaseSlotsSyncRequest;
 use App\Models\Domain\Casino\Showcase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Annotations as OA;
 
 class ShowcaseController extends Controller
@@ -41,22 +42,43 @@ class ShowcaseController extends Controller
      * ) */
     public function store(ShowcaseRequest $request)
     {
-        $data = $request->validated();
-        $data['created_by'] = $request->user()->id;
-        $showcase = Showcase::create($data);
+        $showcase = DB::transaction(function () use ($request) {
+            $data = $request->validated();
+            $data['created_by'] = $request->user()->id;
+            return Showcase::create($data);
+        });
         return response()->json($showcase, 201);
     }
 
+    /** @OA\Get(
+     *  path="/api/v1/showcases/{showcase}",
+     *  tags={"Showcases"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Exibir vitrine com slots",
+     *  @OA\Parameter(name="showcase", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
     public function show(Showcase $showcase)
     {
         return response()->json($showcase->load('slots'));
     }
 
+    /** @OA\Put(
+     *  path="/api/v1/showcases/{showcase}",
+     *  tags={"Showcases"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Atualizar vitrine",
+     *  @OA\Parameter(name="showcase", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\RequestBody(required=true),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
     public function update(ShowcaseRequest $request, Showcase $showcase)
     {
-        $data = $request->validated();
-        $data['updated_by'] = $request->user()->id;
-        $showcase->update($data);
+        DB::transaction(function () use ($request, $showcase) {
+            $data = $request->validated();
+            $data['updated_by'] = $request->user()->id;
+            $showcase->update($data);
+        });
         return response()->json($showcase->refresh());
     }
 
@@ -82,7 +104,10 @@ class ShowcaseController extends Controller
             ->map(fn($i) => ['position' => (int) ($i['position'] ?? 0)])
             ->all();
 
-        $showcase->slots()->sync($payload);
+        DB::transaction(function () use ($showcase, $payload) {
+            $showcase->slots()->sync($payload);
+        });
+
         return response()->json($showcase->load('slots'));
     }
 }

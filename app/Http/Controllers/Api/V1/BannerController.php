@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Banners\BannerRequest;
 use App\Models\Domain\Banners\Banner;
 use App\Services\FileUploadService;
+use App\Enums\ContentStatus;
 use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 
@@ -166,7 +167,7 @@ class BannerController extends Controller
     public function publish(Request $request, Banner $banner)
     {
         $banner->update([
-            'status' => 'published',
+            'status' => ContentStatus::Published,
             'publish_at' => now(),
             'published_by' => $request->user()->id,
         ]);

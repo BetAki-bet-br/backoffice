@@ -238,30 +238,6 @@
   // Usamos rank como chave “principal”, mas permitimos duplicado até validar antes de enviar.
   const rows = []; // array de objetos winners
 
-  function badge(statusOrVertical) {
-    const s = (statusOrVertical || '').toLowerCase();
-    const map = {
-      published: 'bg-success-subtle text-success',
-      review: 'bg-info-subtle text-info',
-      draft: 'bg-warning-subtle text-warning',
-      archived: 'bg-secondary-subtle text-secondary',
-      slots: 'bg-info-subtle text-info-emphasis', // Added for verticals
-      live: 'bg-warning-subtle text-warning-emphasis', // Added for verticals
-    };
-    const cls = map[s] || 'bg-light text-muted';
-    return `<span class="badge badge-status ${cls}">${statusOrVertical || '—'}</span>`;
-  }
-
-  function fmtDate(dt) {
-    if (!dt) return '—';
-    try {
-      // Retorna apenas a parte da data no formato local
-      return new Date(dt).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-    } catch {
-      return dt;
-    }
-  }
-
   function getFilters() {
     return {
       q: document.getElementById('q').value.trim(),
@@ -305,7 +281,7 @@
       <tr>
         <td class="text-muted">#${b.id}</td>
         <td>
-          <div class="fw-semibold text-nowrap">${b.title || '—'}</div>
+          <div class="fw-semibold text-nowrap">${escapeHtml(b.title || '—')}</div>
         </td>
         <td>${badge(b.vertical)}</td>
         <td>${badge(b.status)}</td>
@@ -448,16 +424,16 @@
 
     linkedWinnersTbody.innerHTML = rows.map((it, idx) => `
       <tr data-idx="${idx}">
-        <td><input class="form-control form-control-sm" data-display value="${it.display_name ?? ''}" placeholder="Jogador #1234"></td>
-        <td><input class="form-control form-control-sm" data-playerref value="${it.player_ref ?? ''}" placeholder="hash/opaque id"></td>
-        <td><input class="form-control form-control-sm text-uppercase" data-country value="${it.country ?? ''}" placeholder="BR" maxlength="2"></td>
+        <td><input class="form-control form-control-sm" data-display value="${escapeHtml(it.display_name ?? '')}" placeholder="Jogador #1234"></td>
+        <td><input class="form-control form-control-sm" data-playerref value="${escapeHtml(it.player_ref ?? '')}" placeholder="hash/opaque id"></td>
+        <td><input class="form-control form-control-sm text-uppercase" data-country value="${escapeHtml(it.country ?? '')}" placeholder="BR" maxlength="2"></td>
         <td><input type="number" min="1" class="form-control form-control-sm" data-rank value="${it.rank ?? 1}"></td>
         <td><input type="number" min="0" class="form-control form-control-sm" data-position value="${it.position ?? 0}"></td>
         <td><input type="number" min="0" class="form-control form-control-sm" data-wins value="${it.wins_count ?? 0}"></td>
         <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-sum value="${it.prize_sum ?? 0}"></td>
         <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-max value="${it.max_prize ?? 0}"></td>
         <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-avg value="${it.avg_prize ?? 0}"></td>
-        <td><input class="form-control form-control-sm font-monospace" data-meta value="${it.meta ? JSON.stringify(it.meta) : ''}" placeholder='{"key":"value"}'></td>
+        <td><input class="form-control form-control-sm font-monospace" data-meta value="${escapeHtml(it.meta ? JSON.stringify(it.meta) : '')}" placeholder='{"key":"value"}'></td>
         <td class="text-end">
           <button class="btn btn-sm btn-outline-danger" data-remove>Remover</button>
         </td>
@@ -593,6 +569,9 @@
   document.getElementById('btnNew').addEventListener('click', openNew);
   document.getElementById('btnReload').addEventListener('click', () => load(null));
   document.getElementById('btnSearch').addEventListener('click', () => load(null));
+  document.getElementById('q').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); load(null); }
+  });
   document.getElementById('btnClear').addEventListener('click', () => {
     document.getElementById('q').value = '';
     document.getElementById('vertical').value = '';
@@ -609,7 +588,8 @@
     load(nextCursor);
   });
 
-  document.getElementById('btnSave').addEventListener('click', saveBatch);
+  document.getElementById('btnSave').addEventListener('click', function() { withLoading(this, saveBatch); });
+  document.getElementById('q').addEventListener('input', debounce(() => load(null), 400));
 
   tbody.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-action]');
@@ -620,9 +600,9 @@
 
     if (action === 'edit') openEdit(id);
     if (action === 'winners') openWinnersModal(id);
-    if (action === 'publish') publishBatch(id);
-    if (action === 'archive') archiveBatch(id);
-    if (action === 'delete') destroyBatch(id);
+    if (action === 'publish') withLoading(btn, () => publishBatch(id));
+    if (action === 'archive') withLoading(btn, () => archiveBatch(id));
+    if (action === 'delete') withLoading(btn, () => destroyBatch(id));
   });
 
   document.getElementById('btnAddRow').addEventListener('click', addEmptyRow);
@@ -641,7 +621,7 @@
     renderRows();
   });
 
-  document.getElementById('btnSyncWinners').addEventListener('click', syncWinners);
+  document.getElementById('btnSyncWinners').addEventListener('click', function() { withLoading(this, syncWinners); });
 
   load(null);
 </script>

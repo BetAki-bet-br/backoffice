@@ -4,6 +4,7 @@ namespace App\Models\Domain\Banners;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Enums\ContentStatus;
 
 class Banner extends Model
 {
@@ -21,6 +22,7 @@ class Banner extends Model
         'media'      => 'array',
         'publish_at' => 'datetime',
         'expire_at'  => 'datetime',
+        'status'     => ContentStatus::class,
     ];
 
     public function translations()

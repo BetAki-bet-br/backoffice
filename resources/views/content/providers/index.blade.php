@@ -127,9 +127,15 @@
                     <div class="alert alert-danger d-none mt-3 small" id="saveError"></div>
                 </div>
 
-                <div class="modal-footer">
-                    <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button class="btn btn-primary" id="btnSave">Salvar</button>
+                <div class="modal-footer justify-content-between">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-danger" id="btnDeactivateSlots">Desativar jogos</button>
+                        <button class="btn btn-outline-success" id="btnActivateSlots">Reativar jogos</button>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button class="btn btn-primary" id="btnSave">Salvar</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -183,35 +189,6 @@
             const gamesTitle = document.getElementById('gamesTitle');
 
             let editingId = null;
-
-            function badge(status) {
-                const s = (status || '').toLowerCase();
-                const map = {
-                    active: 'bg-success-subtle text-success',
-                    inactive: 'bg-secondary-subtle text-secondary',
-                };
-                const cls = map[s] || 'bg-light text-muted';
-                return `<span class="badge badge-status ${cls}">${status || '—'}</span>`;
-            }
-
-            function verticalBadge(vertical) {
-
-                const v = (vertical || '').toLowerCase();
-
-                const map = {
-
-                    slots: 'bg-info-subtle text-info',
-
-                    live: 'bg-primary-subtle text-primary',
-
-                };
-
-                const cls = map[v] || 'bg-light text-muted';
-
-                return `<span class="badge ${cls}">${vertical || '—'}</span>`;
-
-            }
-
 
 
             let sortableInstance = null;
@@ -357,15 +334,15 @@
 
           <td class="text-muted">#${item.id}</td>
 
-          <td><code>${item.external_id}</code></td>
+          <td><code>${escapeHtml(item.external_id || '')}</code></td>
 
-          <td class="fw-semibold">${item.name || '—'}</td>
+          <td class="fw-semibold">${escapeHtml(item.name || '—')}</td>
 
           <td>${item.game_count ?? 0}</td>
 
           <td>
 
-            ${(item.verticals || []).map(verticalBadge).join(' ')}
+            ${(item.verticals || []).map(v => badge(v)).join(' ')}
 
           </td>
 
@@ -468,8 +445,8 @@
                 gamesTbody.innerHTML = games.map(g => `
         <tr>
             <td class="ps-3">${g.id}</td>
-            <td class="fw-bold">${g.name}</td>
-            <td><code>${g.externalId}</code></td>
+            <td class="fw-bold">${escapeHtml(g.name || '')}</td>
+            <td><code>${escapeHtml(g.externalId || '')}</code></td>
             <td>${badge(!g.realPlayRestricted ? 'active' : 'inactive')}</td>
         </tr>
       `).join('');
@@ -500,6 +477,15 @@
                 }
 
                 toast('Provedor atualizado');
+
+                if (payload.status === 'inactive') {
+                    const cascade = await apiFetch('/api/v1/providers/' + editingId + '/deactivate-slots', { method: 'POST' });
+                    if (cascade.ok) {
+                        const data = await cascade.json();
+                        if (data.affected > 0) toast(`${data.affected} jogo(s) desativado(s) em cascata.`);
+                    }
+                }
+
                 editModal.hide();
                 load();
             }
@@ -546,6 +532,9 @@
             // Events
             document.getElementById('btnReload').addEventListener('click', load);
             document.getElementById('btnSearch').addEventListener('click', load);
+            document.getElementById('q').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); load(); }
+            });
             document.getElementById('btnClear').addEventListener('click', () => {
                 document.getElementById('q').value = '';
                 document.getElementById('status').value = '';
@@ -553,8 +542,37 @@
                 load();
             });
 
-            document.getElementById('btnSave').addEventListener('click', save);
+            document.getElementById('btnSave').addEventListener('click', function() { withLoading(this, save); });
             document.getElementById('btnSync').addEventListener('click', sync);
+            document.getElementById('q').addEventListener('input', debounce(() => load(), 400));
+
+            document.getElementById('btnDeactivateSlots').addEventListener('click', function() {
+                if (!editingId) return;
+                if (!confirm('Desativar TODOS os jogos (slots) deste provedor? Esta ação não pode ser desfeita em lote.')) return;
+                withLoading(this, async () => {
+                    const res = await apiFetch('/api/v1/providers/' + editingId + '/deactivate-slots', { method: 'POST' });
+                    if (!res.ok) {
+                        await toastApiError(res, 'desativar jogos');
+                        return;
+                    }
+                    const data = await res.json();
+                    toast(`${data.affected} jogo(s) desativado(s).`);
+                });
+            });
+
+            document.getElementById('btnActivateSlots').addEventListener('click', function() {
+                if (!editingId) return;
+                if (!confirm('Reativar TODOS os jogos (slots) inativos deste provedor?')) return;
+                withLoading(this, async () => {
+                    const res = await apiFetch('/api/v1/providers/' + editingId + '/activate-slots', { method: 'POST' });
+                    if (!res.ok) {
+                        await toastApiError(res, 'reativar jogos');
+                        return;
+                    }
+                    const data = await res.json();
+                    toast(`${data.affected} jogo(s) reativado(s).`);
+                });
+            });
 
             // Init
             load();

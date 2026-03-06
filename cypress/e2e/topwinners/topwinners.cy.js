@@ -51,6 +51,8 @@ describe('Top Winners', () => {
     cy.get('#editModal').should('be.visible');
 
     topWinnersPage.fillTitle('Vencedores Março');
+    topWinnersPage.fillPeriodStart('2025-03-01');
+    topWinnersPage.fillPeriodEnd('2025-03-31');
     topWinnersPage.clickSave();
 
     cy.wait('@createWinners');
