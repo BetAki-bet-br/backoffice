@@ -223,6 +223,9 @@ Route::prefix('v1')->group(function () {
         Route::put('providers/reorder', [\App\Http\Controllers\Api\V1\ProviderController::class, 'reorder'])
             ->name('providers.reorder');
 
+        Route::post('providers/{provider}/deactivate-slots', [\App\Http\Controllers\Api\V1\ProviderController::class, 'deactivateSlots'])
+            ->name('providers.deactivateSlots');
+
         Route::apiResource('providers', \App\Http\Controllers\Api\V1\ProviderController::class)
             ->only(['update'])
             ->parameters(['providers' => 'provider'])

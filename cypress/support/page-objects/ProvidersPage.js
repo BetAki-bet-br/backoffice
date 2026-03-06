@@ -80,6 +80,11 @@ export default class ProvidersPage extends BasePage {
     return this;
   }
 
+  clickDeactivateSlots() {
+    cy.get('#btnDeactivateSlots').click();
+    return this;
+  }
+
   // --- Row Actions ---
 
   clickEditOnRow(id) {
