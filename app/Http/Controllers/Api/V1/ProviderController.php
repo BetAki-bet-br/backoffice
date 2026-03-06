@@ -8,6 +8,7 @@ use App\Models\Domain\Casino\GameExtra;
 use App\Models\Domain\Casino\PortalGame;
 use App\Models\Domain\Casino\Provider;
 use App\Models\Domain\Casino\Slot;
+use App\Enums\ActiveStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -116,6 +117,44 @@ class ProviderController extends Controller
         });
 
         return response()->json($provider->refresh());
+    }
+
+    /** @OA\Post(
+     *  path="/api/v1/providers/{id}/deactivate-slots",
+     *  tags={"Providers"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Desativar em cascata todos os slots do provedor",
+     *  @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
+    public function deactivateSlots(Provider $provider)
+    {
+        $affected = DB::transaction(function () use ($provider) {
+            return Slot::where('provider', $provider->name)
+                ->where('status', ActiveStatus::Active)
+                ->update(['status' => ActiveStatus::Inactive]);
+        });
+
+        return response()->json(['affected' => $affected]);
+    }
+
+    /** @OA\Post(
+     *  path="/api/v1/providers/{id}/activate-slots",
+     *  tags={"Providers"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Reativar em cascata todos os slots do provedor",
+     *  @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
+    public function activateSlots(Provider $provider)
+    {
+        $affected = DB::transaction(function () use ($provider) {
+            return Slot::where('provider', $provider->name)
+                ->where('status', ActiveStatus::Inactive)
+                ->update(['status' => ActiveStatus::Active]);
+        });
+
+        return response()->json(['affected' => $affected]);
     }
 
     /** @OA\Put(

@@ -127,9 +127,15 @@
                     <div class="alert alert-danger d-none mt-3 small" id="saveError"></div>
                 </div>
 
-                <div class="modal-footer">
-                    <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button class="btn btn-primary" id="btnSave">Salvar</button>
+                <div class="modal-footer justify-content-between">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-danger" id="btnDeactivateSlots">Desativar jogos</button>
+                        <button class="btn btn-outline-success" id="btnActivateSlots">Reativar jogos</button>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button class="btn btn-primary" id="btnSave">Salvar</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -530,6 +536,34 @@
             document.getElementById('btnSave').addEventListener('click', function() { withLoading(this, save); });
             document.getElementById('btnSync').addEventListener('click', sync);
             document.getElementById('q').addEventListener('input', debounce(() => load(), 400));
+
+            document.getElementById('btnDeactivateSlots').addEventListener('click', function() {
+                if (!editingId) return;
+                if (!confirm('Desativar TODOS os jogos (slots) deste provedor? Esta ação não pode ser desfeita em lote.')) return;
+                withLoading(this, async () => {
+                    const res = await apiFetch('/api/v1/providers/' + editingId + '/deactivate-slots', { method: 'POST' });
+                    if (!res.ok) {
+                        await toastApiError(res, 'desativar jogos');
+                        return;
+                    }
+                    const data = await res.json();
+                    toast(`${data.affected} jogo(s) desativado(s).`);
+                });
+            });
+
+            document.getElementById('btnActivateSlots').addEventListener('click', function() {
+                if (!editingId) return;
+                if (!confirm('Reativar TODOS os jogos (slots) inativos deste provedor?')) return;
+                withLoading(this, async () => {
+                    const res = await apiFetch('/api/v1/providers/' + editingId + '/activate-slots', { method: 'POST' });
+                    if (!res.ok) {
+                        await toastApiError(res, 'reativar jogos');
+                        return;
+                    }
+                    const data = await res.json();
+                    toast(`${data.affected} jogo(s) reativado(s).`);
+                });
+            });
 
             // Init
             load();
