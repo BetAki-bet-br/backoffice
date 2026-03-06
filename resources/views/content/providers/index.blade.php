@@ -128,7 +128,10 @@
                 </div>
 
                 <div class="modal-footer justify-content-between">
-                    <button class="btn btn-outline-danger" id="btnDeactivateSlots">Desativar jogos</button>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-danger" id="btnDeactivateSlots">Desativar jogos</button>
+                        <button class="btn btn-outline-success" id="btnActivateSlots">Reativar jogos</button>
+                    </div>
                     <div class="d-flex gap-2">
                         <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button class="btn btn-primary" id="btnSave">Salvar</button>
@@ -545,6 +548,20 @@
                     }
                     const data = await res.json();
                     toast(`${data.affected} jogo(s) desativado(s).`);
+                });
+            });
+
+            document.getElementById('btnActivateSlots').addEventListener('click', function() {
+                if (!editingId) return;
+                if (!confirm('Reativar TODOS os jogos (slots) inativos deste provedor?')) return;
+                withLoading(this, async () => {
+                    const res = await apiFetch('/api/v1/providers/' + editingId + '/activate-slots', { method: 'POST' });
+                    if (!res.ok) {
+                        await toastApiError(res, 'reativar jogos');
+                        return;
+                    }
+                    const data = await res.json();
+                    toast(`${data.affected} jogo(s) reativado(s).`);
                 });
             });
 

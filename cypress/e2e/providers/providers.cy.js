@@ -105,6 +105,32 @@ describe('Providers', () => {
     cy.get('.toast').should('contain.text', 'desativado');
   });
 
+  it('UC28c: should activate all slots of a provider', () => {
+    providersPage.visit();
+    cy.wait('@getProviders');
+
+    cy.intercept('GET', '/api/v1/providers/3', {
+      statusCode: 200,
+      body: { id: 3, external_id: 'pgsoft', name: 'PG Soft', games_count: 45, verticals: ['slots'], status: 'inactive' },
+    }).as('getProvider');
+
+    cy.intercept('POST', '/api/v1/providers/3/activate-slots', {
+      statusCode: 200,
+      body: { affected: 12 },
+    }).as('activateSlots');
+
+    providersPage.clickEditOnRow(3);
+    cy.wait('@getProvider');
+    cy.get('#editModal').should('be.visible');
+
+    cy.on('window:confirm', () => true);
+
+    providersPage.clickActivateSlots();
+
+    cy.wait('@activateSlots');
+    cy.get('.toast').should('contain.text', 'reativado');
+  });
+
   it('UC28: should sync providers', () => {
     providersPage.visit();
     cy.wait('@getProviders');

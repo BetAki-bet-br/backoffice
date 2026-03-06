@@ -138,6 +138,25 @@ class ProviderController extends Controller
         return response()->json(['affected' => $affected]);
     }
 
+    /** @OA\Post(
+     *  path="/api/v1/providers/{id}/activate-slots",
+     *  tags={"Providers"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Reativar em cascata todos os slots do provedor",
+     *  @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
+    public function activateSlots(Provider $provider)
+    {
+        $affected = DB::transaction(function () use ($provider) {
+            return Slot::where('provider', $provider->name)
+                ->where('status', ActiveStatus::Inactive)
+                ->update(['status' => ActiveStatus::Active]);
+        });
+
+        return response()->json(['affected' => $affected]);
+    }
+
     /** @OA\Put(
      *  path="/api/v1/providers/reorder",
      *  tags={"Providers"},
