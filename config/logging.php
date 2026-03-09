@@ -123,6 +123,13 @@ return [
             'handler' => NullHandler::class,
         ],
 
+        'earnings' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/earnings-emails.log'),
+            'level' => 'debug',
+            'replace_placeholders' => true,
+        ],
+
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],

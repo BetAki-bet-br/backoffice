@@ -34,16 +34,19 @@ class SendPlayerEarningsEmailJob implements ShouldQueue
         $username = $this->playerData['username'];
         $email = $this->playerData['email'];
 
+        Log::channel('earnings')->info("Sending earnings report to player {$playerId} ({$username}) at {$email}...");
+
         Mail::to($email)->send(new AnnualEarningsReportMail($this->playerData, $this->year));
 
-        Log::info("SendPlayerEarningsEmailJob: Earnings report sent to player {$playerId} ({$username}) at {$email}.");
+        Log::channel('earnings')->info("SUCCESS: Earnings report sent to player {$playerId} ({$username}) at {$email}.");
     }
 
     public function failed(\Throwable $exception): void
     {
         $playerId = $this->playerData['player_id'] ?? 'unknown';
         $username = $this->playerData['username'] ?? 'unknown';
+        $email = $this->playerData['email'] ?? 'unknown';
 
-        Log::error("SendPlayerEarningsEmailJob: Failed for player {$playerId} ({$username}): {$exception->getMessage()}");
+        Log::channel('earnings')->error("FAILED: Player {$playerId} ({$username}) at {$email} — {$exception->getMessage()}");
     }
 }
