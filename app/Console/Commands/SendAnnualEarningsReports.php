@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Jobs\SendPlayerEarningsEmailJob;
 use Illuminate\Console\Command;
+use OpenSpout\Reader\XLSX\Reader as XlsxReader;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class SendAnnualEarningsReports extends Command
@@ -64,87 +65,91 @@ class SendAnnualEarningsReports extends Command
             return self::FAILURE;
         }
 
-        // Load player info (emails) first
+        // Load player info (emails) — small file, PhpSpreadsheet is fine
         $this->info("Loading player info: {$playerInfoPath}");
         $emailMap = $this->loadPlayerEmails($playerInfoPath, $skipPlayerMetadata);
         $this->info('Loaded ' . count($emailMap) . ' player emails.');
 
-        // Load earnings data
-        $this->info("Loading earnings: {$filePath}");
-
-        $spreadsheet = IOFactory::load($filePath);
-        $worksheet = $spreadsheet->getActiveSheet();
-        $rows = $worksheet->toArray(null, true, false, false);
-
-        $totalRows = count($rows);
-        $this->info("Total rows in earnings spreadsheet: {$totalRows}");
-
-        $dataStartIndex = $skipMetadata + 1;
-
-        if ($dataStartIndex >= $totalRows) {
-            $this->error("No data rows found after skipping {$skipMetadata} metadata rows + header.");
-
-            return self::FAILURE;
-        }
-
-        if ($skipMetadata < $totalRows) {
-            $headerRow = $rows[$skipMetadata];
-            $this->info('Column headers: ' . implode(' | ', array_filter($headerRow)));
-        }
+        // Stream earnings data row-by-row using OpenSpout (low memory)
+        $this->info("Streaming earnings: {$filePath}");
 
         $dispatched = 0;
         $skipped = 0;
         $noEmail = 0;
         $parsed = 0;
+        $rowIndex = 0;
+        $dataStartIndex = $skipMetadata + 1; // metadata rows + header row
 
         if ($dryRun) {
             $this->warn('DRY RUN: No emails will be dispatched.');
         }
 
-        for ($i = $dataStartIndex; $i < $totalRows; $i++) {
-            $row = $rows[$i];
+        $reader = new XlsxReader();
+        $reader->open($filePath);
 
-            $playerId = $row[1] ?? null;
-            if (empty($playerId) || ! is_numeric($playerId)) {
-                $skipped++;
+        foreach ($reader->getSheetIterator() as $sheet) {
+            foreach ($sheet->getRowIterator() as $row) {
+                $rowIndex++;
 
-                continue;
-            }
-
-            $playerData = $this->parseRow($row);
-            $parsed++;
-
-            // Look up email by Player ID
-            $email = $emailMap[$playerData['player_id']] ?? null;
-
-            if (empty($email)) {
-                $noEmail++;
-                $this->warn("  No email found for Player {$playerData['player_id']} ({$playerData['username']}), skipping.");
-
-                continue;
-            }
-
-            $playerData['email'] = $email;
-
-            if ($dryRun) {
-                if ($parsed <= 5) {
-                    $this->line("  Sample: Player {$playerData['player_id']} ({$playerData['username']}) → {$email} — Bets: {$playerData['bets']}, Net: {$playerData['net_income']}");
-                }
-            } else {
-                SendPlayerEarningsEmailJob::dispatch($playerData, $year);
-                $dispatched++;
-
-                if ($dispatched % 100 === 0) {
-                    $this->info("Dispatched {$dispatched} emails...");
+                // Skip metadata rows
+                if ($rowIndex <= $skipMetadata) {
+                    continue;
                 }
 
-                if ($limit > 0 && $dispatched >= $limit) {
-                    $this->warn("Limit of {$limit} emails reached, stopping.");
+                $cells = $row->toArray();
 
-                    break;
+                // Log column header row
+                if ($rowIndex === $skipMetadata + 1) {
+                    $this->info('Column headers: ' . implode(' | ', array_filter($cells)));
+
+                    continue;
+                }
+
+                $playerId = $cells[1] ?? null;
+                if (empty($playerId) || ! is_numeric($playerId)) {
+                    $skipped++;
+
+                    continue;
+                }
+
+                $playerData = $this->parseRow($cells);
+                $parsed++;
+
+                // Look up email by Player ID
+                $email = $emailMap[$playerData['player_id']] ?? null;
+
+                if (empty($email)) {
+                    $noEmail++;
+
+                    continue;
+                }
+
+                $playerData['email'] = $email;
+
+                if ($dryRun) {
+                    if ($parsed <= 5) {
+                        $this->line("  Sample: Player {$playerData['player_id']} ({$playerData['username']}) → {$email} — Bets: {$playerData['bets']}, Net: {$playerData['net_income']}");
+                    }
+                } else {
+                    SendPlayerEarningsEmailJob::dispatch($playerData, $year);
+                    $dispatched++;
+
+                    if ($dispatched % 100 === 0) {
+                        $this->info("Dispatched {$dispatched} emails...");
+                    }
+
+                    if ($limit > 0 && $dispatched >= $limit) {
+                        $this->warn("Limit of {$limit} emails reached, stopping.");
+
+                        break 2;
+                    }
                 }
             }
+
+            break; // Only process first sheet
         }
+
+        $reader->close();
 
         $this->newLine();
         $this->info("Parsed: {$parsed} players");
@@ -163,6 +168,8 @@ class SendAnnualEarningsReports extends Command
 
     /**
      * Load player emails from the player info spreadsheet into a map keyed by Player ID.
+     *
+     * This file is small (< 20 entries), so PhpSpreadsheet's in-memory loading is fine.
      *
      * Expected columns: Player ID (0), Player username (1), Player status (2),
      * First name (3), Last name (4), Email (5)
@@ -213,8 +220,7 @@ class SendAnnualEarningsReports extends Command
     /**
      * Parse a Brazilian-formatted number.
      *
-     * PhpSpreadsheet may return the value as a float directly if the cell is numeric,
-     * or as a string with Brazilian formatting (period for thousands, comma for decimals).
+     * OpenSpout returns cell values as-is (float for numeric cells, string for text).
      */
     private function parseBrNumber(mixed $value): float
     {
