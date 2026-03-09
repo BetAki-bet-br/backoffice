@@ -14,11 +14,15 @@ class SendAnnualEarningsReports extends Command
         {player-info : Path to the .xlsx player info file (with emails)}
         {--year=2025 : The report year}
         {--dry-run : Parse and validate without dispatching emails}
-        {--skip-metadata=17 : Number of metadata rows to skip in the earnings file}
         {--skip-player-metadata=19 : Number of metadata rows to skip in the player info file}
         {--limit=0 : Limit the number of emails dispatched (0 = no limit)}';
 
     protected $description = 'Parse an annual earnings report spreadsheet and dispatch individual email reports to each player';
+
+    /**
+     * Known header markers to auto-detect the column header row in the earnings file.
+     */
+    private const EARNINGS_HEADER_MARKER = 'Player currency';
 
     private const COLUMN_MAP = [
         0 => 'currency',
@@ -49,7 +53,6 @@ class SendAnnualEarningsReports extends Command
         $playerInfoPath = $this->argument('player-info');
         $year = (int) $this->option('year');
         $dryRun = $this->option('dry-run');
-        $skipMetadata = (int) $this->option('skip-metadata');
         $skipPlayerMetadata = (int) $this->option('skip-player-metadata');
         $limit = (int) $this->option('limit');
 
@@ -70,6 +73,9 @@ class SendAnnualEarningsReports extends Command
         $emailMap = $this->loadPlayerEmails($playerInfoPath, $skipPlayerMetadata);
         $this->info('Loaded ' . count($emailMap) . ' player emails.');
 
+        // Track which player-info entries get matched
+        $matchedPlayerIds = [];
+
         // Stream earnings data row-by-row using OpenSpout (low memory)
         $this->info("Streaming earnings: {$filePath}");
 
@@ -77,8 +83,7 @@ class SendAnnualEarningsReports extends Command
         $skipped = 0;
         $noEmail = 0;
         $parsed = 0;
-        $rowIndex = 0;
-        $dataStartIndex = $skipMetadata + 1; // metadata rows + header row
+        $headerFound = false;
 
         if ($dryRun) {
             $this->warn('DRY RUN: No emails will be dispatched.');
@@ -89,18 +94,15 @@ class SendAnnualEarningsReports extends Command
 
         foreach ($reader->getSheetIterator() as $sheet) {
             foreach ($sheet->getRowIterator() as $row) {
-                $rowIndex++;
-
-                // Skip metadata rows
-                if ($rowIndex <= $skipMetadata) {
-                    continue;
-                }
-
                 $cells = $row->toArray();
 
-                // Log column header row
-                if ($rowIndex === $skipMetadata + 1) {
-                    $this->info('Column headers: ' . implode(' | ', array_filter($cells)));
+                // Auto-detect column header row by looking for the marker
+                if (! $headerFound) {
+                    $firstCell = trim((string) ($cells[0] ?? ''));
+                    if ($firstCell === self::EARNINGS_HEADER_MARKER) {
+                        $headerFound = true;
+                        $this->info('Column headers: ' . implode(' | ', array_filter(array_map('strval', $cells))));
+                    }
 
                     continue;
                 }
@@ -116,7 +118,8 @@ class SendAnnualEarningsReports extends Command
                 $parsed++;
 
                 // Look up email by Player ID
-                $email = $emailMap[$playerData['player_id']] ?? null;
+                $playerIdStr = $playerData['player_id'];
+                $email = $emailMap[$playerIdStr] ?? null;
 
                 if (empty($email)) {
                     $noEmail++;
@@ -124,12 +127,11 @@ class SendAnnualEarningsReports extends Command
                     continue;
                 }
 
+                $matchedPlayerIds[] = $playerIdStr;
                 $playerData['email'] = $email;
 
                 if ($dryRun) {
-                    if ($parsed <= 5) {
-                        $this->line("  Sample: Player {$playerData['player_id']} ({$playerData['username']}) → {$email} — Bets: {$playerData['bets']}, Net: {$playerData['net_income']}");
-                    }
+                    $this->line("  Match: Player {$playerData['player_id']} ({$playerData['username']}) → {$email} — Bets: {$playerData['bets']}, Net: {$playerData['net_income']}");
                 } else {
                     SendPlayerEarningsEmailJob::dispatch($playerData, $year);
                     $dispatched++;
@@ -151,14 +153,35 @@ class SendAnnualEarningsReports extends Command
 
         $reader->close();
 
+        if (! $headerFound) {
+            $this->error("Could not find column header row (looking for '" . self::EARNINGS_HEADER_MARKER . "' in first column).");
+
+            return self::FAILURE;
+        }
+
+        // Report unmatched player-info entries
+        $unmatchedPlayers = array_diff_key($emailMap, array_flip($matchedPlayerIds));
+
         $this->newLine();
-        $this->info("Parsed: {$parsed} players");
+        $this->info("Parsed: {$parsed} players from earnings");
         $this->info("Skipped (invalid rows): {$skipped}");
-        $this->info("No email found: {$noEmail}");
+        $this->info("No email in player-info: {$noEmail}");
+        $this->info('Matched: ' . count($matchedPlayerIds) . ' / ' . count($emailMap) . ' player-info entries');
+
+        if (! empty($unmatchedPlayers)) {
+            $this->newLine();
+            $this->warn('Players from player-info NOT found in earnings (' . count($unmatchedPlayers) . '):');
+            $this->table(
+                ['Player ID', 'Email'],
+                array_map(fn ($email, $id) => [$id, $email], $unmatchedPlayers, array_keys($unmatchedPlayers)),
+            );
+        }
 
         if ($dryRun) {
-            $this->warn('Dry run complete. No emails dispatched. ' . ($parsed - $noEmail) . ' players would receive reports.');
+            $this->newLine();
+            $this->warn('Dry run complete. No emails dispatched. ' . count($matchedPlayerIds) . ' players would receive reports.');
         } else {
+            $this->newLine();
             $this->info("Dispatched: {$dispatched} email jobs to the 'emails' queue.");
             $this->info("Run 'php artisan queue:work --queue=emails' or use Horizon to process them.");
         }
