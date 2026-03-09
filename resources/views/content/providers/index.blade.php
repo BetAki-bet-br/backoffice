@@ -477,6 +477,15 @@
                 }
 
                 toast('Provedor atualizado');
+
+                if (payload.status === 'inactive') {
+                    const cascade = await apiFetch('/api/v1/providers/' + editingId + '/deactivate-slots', { method: 'POST' });
+                    if (cascade.ok) {
+                        const data = await cascade.json();
+                        if (data.affected > 0) toast(`${data.affected} jogo(s) desativado(s) em cascata.`);
+                    }
+                }
+
                 editModal.hide();
                 load();
             }
