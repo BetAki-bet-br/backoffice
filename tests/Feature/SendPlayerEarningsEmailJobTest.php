@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Jobs\SendPlayerEarningsEmailJob;
 use App\Mail\AnnualEarningsReportMail;
-use App\Services\BaseApi\BasePortalApiClient;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -31,41 +30,22 @@ class SendPlayerEarningsEmailJobTest extends TestCase
             'balance_end_real' => 0.33,
             'balance_start_bonus' => 0.0,
             'balance_end_bonus' => 0.0,
+            'email' => 'player@example.com',
         ];
     }
 
-    public function test_sends_email_when_player_has_email(): void
+    public function test_sends_email_to_player(): void
     {
         Mail::fake();
 
-        $client = $this->mock(BasePortalApiClient::class);
-        $client->shouldReceive('getPlayerEmail')
-            ->with('10310001')
-            ->andReturn('player@example.com');
-
         $job = new SendPlayerEarningsEmailJob($this->playerData, 2025);
-        $job->handle($client);
+        $job->handle();
 
         Mail::assertSent(AnnualEarningsReportMail::class, function ($mail) {
             return $mail->hasTo('player@example.com')
                 && $mail->year === 2025
                 && $mail->playerData['player_id'] === '10310001';
         });
-    }
-
-    public function test_does_not_send_email_when_player_has_no_email(): void
-    {
-        Mail::fake();
-
-        $client = $this->mock(BasePortalApiClient::class);
-        $client->shouldReceive('getPlayerEmail')
-            ->with('10310001')
-            ->andReturn(null);
-
-        $job = new SendPlayerEarningsEmailJob($this->playerData, 2025);
-        $job->handle($client);
-
-        Mail::assertNothingSent();
     }
 
     public function test_job_is_queued_on_emails_queue(): void

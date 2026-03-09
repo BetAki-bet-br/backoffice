@@ -10,9 +10,11 @@ class SendAnnualEarningsReports extends Command
 {
     protected $signature = 'app:send-annual-earnings-reports
         {file : Path to the .xlsx earnings report file}
+        {player-info : Path to the .xlsx player info file (with emails)}
         {--year=2025 : The report year}
         {--dry-run : Parse and validate without dispatching emails}
-        {--skip-metadata=17 : Number of metadata rows to skip before the column header}
+        {--skip-metadata=17 : Number of metadata rows to skip in the earnings file}
+        {--skip-player-metadata=19 : Number of metadata rows to skip in the player info file}
         {--limit=0 : Limit the number of emails dispatched (0 = no limit)}';
 
     protected $description = 'Parse an annual earnings report spreadsheet and dispatch individual email reports to each player';
@@ -43,27 +45,40 @@ class SendAnnualEarningsReports extends Command
     public function handle(): int
     {
         $filePath = $this->argument('file');
+        $playerInfoPath = $this->argument('player-info');
         $year = (int) $this->option('year');
         $dryRun = $this->option('dry-run');
         $skipMetadata = (int) $this->option('skip-metadata');
+        $skipPlayerMetadata = (int) $this->option('skip-player-metadata');
         $limit = (int) $this->option('limit');
 
         if (! file_exists($filePath)) {
-            $this->error("File not found: {$filePath}");
+            $this->error("Earnings file not found: {$filePath}");
 
             return self::FAILURE;
         }
 
-        $this->info("Loading spreadsheet: {$filePath}");
+        if (! file_exists($playerInfoPath)) {
+            $this->error("Player info file not found: {$playerInfoPath}");
+
+            return self::FAILURE;
+        }
+
+        // Load player info (emails) first
+        $this->info("Loading player info: {$playerInfoPath}");
+        $emailMap = $this->loadPlayerEmails($playerInfoPath, $skipPlayerMetadata);
+        $this->info('Loaded ' . count($emailMap) . ' player emails.');
+
+        // Load earnings data
+        $this->info("Loading earnings: {$filePath}");
 
         $spreadsheet = IOFactory::load($filePath);
         $worksheet = $spreadsheet->getActiveSheet();
         $rows = $worksheet->toArray(null, true, false, false);
 
         $totalRows = count($rows);
-        $this->info("Total rows in spreadsheet: {$totalRows}");
+        $this->info("Total rows in earnings spreadsheet: {$totalRows}");
 
-        // Skip metadata rows + column header row
         $dataStartIndex = $skipMetadata + 1;
 
         if ($dataStartIndex >= $totalRows) {
@@ -72,7 +87,6 @@ class SendAnnualEarningsReports extends Command
             return self::FAILURE;
         }
 
-        // Log column header for debugging
         if ($skipMetadata < $totalRows) {
             $headerRow = $rows[$skipMetadata];
             $this->info('Column headers: ' . implode(' | ', array_filter($headerRow)));
@@ -80,6 +94,7 @@ class SendAnnualEarningsReports extends Command
 
         $dispatched = 0;
         $skipped = 0;
+        $noEmail = 0;
         $parsed = 0;
 
         if ($dryRun) {
@@ -99,9 +114,21 @@ class SendAnnualEarningsReports extends Command
             $playerData = $this->parseRow($row);
             $parsed++;
 
+            // Look up email by Player ID
+            $email = $emailMap[$playerData['player_id']] ?? null;
+
+            if (empty($email)) {
+                $noEmail++;
+                $this->warn("  No email found for Player {$playerData['player_id']} ({$playerData['username']}), skipping.");
+
+                continue;
+            }
+
+            $playerData['email'] = $email;
+
             if ($dryRun) {
-                if ($parsed <= 3) {
-                    $this->line("  Sample: Player {$playerData['player_id']} ({$playerData['username']}) — Bets: {$playerData['bets']}, Wins: {$playerData['wins']}, Net: {$playerData['net_income']}");
+                if ($parsed <= 5) {
+                    $this->line("  Sample: Player {$playerData['player_id']} ({$playerData['username']}) → {$email} — Bets: {$playerData['bets']}, Net: {$playerData['net_income']}");
                 }
             } else {
                 SendPlayerEarningsEmailJob::dispatch($playerData, $year);
@@ -122,15 +149,48 @@ class SendAnnualEarningsReports extends Command
         $this->newLine();
         $this->info("Parsed: {$parsed} players");
         $this->info("Skipped (invalid rows): {$skipped}");
+        $this->info("No email found: {$noEmail}");
 
         if ($dryRun) {
-            $this->warn("Dry run complete. No emails dispatched. {$parsed} players would receive reports.");
+            $this->warn('Dry run complete. No emails dispatched. ' . ($parsed - $noEmail) . ' players would receive reports.');
         } else {
             $this->info("Dispatched: {$dispatched} email jobs to the 'emails' queue.");
             $this->info("Run 'php artisan queue:work --queue=emails' or use Horizon to process them.");
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Load player emails from the player info spreadsheet into a map keyed by Player ID.
+     *
+     * Expected columns: Player ID (0), Player username (1), Player status (2),
+     * First name (3), Last name (4), Email (5)
+     *
+     * @return array<string, string> Player ID => email
+     */
+    private function loadPlayerEmails(string $filePath, int $skipMetadata): array
+    {
+        $spreadsheet = IOFactory::load($filePath);
+        $worksheet = $spreadsheet->getActiveSheet();
+        $rows = $worksheet->toArray(null, true, false, false);
+
+        $dataStartIndex = $skipMetadata + 1;
+        $emailMap = [];
+
+        for ($i = $dataStartIndex; $i < count($rows); $i++) {
+            $row = $rows[$i];
+            $playerId = $row[0] ?? null;
+            $email = trim((string) ($row[5] ?? ''));
+
+            if (empty($playerId) || ! is_numeric($playerId) || empty($email)) {
+                continue;
+            }
+
+            $emailMap[(string) $playerId] = $email;
+        }
+
+        return $emailMap;
     }
 
     private function parseRow(array $row): array

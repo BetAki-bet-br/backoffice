@@ -2,7 +2,6 @@
 
 namespace App\Services\BaseApi;
 
-use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 
 class BasePortalApiClient
@@ -96,37 +95,5 @@ class BasePortalApiClient
         $response->throw();
 
         return $response->json() ?? [];
-    }
-
-    /**
-     * Fetch a player's email address by their Player ID.
-     *
-     * TODO: Update the endpoint path once the portal API documentation is confirmed.
-     */
-    public function getPlayerEmail(int|string $playerId): ?string
-    {
-        $url = $this->baseUrl . "/portal/v1/player/{$playerId}";
-
-        $request = Http::acceptJson()
-            ->timeout($this->timeout);
-
-        if ($this->apiKey) {
-            $request = $request->withHeaders([
-                'x-api-key' => $this->apiKey,
-            ]);
-        }
-
-        try {
-            $response = $request->get($url);
-            $response->throw();
-
-            return $response->json('email');
-        } catch (RequestException $e) {
-            if ($e->response?->status() === 404) {
-                return null;
-            }
-
-            throw $e;
-        }
     }
 }

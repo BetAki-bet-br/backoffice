@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Mail\AnnualEarningsReportMail;
-use App\Services\BaseApi\BasePortalApiClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -29,18 +28,11 @@ class SendPlayerEarningsEmailJob implements ShouldQueue
         $this->onQueue('emails');
     }
 
-    public function handle(BasePortalApiClient $client): void
+    public function handle(): void
     {
         $playerId = $this->playerData['player_id'];
         $username = $this->playerData['username'];
-
-        $email = $client->getPlayerEmail($playerId);
-
-        if (empty($email)) {
-            Log::warning("SendPlayerEarningsEmailJob: No email found for player {$playerId} ({$username}), skipping.");
-
-            return;
-        }
+        $email = $this->playerData['email'];
 
         Mail::to($email)->send(new AnnualEarningsReportMail($this->playerData, $this->year));
 
