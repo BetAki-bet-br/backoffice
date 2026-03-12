@@ -22,3 +22,4 @@ Route::view('/top-winners', 'content.topwinners.index')->name('topwinners.ui');
 Route::view('/footers', 'content.footers.index')->name('footers.ui');
 Route::view('/users', 'content.users.index')->name('users.ui');
 Route::view('/game-extras', 'content.game_extras.index')->name('gameextras.ui');
+Route::view('/earnings-reports', 'content.earnings.index')->name('earnings.ui');

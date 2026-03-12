@@ -330,5 +330,13 @@ Route::prefix('v1')->group(function () {
         // Pré-cadastro de Slots a partir de portal_games
         Route::post('slots/sync-from-portal', [\App\Http\Controllers\Api\V1\PortalSlotsSyncController::class, 'sync'])
             ->name('slots.syncFromPortal');
+
+        // Earnings Reports
+        Route::post('earnings-reports/upload', [\App\Http\Controllers\Api\V1\EarningsReportController::class, 'upload'])
+            ->name('earnings.upload');
+        Route::get('earnings-reports/status', [\App\Http\Controllers\Api\V1\EarningsReportController::class, 'status'])
+            ->name('earnings.status');
+        Route::post('earnings-reports/send', [\App\Http\Controllers\Api\V1\EarningsReportController::class, 'send'])
+            ->name('earnings.send');
     });
 });

@@ -593,6 +593,11 @@
                 <span class="sidebar-link-icon">🕹️</span>
                 <span>Game Extras</span>
             </a>
+
+            <a href="{{ route('earnings.ui') }}" class="sidebar-link {{ request()->routeIs('earnings.ui') ? 'active' : '' }}">
+                <span class="sidebar-link-icon">📊</span>
+                <span>Relatórios</span>
+            </a>
         </nav>
 
         <div class="sidebar-footer">

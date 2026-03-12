@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Jobs\SendPlayerEarningsEmailJob;
+use App\Services\EarningsReportService;
 use Illuminate\Console\Command;
-use OpenSpout\Reader\XLSX\Reader as XlsxReader;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class SendAnnualEarningsReports extends Command
@@ -19,35 +19,7 @@ class SendAnnualEarningsReports extends Command
 
     protected $description = 'Parse an annual earnings report spreadsheet and dispatch individual email reports to each player';
 
-    /**
-     * Known header markers to auto-detect the column header row in the earnings file.
-     */
-    private const EARNINGS_HEADER_MARKER = 'Player currency';
-
-    private const COLUMN_MAP = [
-        0 => 'currency',
-        1 => 'player_id',
-        2 => 'bets',
-        3 => 'username',
-        4 => 'bet_count',
-        5 => 'wins',
-        6 => 'redeemed_bonuses',
-        7 => 'net_income',
-        8 => 'deposits',
-        9 => 'withdrawals',
-        10 => 'balance_start_real',
-        11 => 'balance_end_real',
-        12 => 'balance_start_bonus',
-        13 => 'balance_end_bonus',
-    ];
-
-    private const NUMERIC_FIELDS = [
-        'bets', 'bet_count', 'wins', 'redeemed_bonuses', 'net_income',
-        'deposits', 'withdrawals', 'balance_start_real', 'balance_end_real',
-        'balance_start_bonus', 'balance_end_bonus',
-    ];
-
-    public function handle(): int
+    public function handle(EarningsReportService $service): int
     {
         $filePath = $this->argument('file');
         $playerInfoPath = $this->argument('player-info');
@@ -71,106 +43,76 @@ class SendAnnualEarningsReports extends Command
         // Load player info (emails) — small file, PhpSpreadsheet is fine
         $this->info("Loading player info: {$playerInfoPath}");
         $emailMap = $this->loadPlayerEmails($playerInfoPath, $skipPlayerMetadata);
-        $this->info('Loaded ' . count($emailMap) . ' player emails.');
+        $this->info('Loaded '.count($emailMap).' player emails.');
 
         // Track which player-info entries get matched
         $matchedPlayerIds = [];
 
-        // Stream earnings data row-by-row using OpenSpout (low memory)
+        // Stream earnings data row-by-row using the service
         $this->info("Streaming earnings: {$filePath}");
 
         $dispatched = 0;
-        $skipped = 0;
         $noEmail = 0;
-        $parsed = 0;
-        $headerFound = false;
 
         if ($dryRun) {
             $this->warn('DRY RUN: No emails will be dispatched.');
         }
 
-        $reader = new XlsxReader();
-        $reader->open($filePath);
+        $stats = $service->streamAllPlayers($filePath, function (array $playerData) use (
+            $emailMap, $dryRun, $year, $limit, &$dispatched, &$noEmail, &$matchedPlayerIds
+        ) {
+            $playerIdStr = $playerData['player_id'];
+            $email = $emailMap[$playerIdStr] ?? null;
 
-        foreach ($reader->getSheetIterator() as $sheet) {
-            foreach ($sheet->getRowIterator() as $row) {
-                $cells = $row->toArray();
+            if (empty($email)) {
+                $noEmail++;
 
-                // Auto-detect column header row by looking for the marker
-                if (! $headerFound) {
-                    $firstCell = trim((string) ($cells[0] ?? ''));
-                    if ($firstCell === self::EARNINGS_HEADER_MARKER) {
-                        $headerFound = true;
-                        $this->info('Column headers: ' . implode(' | ', array_filter(array_map('strval', $cells))));
-                    }
-
-                    continue;
-                }
-
-                $playerId = $cells[1] ?? null;
-                if (empty($playerId) || ! is_numeric($playerId)) {
-                    $skipped++;
-
-                    continue;
-                }
-
-                $playerData = $this->parseRow($cells);
-                $parsed++;
-
-                // Look up email by Player ID
-                $playerIdStr = $playerData['player_id'];
-                $email = $emailMap[$playerIdStr] ?? null;
-
-                if (empty($email)) {
-                    $noEmail++;
-
-                    continue;
-                }
-
-                $matchedPlayerIds[] = $playerIdStr;
-                $playerData['email'] = $email;
-
-                if ($dryRun) {
-                    $this->line("  Match: Player {$playerData['player_id']} ({$playerData['username']}) → {$email} — Bets: {$playerData['bets']}, Net: {$playerData['net_income']}");
-                } else {
-                    SendPlayerEarningsEmailJob::dispatch($playerData, $year);
-                    $dispatched++;
-
-                    if ($dispatched % 100 === 0) {
-                        $this->info("Dispatched {$dispatched} emails...");
-                    }
-
-                    if ($limit > 0 && $dispatched >= $limit) {
-                        $this->warn("Limit of {$limit} emails reached, stopping.");
-
-                        break 2;
-                    }
-                }
+                return;
             }
 
-            break; // Only process first sheet
-        }
+            $matchedPlayerIds[] = $playerIdStr;
+            $playerData['email'] = $email;
 
-        $reader->close();
+            if ($dryRun) {
+                $this->line("  Match: Player {$playerData['player_id']} ({$playerData['username']}) → {$email} — Bets: {$playerData['bets']}, Net: {$playerData['net_income']}");
+            } else {
+                SendPlayerEarningsEmailJob::dispatch($playerData, $year);
+                $dispatched++;
 
-        if (! $headerFound) {
-            $this->error("Could not find column header row (looking for '" . self::EARNINGS_HEADER_MARKER . "' in first column).");
+                if ($dispatched % 100 === 0) {
+                    $this->info("Dispatched {$dispatched} emails...");
+                }
+
+                if ($limit > 0 && $dispatched >= $limit) {
+                    $this->warn("Limit of {$limit} emails reached, stopping.");
+
+                    return false;
+                }
+            }
+        });
+
+        if (! $stats['header_found']) {
+            $this->error("Could not find column header row (looking for 'Player currency' in first column).");
 
             return self::FAILURE;
+        }
+
+        if ($stats['headers']) {
+            $this->info('Column headers: '.$stats['headers']);
         }
 
         // Report unmatched player-info entries
         $unmatchedPlayers = array_diff_key($emailMap, array_flip($matchedPlayerIds));
 
         $this->newLine();
-        $this->info("Parsed: {$parsed} players from earnings");
-        $this->info("Skipped (invalid rows): {$skipped}");
+        $this->info("Parsed: {$stats['parsed']} players from earnings");
+        $this->info("Skipped (invalid rows): {$stats['skipped']}");
         $this->info("No email in player-info: {$noEmail}");
-        $this->info('Matched: ' . count($matchedPlayerIds) . ' / ' . count($emailMap) . ' player-info entries');
+        $this->info('Matched: '.count($matchedPlayerIds).' / '.count($emailMap).' player-info entries');
 
         if (! empty($unmatchedPlayers)) {
             $this->newLine();
-            $this->warn('Players from player-info NOT found in earnings (' . count($unmatchedPlayers) . '):');
+            $this->warn('Players from player-info NOT found in earnings ('.count($unmatchedPlayers).'):');
             $this->table(
                 ['Player ID', 'Email'],
                 array_map(fn ($email, $id) => [$id, $email], $unmatchedPlayers, array_keys($unmatchedPlayers)),
@@ -179,7 +121,7 @@ class SendAnnualEarningsReports extends Command
 
         if ($dryRun) {
             $this->newLine();
-            $this->warn('Dry run complete. No emails dispatched. ' . count($matchedPlayerIds) . ' players would receive reports.');
+            $this->warn('Dry run complete. No emails dispatched. '.count($matchedPlayerIds).' players would receive reports.');
         } else {
             $this->newLine();
             $this->info("Dispatched: {$dispatched} email jobs to the 'emails' queue.");
@@ -191,11 +133,6 @@ class SendAnnualEarningsReports extends Command
 
     /**
      * Load player emails from the player info spreadsheet into a map keyed by Player ID.
-     *
-     * This file is small (< 20 entries), so PhpSpreadsheet's in-memory loading is fine.
-     *
-     * Expected columns: Player ID (0), Player username (1), Player status (2),
-     * First name (3), Last name (4), Email (5)
      *
      * @return array<string, string> Player ID => email
      */
@@ -221,46 +158,5 @@ class SendAnnualEarningsReports extends Command
         }
 
         return $emailMap;
-    }
-
-    private function parseRow(array $row): array
-    {
-        $data = [];
-
-        foreach (self::COLUMN_MAP as $index => $field) {
-            $value = $row[$index] ?? null;
-
-            if (in_array($field, self::NUMERIC_FIELDS)) {
-                $data[$field] = $this->parseBrNumber($value);
-            } else {
-                $data[$field] = trim((string) $value);
-            }
-        }
-
-        return $data;
-    }
-
-    /**
-     * Parse a Brazilian-formatted number.
-     *
-     * OpenSpout returns cell values as-is (float for numeric cells, string for text).
-     */
-    private function parseBrNumber(mixed $value): float
-    {
-        if (is_int($value) || is_float($value)) {
-            return (float) $value;
-        }
-
-        $value = trim((string) $value);
-
-        if ($value === '' || $value === '-') {
-            return 0.0;
-        }
-
-        // Brazilian format: 1.086 (thousands) and 183,70 (decimals)
-        $value = str_replace('.', '', $value);
-        $value = str_replace(',', '.', $value);
-
-        return (float) $value;
     }
 }
