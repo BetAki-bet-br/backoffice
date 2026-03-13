@@ -37,7 +37,7 @@ class SoftSwissSyncController extends Controller
             'message' => 'Syncing games from SoftSwiss CDN'.($providers ? ' (providers: '.implode(', ', $providers).')' : ''),
         ]);
 
-        SyncSoftSwissJob::dispatch($job->id, $providers)->onConnection('database');
+        SyncSoftSwissJob::dispatch($job->id, $providers);
 
         return response()->json([
             'message' => 'SoftSwiss synchronization has been queued.',
