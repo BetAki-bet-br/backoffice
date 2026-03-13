@@ -576,7 +576,7 @@
                     const res = await apiFetch('/api/v1/softswiss/sync', {
                         method: 'POST',
                         body: JSON.stringify({
-                            providers: ['bgmng', 'booming', 'evoplay', 'wazdan', 'yggdrasil_4theplayer', 'yggdrasil']
+                            providers: ['bgmng', 'booming', 'evoplay', 'wazdan', 'yggdrasil']
                         })
                     });
 

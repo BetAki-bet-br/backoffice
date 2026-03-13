@@ -50,7 +50,6 @@ return [
             'booming' => ['basic'],
             'evoplay' => ['basic', 'basic_mt'],
             'wazdan' => ['basic', 'basic_lv', 'rtp'],
-            'yggdrasil_4theplayer' => ['basic'],
             'yggdrasil' => ['basic'],
         ],
     ],
