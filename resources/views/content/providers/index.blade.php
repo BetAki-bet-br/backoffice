@@ -13,6 +13,7 @@
         <div class="d-flex gap-2">
             <button class="btn btn-outline-dark" id="btnSync" title="Escanear jogos para encontrar provedores">Sincronizar
                 (Scan)</button>
+            <button class="btn btn-outline-info" id="btnSyncSoftSwiss" title="Sincronizar provedores e jogos do CDN SoftSwiss">Sincronizar SoftSwiss</button>
             <button class="btn btn-outline-secondary" id="btnReload">Atualizar</button>
         </div>
     </div>
@@ -529,7 +530,77 @@
 
             }
 
+            // ====== SoftSwiss Sync ======
+            let softSwissPollingInterval = null;
+
+            function checkSoftSwissJobStatus(jobId) {
+                const btn = document.getElementById('btnSyncSoftSwiss');
+                const originalText = 'Sincronizar SoftSwiss';
+
+                softSwissPollingInterval = setInterval(async () => {
+                    const res = await apiFetch(`/api/v1/sync-jobs/${jobId}`);
+                    if (!res.ok) {
+                        console.error('Failed to poll SoftSwiss job status');
+                        return;
+                    }
+                    const job = await res.json();
+
+                    if (job.status === 'running') {
+                        btn.textContent = 'Sincronizando SoftSwiss...';
+                        btn.disabled = true;
+                    } else if (job.status === 'completed') {
+                        clearInterval(softSwissPollingInterval);
+                        const stats = job.message ? JSON.parse(job.message) : {};
+                        toast(`SoftSwiss: ${stats.providers || 0} provedores, ${stats.games || 0} jogos sincronizados.`);
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                        load();
+                    } else if (job.status === 'failed') {
+                        clearInterval(softSwissPollingInterval);
+                        toast('Falha na sincronização SoftSwiss: ' + (job.message || 'Erro desconhecido'), 'danger');
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }
+                }, 3000);
+            }
+
+            async function syncSoftSwiss() {
+                if (!confirm('Sincronizar provedores e jogos do CDN SoftSwiss? Isso irá buscar jogos de bgmng, booming, evoplay, wazdan e yggdrasil.')) return;
+
+                const btn = document.getElementById('btnSyncSoftSwiss');
+                const originalText = btn.textContent;
+                btn.disabled = true;
+                btn.textContent = 'Enfileirando...';
+
+                try {
+                    const res = await apiFetch('/api/v1/softswiss/sync', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            providers: ['bgmng', 'booming', 'evoplay', 'wazdan', 'yggdrasil_4theplayer', 'yggdrasil']
+                        })
+                    });
+
+                    if (!res.ok) {
+                        await toastApiError(res, 'sincronizar SoftSwiss');
+                        btn.disabled = false;
+                        btn.textContent = originalText;
+                    } else {
+                        const data = await res.json();
+                        toast('Sincronização SoftSwiss iniciada em segundo plano.');
+                        if (data.sync_job_id) {
+                            checkSoftSwissJobStatus(data.sync_job_id);
+                        }
+                    }
+                } catch (e) {
+                    console.error(e);
+                    toast('Erro de conexão.', 'danger');
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            }
+
             // Events
+            document.getElementById('btnSyncSoftSwiss').addEventListener('click', syncSoftSwiss);
             document.getElementById('btnReload').addEventListener('click', load);
             document.getElementById('btnSearch').addEventListener('click', load);
             document.getElementById('q').addEventListener('keydown', (e) => {
