@@ -7,7 +7,6 @@ use App\Http\Requests\Navigation\MenuItemRequest;
 use App\Http\Requests\Navigation\MenuItemTreeSyncRequest;
 use App\Models\Domain\Navigation\Menu;
 use App\Models\Domain\Navigation\MenuItem;
-use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 
 class MenuItemController extends Controller
@@ -17,11 +16,13 @@ class MenuItemController extends Controller
      *  tags={"Menus"},
      *  security={{"bearerAuth": {}}},
      *  summary="Listar itens de um menu (raiz -> filhos)",
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function index(Menu $menu)
     {
         $menu->load(['items.children.children']);
+
         return response()->json($menu->items);
     }
 
@@ -30,14 +31,16 @@ class MenuItemController extends Controller
      *  tags={"Menus"},
      *  security={{"bearerAuth": {}}},
      *  summary="Criar item",
+     *
      *  @OA\RequestBody(required=true),
+     *
      *  @OA\Response(response=201, description="Criado")
      * ) */
     public function store(MenuItemRequest $request, Menu $menu)
     {
         $data = $request->validated();
-        $data['menu_id']   = $menu->id;
-        $data['created_by']= $request->user()->id;
+        $data['menu_id'] = $menu->id;
+        $data['created_by'] = $request->user()->id;
 
         $item = MenuItem::create($data);
 
@@ -48,6 +51,7 @@ class MenuItemController extends Controller
     {
         abort_unless($item->menu_id === $menu->id, 404);
         $item->load('children.children');
+
         return response()->json($item);
     }
 
@@ -58,7 +62,7 @@ class MenuItemController extends Controller
         $data = $request->validated();
         $data['updated_by'] = $request->user()->id;
 
-        if (!empty($data['parent_id'])) {
+        if (! empty($data['parent_id'])) {
             $parent = MenuItem::where('menu_id', $menu->id)->findOrFail($data['parent_id']);
             $data['depth'] = ($parent->depth + 1);
         } else {
@@ -66,6 +70,7 @@ class MenuItemController extends Controller
         }
 
         $item->update($data);
+
         return response()->json($item->refresh());
     }
 
@@ -73,6 +78,7 @@ class MenuItemController extends Controller
     {
         abort_unless($item->menu_id === $menu->id, 404);
         $item->delete();
+
         return response()->noContent();
     }
 
@@ -81,6 +87,7 @@ class MenuItemController extends Controller
      *  tags={"Menus"},
      *  security={{"bearerAuth": {}}},
      *  summary="Sincronizar árvore (reordenar e reparent)",
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function syncTree(MenuItemTreeSyncRequest $request, Menu $menu)
@@ -93,13 +100,14 @@ class MenuItemController extends Controller
                     ->where('id', $node['id'])
                     ->update([
                         'parent_id' => $node['parent_id'] ?? null,
-                        'position'  => $node['position'],
-                        'depth'     => $node['depth'],
+                        'position' => $node['position'],
+                        'depth' => $node['depth'],
                     ]);
             }
         });
 
         $menu->load(['items.children.children']);
+
         return response()->json($menu->items);
     }
 }

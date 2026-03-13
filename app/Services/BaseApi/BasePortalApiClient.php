@@ -25,7 +25,7 @@ class BasePortalApiClient
 
     public function getPortalGames(int $portalId): array
     {
-        $url = $this->baseUrl . "/portal/v1/prod-game/games/{$portalId}";
+        $url = $this->baseUrl."/portal/v1/prod-game/games/{$portalId}";
 
         $request = Http::acceptJson()
             ->timeout($this->timeout);
@@ -45,7 +45,7 @@ class BasePortalApiClient
 
     public function getGameCategories(int $portalId, ?int $levelId = null): array
     {
-        $url = $this->baseUrl . "/portal/v1/prod-game/game-categories/{$portalId}";
+        $url = $this->baseUrl."/portal/v1/prod-game/game-categories/{$portalId}";
 
         $request = Http::acceptJson()
             ->timeout($this->timeout);
@@ -70,7 +70,7 @@ class BasePortalApiClient
 
     public function getLobby(int $portalId, ?int $levelId = null): array
     {
-        $url = $this->baseUrl . "/portal/v1/prod-game/lobby";
+        $url = $this->baseUrl.'/portal/v1/prod-game/lobby';
 
         $request = Http::acceptJson()
             ->timeout($this->timeout);

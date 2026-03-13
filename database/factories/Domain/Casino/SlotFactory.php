@@ -12,7 +12,7 @@ class SlotFactory extends Factory
     public function definition(): array
     {
         $provider = $this->faker->randomElement(['Novomatic', 'NetEnt', 'Playtech', 'Microgaming', 'Evolution']);
-        
+
         return [
             'title' => $this->faker->unique()->words(3, true),
             'cover_url' => $this->faker->imageUrl(300, 400, 'games'),

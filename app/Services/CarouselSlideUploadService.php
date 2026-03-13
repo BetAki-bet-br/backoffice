@@ -13,10 +13,11 @@ class CarouselSlideUploadService
      */
     public static function uploadImage(UploadedFile $file): string
     {
-        $path = 'carousel-slides/' . now()->format('Y/m/d');
-        $filename = Str::random(32) . '.' . $file->getClientOriginalExtension();
-        
+        $path = 'carousel-slides/'.now()->format('Y/m/d');
+        $filename = Str::random(32).'.'.$file->getClientOriginalExtension();
+
         Storage::disk('s3')->putFileAs($path, $file, $filename, 'public');
+
         return Storage::disk('s3')->url("{$path}/{$filename}");
     }
 }

@@ -29,7 +29,7 @@ class AnnualEarningsReportMail extends Mailable
         $currency = $this->playerData['currency'];
         $symbol = $currency === 'BRL' ? 'R$' : $currency;
 
-        $format = fn (float $value) => $symbol . ' ' . number_format($value, 2, ',', '.');
+        $format = fn (float $value) => $symbol.' '.number_format($value, 2, ',', '.');
 
         return new Content(
             view: 'emails.annual-earnings-report',

@@ -2,25 +2,25 @@
 
 namespace App\Models\Domain\Casino;
 
+use App\Enums\ContentStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Enums\ContentStatus;
 
 class TopList extends Model
 {
     use SoftDeletes;
 
     protected $fillable = [
-        'title','slug','vertical','type','status','position',
-        'valid_from','valid_until','criteria',
-        'created_by','updated_by','published_by',
+        'title', 'slug', 'vertical', 'type', 'status', 'position',
+        'valid_from', 'valid_until', 'criteria',
+        'created_by', 'updated_by', 'published_by',
     ];
 
     protected $casts = [
-        'criteria'   => 'array',
+        'criteria' => 'array',
         'valid_from' => 'datetime',
-        'valid_until'=> 'datetime',
-        'status'     => ContentStatus::class,
+        'valid_until' => 'datetime',
+        'status' => ContentStatus::class,
     ];
 
     public function slots()
@@ -33,10 +33,10 @@ class TopList extends Model
 
     public function scopeActiveWindow($q)
     {
-        return $q->where(function($w){
-            $w->whereNull('valid_from')->orWhere('valid_from','<=',now());
-        })->where(function($w){
-            $w->whereNull('valid_until')->orWhere('valid_until','>=',now());
+        return $q->where(function ($w) {
+            $w->whereNull('valid_from')->orWhere('valid_from', '<=', now());
+        })->where(function ($w) {
+            $w->whereNull('valid_until')->orWhere('valid_until', '>=', now());
         });
     }
 }

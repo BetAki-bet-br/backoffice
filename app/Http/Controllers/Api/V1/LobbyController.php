@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\Setting;
 use App\Models\Domain\Casino\Category;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Annotations as OA;
@@ -16,12 +16,14 @@ class LobbyController extends Controller
      *  tags={"Lobbies"},
      *  security={{"bearerAuth": {}}},
      *  summary="Obter configuração do lobby",
+     *
      *  @OA\Parameter(name="vertical", in="path", required=true, @OA\Schema(type="string", enum={"slots","live"})),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function show(string $vertical)
     {
-        if (!in_array($vertical, ['slots', 'live'])) {
+        if (! in_array($vertical, ['slots', 'live'])) {
             abort(400, 'Vertical inválida');
         }
 
@@ -59,7 +61,7 @@ class LobbyController extends Controller
                 'type' => $category->type ?? 'game-list',
                 'title' => $category->name,
                 'categoryId' => $category->id,
-                'metadata' => []
+                'metadata' => [],
             ];
         })->values()->all();
 
@@ -71,15 +73,19 @@ class LobbyController extends Controller
      *  tags={"Lobbies"},
      *  security={{"bearerAuth": {}}},
      *  summary="Atualizar configuração do lobby",
+     *
      *  @OA\Parameter(name="vertical", in="path", required=true, @OA\Schema(type="string", enum={"slots","live"})),
+     *
      *  @OA\RequestBody(required=true, @OA\JsonContent(
+     *
      *      @OA\Property(property="sections", type="array", @OA\Items(type="object"))
      *  )),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function update(Request $request, string $vertical)
     {
-        if (!in_array($vertical, ['slots', 'live'])) {
+        if (! in_array($vertical, ['slots', 'live'])) {
             abort(400, 'Vertical inválida');
         }
 
@@ -91,7 +97,7 @@ class LobbyController extends Controller
 
         $key = "lobby.layout.{$vertical}";
         $data = [
-            'sections' => $request->input('sections')
+            'sections' => $request->input('sections'),
         ];
 
         DB::transaction(function () use ($key, $data) {
@@ -100,7 +106,7 @@ class LobbyController extends Controller
                 [
                     'value' => $data,
                     'group' => 'lobby',
-                    'type' => 'json'
+                    'type' => 'json',
                 ]
             );
         });

@@ -10,7 +10,7 @@ class GameExtraResolver
     {
         $externalIds = array_values(array_unique(array_filter($externalIds)));
 
-        if (!$externalIds) {
+        if (! $externalIds) {
             return [];
         }
 
@@ -23,14 +23,14 @@ class GameExtraResolver
 
     public static function enrich(GameMainDTO $dto, ?GameExtra $extra): GameMainDTO
     {
-        if (!$extra) {
+        if (! $extra) {
             return $dto->withExtras(null, null, null);
         }
 
         return $dto->withExtras(
-            rtp: $extra->rtp !== null ? (string)$extra->rtp : null,
+            rtp: $extra->rtp !== null ? (string) $extra->rtp : null,
             volatility: self::mapVolatility($extra->volatility),
-            minBet: $extra->min_bet !== null ? (string)$extra->min_bet : null,
+            minBet: $extra->min_bet !== null ? (string) $extra->min_bet : null,
         );
     }
 
@@ -42,7 +42,8 @@ class GameExtraResolver
 
         // Se já for numérico (1-5), retorna int
         if (is_numeric($value)) {
-            $v = (int)$value;
+            $v = (int) $value;
+
             return ($v >= 1 && $v <= 5) ? $v : null;
         }
 

@@ -4,14 +4,15 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('slots', function (Blueprint $table) {
             $table->id();
             $table->string('title');
             $table->string('cover_url')->nullable();
-            $table->enum('status', ['active','inactive'])->default('inactive');
+            $table->enum('status', ['active', 'inactive'])->default('inactive');
 
             // Mapeamento do provedor
             $table->string('provider')->index();
@@ -28,8 +29,8 @@ return new class extends Migration {
             $table->timestampsTz();
             $table->softDeletesTz();
 
-            $table->unique(['provider','provider_game_id']);
-            $table->index(['status','position']);
+            $table->unique(['provider', 'provider_game_id']);
+            $table->index(['status', 'position']);
             $table->index('title');
         });
     }

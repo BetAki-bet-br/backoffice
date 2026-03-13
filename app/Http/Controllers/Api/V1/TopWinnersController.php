@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\BatchStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Casino\TopWinnerBatchRequest;
 use App\Http\Requests\Casino\TopWinnerResultsSyncRequest;
-use App\Models\Domain\Casino\TopWinnerBatch;
-use App\Models\Domain\Casino\TopWinner;
 use App\Models\Domain\Casino\PortalGame;
-use App\Enums\BatchStatus;
+use App\Models\Domain\Casino\TopWinner;
+use App\Models\Domain\Casino\TopWinnerBatch;
 use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 
@@ -19,17 +19,15 @@ class TopWinnersController extends Controller
      *  tags={"TopWinners"},
      *  security={{"bearerAuth": {}}},
      *  summary="Listar lotes (Top Winners)",
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function index(Request $request)
     {
         $q = TopWinnerBatch::query()
-            ->when($request->filled('q'), fn($qq) =>
-                $qq->where('title','ilike','%'.$request->q.'%'))
-            ->when($request->filled('status'), fn($qq) =>
-                $qq->where('status',$request->status))
-            ->when($request->filled('vertical'), fn($qq) =>
-                $qq->where('vertical',$request->vertical))
+            ->when($request->filled('q'), fn ($qq) => $qq->where('title', 'ilike', '%'.$request->q.'%'))
+            ->when($request->filled('status'), fn ($qq) => $qq->where('status', $request->status))
+            ->when($request->filled('vertical'), fn ($qq) => $qq->where('vertical', $request->vertical))
             ->orderByDesc('id');
 
         return response()->json($q->cursorPaginate(20));
@@ -40,7 +38,9 @@ class TopWinnersController extends Controller
      *  tags={"TopWinners"},
      *  security={{"bearerAuth": {}}},
      *  summary="Criar lote",
+     *
      *  @OA\RequestBody(required=true),
+     *
      *  @OA\Response(response=201, description="Criado")
      * ) */
     public function store(TopWinnerBatchRequest $request)
@@ -48,7 +48,7 @@ class TopWinnersController extends Controller
         $data = $request->validated();
         $data['created_by'] = $request->user()->id;
 
-        $batch = \DB::transaction(fn() => TopWinnerBatch::create($data));
+        $batch = \DB::transaction(fn () => TopWinnerBatch::create($data));
 
         return response()->json($batch, 201);
     }
@@ -58,6 +58,7 @@ class TopWinnersController extends Controller
      *  tags={"TopWinners"},
      *  security={{"bearerAuth": {}}},
      *  summary="Detalhar lote + vencedores",
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function show(TopWinnerBatch $batch)
@@ -75,6 +76,7 @@ class TopWinnersController extends Controller
      *  tags={"TopWinners"},
      *  security={{"bearerAuth": {}}},
      *  summary="Atualizar lote",
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function update(TopWinnerBatchRequest $request, TopWinnerBatch $batch)
@@ -82,7 +84,7 @@ class TopWinnersController extends Controller
         $data = $request->validated();
         $data['updated_by'] = $request->user()->id;
 
-        \DB::transaction(fn() => $batch->update($data));
+        \DB::transaction(fn () => $batch->update($data));
 
         return response()->json($batch->refresh());
     }
@@ -92,11 +94,13 @@ class TopWinnersController extends Controller
      *  tags={"TopWinners"},
      *  security={{"bearerAuth": {}}},
      *  summary="Remover lote",
+     *
      *  @OA\Response(response=204, description="Sem conteúdo")
      * ) */
     public function destroy(TopWinnerBatch $batch)
     {
         $batch->delete();
+
         return response()->noContent();
     }
 
@@ -105,6 +109,7 @@ class TopWinnersController extends Controller
      *  tags={"TopWinners"},
      *  security={{"bearerAuth": {}}},
      *  summary="Sincronizar vencedores (pós-apuração) para revisão",
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function syncResults(TopWinnerResultsSyncRequest $request, TopWinnerBatch $batch)
@@ -119,20 +124,20 @@ class TopWinnersController extends Controller
 
             foreach ($items as $i) {
                 TopWinner::create([
-                    'batch_id'     => $batch->id,
-                    'player_ref'   => $i['player_ref'] ?? null, // NUNCA PII
+                    'batch_id' => $batch->id,
+                    'player_ref' => $i['player_ref'] ?? null, // NUNCA PII
                     'display_name' => $i['display_name'],       // já anonimizado
-                    'country'      => $i['country'] ?? null,
+                    'country' => $i['country'] ?? null,
 
-                    'rank'       => (int) $i['rank'],
-                    'position'   => (int) ($i['position'] ?? $i['rank']),
+                    'rank' => (int) $i['rank'],
+                    'position' => (int) ($i['position'] ?? $i['rank']),
 
                     'wins_count' => (int) ($i['wins_count'] ?? 0),
-                    'prize_sum'  => (float) ($i['prize_sum'] ?? 0),
-                    'max_prize'  => (float) ($i['max_prize'] ?? 0),
-                    'avg_prize'  => (float) ($i['avg_prize'] ?? 0),
+                    'prize_sum' => (float) ($i['prize_sum'] ?? 0),
+                    'max_prize' => (float) ($i['max_prize'] ?? 0),
+                    'avg_prize' => (float) ($i['avg_prize'] ?? 0),
 
-                    'meta'       => $i['meta'] ?? null,
+                    'meta' => $i['meta'] ?? null,
                 ]);
             }
 
@@ -152,6 +157,7 @@ class TopWinnersController extends Controller
      *  tags={"TopWinners"},
      *  security={{"bearerAuth": {}}},
      *  summary="Publicar lote revisado",
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function publish(Request $request, TopWinnerBatch $batch)
@@ -159,7 +165,7 @@ class TopWinnersController extends Controller
         abort_unless($batch->status === BatchStatus::Review && $batch->winners()->exists(), 400, 'Batch must be in review with winners to publish.');
 
         $batch->update([
-            'status'       => BatchStatus::Published,
+            'status' => BatchStatus::Published,
             'published_at' => now(),
             'published_by' => $request->user()->id,
         ]);
@@ -177,6 +183,7 @@ class TopWinnersController extends Controller
      *  tags={"TopWinners"},
      *  security={{"bearerAuth": {}}},
      *  summary="Arquivar lote publicado",
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function archive(TopWinnerBatch $batch)
@@ -208,7 +215,7 @@ class TopWinnersController extends Controller
             ->keyBy('external_id');
 
         return $externalIds
-            ->map(fn($id) => $portalGames->get($id)?->payload)
+            ->map(fn ($id) => $portalGames->get($id)?->payload)
             ->filter()
             ->values()
             ->all();
@@ -216,7 +223,9 @@ class TopWinnersController extends Controller
 
     private function extractExternalId(?array $meta): ?string
     {
-        if (!$meta) return null;
+        if (! $meta) {
+            return null;
+        }
 
         $keys = [
             'externalId',

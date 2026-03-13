@@ -2,9 +2,9 @@
 
 namespace App\Models\Domain\Banners;
 
+use App\Enums\ContentStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Enums\ContentStatus;
 
 class Banner extends Model
 {
@@ -12,17 +12,17 @@ class Banner extends Model
 
     protected $fillable = [
         'vertical',
-        'slug','cover_url','status','countries','publish_at','expire_at',
-        'link_url','utm_source','utm_medium','utm_campaign','media',
-        'created_by','updated_by','published_by'
+        'slug', 'cover_url', 'status', 'countries', 'publish_at', 'expire_at',
+        'link_url', 'utm_source', 'utm_medium', 'utm_campaign', 'media',
+        'created_by', 'updated_by', 'published_by',
     ];
 
     protected $casts = [
-        'countries'  => 'array',
-        'media'      => 'array',
+        'countries' => 'array',
+        'media' => 'array',
         'publish_at' => 'datetime',
-        'expire_at'  => 'datetime',
-        'status'     => ContentStatus::class,
+        'expire_at' => 'datetime',
+        'status' => ContentStatus::class,
     ];
 
     public function translations()

@@ -16,6 +16,7 @@ class SyncCategoriesJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $tries = 1;
+
     public $timeout = 600;
 
     public function __construct(
@@ -29,8 +30,9 @@ class SyncCategoriesJob implements ShouldQueue
     public function handle(): void
     {
         $job = SyncJob::find($this->syncJobId);
-        if (!$job) {
+        if (! $job) {
             Log::error('SyncCategoriesJob failed: SyncJob not found', ['syncJobId' => $this->syncJobId]);
+
             return;
         }
 
@@ -58,10 +60,9 @@ class SyncCategoriesJob implements ShouldQueue
                 'portalId' => $this->portalId,
                 'levelId' => $this->levelId,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
         }
         Log::info('SyncCategoriesJob handle method finished');
     }
 }
-

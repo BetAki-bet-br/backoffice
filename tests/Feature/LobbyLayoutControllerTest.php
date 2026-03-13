@@ -21,9 +21,9 @@ class LobbyLayoutControllerTest extends TestCase
             'key' => 'lobby.layout.slots',
             'value' => [
                 'sections' => [
-                    ['type' => 'mais-premiados', 'batchId' => $draftBatch->id]
-                ]
-            ]
+                    ['type' => 'mais-premiados', 'batchId' => $draftBatch->id],
+                ],
+            ],
         ]);
 
         $response = $this->getJson('/api/v1/lobbies/casino');
@@ -40,9 +40,9 @@ class LobbyLayoutControllerTest extends TestCase
             'key' => 'lobby.layout.slots',
             'value' => [
                 'sections' => [
-                    ['type' => 'top-10-list', 'topListId' => $draftList->id]
-                ]
-            ]
+                    ['type' => 'top-10-list', 'topListId' => $draftList->id],
+                ],
+            ],
         ]);
 
         $response = $this->getJson('/api/v1/lobbies/casino');
@@ -59,9 +59,9 @@ class LobbyLayoutControllerTest extends TestCase
             'key' => 'lobby.layout.slots',
             'value' => [
                 'sections' => [
-                    ['type' => 'winners-list', 'batchId' => $draftBatch->id]
-                ]
-            ]
+                    ['type' => 'winners-list', 'batchId' => $draftBatch->id],
+                ],
+            ],
         ]);
 
         $response = $this->getJson('/api/v1/lobbies/casino');

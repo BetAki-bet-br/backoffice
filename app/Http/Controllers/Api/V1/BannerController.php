@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\ContentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Banners\BannerRequest;
 use App\Models\Domain\Banners\Banner;
 use App\Services\FileUploadService;
-use App\Enums\ContentStatus;
 use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 

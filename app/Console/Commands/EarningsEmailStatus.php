@@ -41,7 +41,7 @@ class EarningsEmailStatus extends Command
                 $errorLine = strtok($exception, "\n");
                 // Trim long error messages
                 if (strlen($errorLine) > 120) {
-                    $errorLine = substr($errorLine, 0, 120) . '...';
+                    $errorLine = substr($errorLine, 0, 120).'...';
                 }
 
                 $rows[] = [

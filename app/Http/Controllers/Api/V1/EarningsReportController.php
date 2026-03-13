@@ -50,7 +50,7 @@ class EarningsReportController extends Controller
         $filePath = EarningsReportService::storagePath();
 
         if (! file_exists($filePath)) {
-            Log::channel('earnings')->error('[EARNINGS] Arquivo earnings.xlsx não encontrado em: ' . $filePath);
+            Log::channel('earnings')->error('[EARNINGS] Arquivo earnings.xlsx não encontrado em: '.$filePath);
 
             return response()->json([
                 'error' => ['message' => 'Arquivo earnings.xlsx não encontrado no repositório. Verifique o deploy.'],
@@ -104,7 +104,7 @@ class EarningsReportController extends Controller
         Log::channel('earnings')->info("[EARNINGS][{$requestId}] Envio finalizado — Despachados: {$sent}, Não encontrados: {$notFound}");
 
         return response()->json([
-            'message' => "{$sent} relatório(s) enviado(s) para a fila." . ($notFound > 0 ? " {$notFound} jogador(es) não encontrado(s)." : ''),
+            'message' => "{$sent} relatório(s) enviado(s) para a fila.".($notFound > 0 ? " {$notFound} jogador(es) não encontrado(s)." : ''),
             'results' => $results,
         ]);
     }

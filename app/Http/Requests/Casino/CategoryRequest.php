@@ -4,11 +4,13 @@ namespace App\Http\Requests\Casino;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Str;
 
 class CategoryRequest extends FormRequest
 {
-    public function authorize(): bool { return true; }
+    public function authorize(): bool
+    {
+        return true;
+    }
 
     public function rules(): array
     {
@@ -16,18 +18,18 @@ class CategoryRequest extends FormRequest
         $id = is_object($category) ? $category->id : $category;
 
         return [
-            'name'     => ['required','string','max:120'],
-            'slug'     => [
-                'nullable','string','max:150',
-                Rule::unique('categories','slug')->ignore($id),
+            'name' => ['required', 'string', 'max:120'],
+            'slug' => [
+                'nullable', 'string', 'max:150',
+                Rule::unique('categories', 'slug')->ignore($id),
             ],
-            'cover_url' => ['nullable','image','mimes:jpeg,png,webp,gif','max:2048'],
+            'cover_url' => ['nullable', 'image', 'mimes:jpeg,png,webp,gif', 'max:2048'],
             'verticals' => ['nullable', 'array'],
-            'verticals.*' => ['string', Rule::in(['slots','live'])],
-            'type'     => ['nullable', 'string', Rule::in(['game-list','recent-games','mais-premiados','winners-list','top-10-list','providers-carousel'])],
-            'status'   => ['required', Rule::in(['active','inactive'])],
-            'position' => ['nullable','integer','min:0'],
-            'meta'     => ['nullable','array'],
+            'verticals.*' => ['string', Rule::in(['slots', 'live'])],
+            'type' => ['nullable', 'string', Rule::in(['game-list', 'recent-games', 'mais-premiados', 'winners-list', 'top-10-list', 'providers-carousel'])],
+            'status' => ['required', Rule::in(['active', 'inactive'])],
+            'position' => ['nullable', 'integer', 'min:0'],
+            'meta' => ['nullable', 'array'],
         ];
     }
 

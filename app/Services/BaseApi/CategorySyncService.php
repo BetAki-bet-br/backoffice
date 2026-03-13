@@ -12,11 +12,10 @@ use Illuminate\Support\Str;
 class CategorySyncService
 {
     protected array $providersCache = [];
+
     protected array $stats = [];
 
-    public function __construct(protected BasePortalApiClient $client)
-    {
-    }
+    public function __construct(protected BasePortalApiClient $client) {}
 
     public static function make(): self
     {
@@ -29,7 +28,7 @@ class CategorySyncService
         // Make a single call to get the entire lobby structure
         $list = $this->client->getLobby($portalId, $levelId);
 
-        if (!is_array($list)) {
+        if (! is_array($list)) {
             $list = [];
         }
 
@@ -52,12 +51,12 @@ class CategorySyncService
 
     protected function processCategoryItem(array $item, int $portalId)
     {
-        if (!is_array($item)) {
+        if (! is_array($item)) {
             return;
         }
 
         $externalId = $item['id'] ?? null;
-        if (!$externalId) {
+        if (! $externalId) {
             return;
         }
 
@@ -89,13 +88,13 @@ class CategorySyncService
             'category_type_id' => $item['categoryTypeId'] ?? null,
             'title' => $item['gameName'] ?? $item['title'] ?? null,
             'level_type' => $item['levelType'] ?? null,
-            'sub_level_structure' => !empty($item['subLevel']),
+            'sub_level_structure' => ! empty($item['subLevel']),
             'original_type' => 'game-list',
             'source' => 'sync',
         ]);
 
         $verticals = $existingCategory->verticals ?? [];
-        if ($currentVertical && !in_array($currentVertical, $verticals)) {
+        if ($currentVertical && ! in_array($currentVertical, $verticals)) {
             $verticals[] = $currentVertical;
         }
 
@@ -116,20 +115,20 @@ class CategorySyncService
             $this->stats['updated']++;
         }
 
-
         // The lobby payload contains the games directly within the category item
         $games = $item['gameMains'] ?? [];
 
-        if (!empty($games) && is_array($games)) {
-            Log::info("Category {$category->id} ({$name}) has ".count($games)." games from Lobby API payload.");
+        if (! empty($games) && is_array($games)) {
+            Log::info("Category {$category->id} ({$name}) has ".count($games).' games from Lobby API payload.');
 
             $slotsToUpsert = [];
             $portalGamesToUpsert = [];
             $gamePositionMap = [];
 
             foreach ($games as $gameIndex => $gameData) {
-                if (!is_array($gameData) || empty($gameData['externalId']) || empty($gameData['name'])) {
+                if (! is_array($gameData) || empty($gameData['externalId']) || empty($gameData['name'])) {
                     Log::warning('Skipping invalid game data from payload.', ['category_id' => $category->id, 'game_data' => $gameData]);
+
                     continue;
                 }
 
@@ -141,7 +140,7 @@ class CategorySyncService
                 $pId = $gameData['productId'] ?? null;
                 if ($pId && $providerName) {
                     $pIdStr = (string) $pId;
-                    if (!isset($this->providersCache[$pIdStr])) {
+                    if (! isset($this->providersCache[$pIdStr])) {
                         $this->providersCache[$pIdStr] = [
                             'name' => $providerName,
                             'games' => [],
@@ -150,7 +149,7 @@ class CategorySyncService
                     }
                     $this->providersCache[$pIdStr]['games'][$gameExternalId] = true;
 
-                    if ($currentVertical && !in_array($currentVertical, $this->providersCache[$pIdStr]['verticals'])) {
+                    if ($currentVertical && ! in_array($currentVertical, $this->providersCache[$pIdStr]['verticals'])) {
                         $this->providersCache[$pIdStr]['verticals'][] = $currentVertical;
                     }
                 }
@@ -183,11 +182,11 @@ class CategorySyncService
                 ];
 
                 // Map composite key to position
-                $compositeKey = $providerName . '|' . $gameExternalId;
+                $compositeKey = $providerName.'|'.$gameExternalId;
                 $gamePositionMap[$compositeKey] = $gameIndex;
             }
 
-            if (!empty($slotsToUpsert)) {
+            if (! empty($slotsToUpsert)) {
                 // 1. Upsert Slots and PortalGames atomically
                 Slot::upsert(
                     $slotsToUpsert,
@@ -206,7 +205,7 @@ class CategorySyncService
                     foreach ($slotsToUpsert as $slot) {
                         $query->orWhere(function ($q) use ($slot) {
                             $q->where('provider', $slot['provider'])
-                              ->where('provider_game_id', $slot['provider_game_id']);
+                                ->where('provider_game_id', $slot['provider_game_id']);
                         });
                     }
                 })->select('id', 'provider', 'provider_game_id')->get();
@@ -214,7 +213,7 @@ class CategorySyncService
                 // 3. Build the array for syncing
                 $slotIdsToSync = [];
                 foreach ($slots as $slot) {
-                    $compositeKey = $slot->provider . '|' . $slot->provider_game_id;
+                    $compositeKey = $slot->provider.'|'.$slot->provider_game_id;
                     if (isset($gamePositionMap[$compositeKey])) {
                         $position = $gamePositionMap[$compositeKey];
                         $slotIdsToSync[$slot->id] = ['position' => $position];
@@ -222,7 +221,7 @@ class CategorySyncService
                 }
 
                 // 4. Sync slots to the category
-                if (!empty($slotIdsToSync)) {
+                if (! empty($slotIdsToSync)) {
                     Log::info("Syncing slots for category {$category->id}", ['slot_ids_to_sync' => count($slotIdsToSync)]);
                     $category->slots()->sync($slotIdsToSync);
                     $this->stats['games_synced'] += count($slotIdsToSync);
@@ -232,7 +231,7 @@ class CategorySyncService
 
         // Recursive call for sub-levels
         $subLevels = $item['subLevel'] ?? [];
-        if (!empty($subLevels) && is_array($subLevels)) {
+        if (! empty($subLevels) && is_array($subLevels)) {
             foreach ($subLevels as $subItem) {
                 $this->processCategoryItem($subItem, $portalId);
             }
@@ -261,6 +260,7 @@ class CategorySyncService
                 ['name', 'game_count', 'status', 'verticals']
             );
         }
+
         return $count;
     }
 }

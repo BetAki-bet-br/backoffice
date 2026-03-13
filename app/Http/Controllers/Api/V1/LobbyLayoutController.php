@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\Domain\Casino\AwardedGameBatch;
 use App\Models\Domain\Casino\Category;
+use App\Models\Domain\Casino\PortalGame;
 use App\Models\Domain\Casino\TopList;
 use App\Models\Domain\Casino\TopWinnerBatch;
-use App\Models\Domain\Casino\PortalGame;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -19,6 +18,7 @@ class LobbyLayoutController extends Controller
      *  path="/api/v1/lobbies/casino",
      *  tags={"Lobbies"},
      *  summary="Layout do lobby de cassino (slots)",
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function casino(Request $request)
@@ -30,6 +30,7 @@ class LobbyLayoutController extends Controller
      *  path="/api/v1/lobbies/live",
      *  tags={"Lobbies"},
      *  summary="Layout do lobby de cassino ao vivo",
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function live(Request $request)
@@ -60,7 +61,7 @@ class LobbyLayoutController extends Controller
             ->where('key', $key)
             ->first();
 
-        if (!$setting) {
+        if (! $setting) {
             return [];
         }
 
@@ -85,12 +86,12 @@ class LobbyLayoutController extends Controller
                 $q->where('type', '!=', 'game-list')
                     ->orWhereHas('slots', null, '>', 1);
             })
-            ->with(['slots' => fn($q) => $q->where('status', 'active')])
+            ->with(['slots' => fn ($q) => $q->where('status', 'active')])
             ->orderBy('name')
             ->get();
 
         $portalGames = $this->loadPortalGames(
-            $categories->flatMap(fn(Category $cat) => $cat->slots->pluck('provider_game_id'))
+            $categories->flatMap(fn (Category $cat) => $cat->slots->pluck('provider_game_id'))
         );
 
         $categoriesKeyed = $categories->keyBy('id');
@@ -107,11 +108,11 @@ class LobbyLayoutController extends Controller
     private function buildConfiguredSections(array $sectionsConfig, string $vertical): array
     {
         $sectionsConfig = collect($sectionsConfig)
-            ->filter(fn($item) => is_array($item))
+            ->filter(fn ($item) => is_array($item))
             ->values();
 
         $categoryIds = $sectionsConfig
-            ->map(fn($section) => $this->resolveCategoryId($section))
+            ->map(fn ($section) => $this->resolveCategoryId($section))
             ->filter()
             ->unique()
             ->values();
@@ -121,20 +122,20 @@ class LobbyLayoutController extends Controller
             : Category::query()
                 ->whereIn('id', $categoryIds)
                 ->where('status', 'active')
-                ->with(['slots' => fn($q) => $q->where('status', 'active')])
+                ->with(['slots' => fn ($q) => $q->where('status', 'active')])
                 ->get()
                 ->keyBy('id');
 
         $portalGames = $this->loadPortalGames(
-            $categories->flatMap(fn(Category $cat) => $cat->slots->pluck('provider_game_id'))
+            $categories->flatMap(fn (Category $cat) => $cat->slots->pluck('provider_game_id'))
         );
 
         $sections = $sectionsConfig->map(function (array $section, int $index) use ($categories, $portalGames, $vertical) {
             return $this->buildSection($section, $vertical, $categories, $portalGames, $index);
         })
-        ->filter()
-        ->sortBy('order')
-        ->values();
+            ->filter()
+            ->sortBy('order')
+            ->values();
 
         return $sections->all();
     }
@@ -172,12 +173,12 @@ class LobbyLayoutController extends Controller
         array $metadata
     ): ?array {
         $categoryId = $this->resolveCategoryId($section);
-        if (!$categoryId) {
+        if (! $categoryId) {
             return null;
         }
 
         $category = $categories->get($categoryId);
-        if (!$category) {
+        if (! $category) {
             return null;
         }
 
@@ -204,7 +205,7 @@ class LobbyLayoutController extends Controller
         array $metadata
     ): ?array {
         $topListId = $this->extractNumericId($section, ['topListId', 'top_list_id']);
-        
+
         $query = TopList::query();
 
         if ($topListId) {
@@ -220,11 +221,11 @@ class LobbyLayoutController extends Controller
             ->activeWindow()
             ->first();
 
-        if (!$topList) {
+        if (! $topList) {
             return null;
         }
 
-        $topList->load(['slots' => fn($q) => $q->where('status', 'active')]);
+        $topList->load(['slots' => fn ($q) => $q->where('status', 'active')]);
 
         $games = $this->resolveGamesFromSlots($topList->slots);
         $games = $this->applyDisplayCount($games, $metadata);
@@ -261,11 +262,11 @@ class LobbyLayoutController extends Controller
         // Only published batches should appear in the lobby
         $batch = $query->where('status', 'published')->first();
 
-        if (!$batch) {
+        if (! $batch) {
             return null;
         }
 
-        $batch->load(['results.slot' => fn($q) => $q->where('status', 'active')]);
+        $batch->load(['results.slot' => fn ($q) => $q->where('status', 'active')]);
 
         $games = $this->resolveGamesFromResults($batch->results, $batch);
         $games = $this->applyDisplayCount($games, $metadata);
@@ -288,13 +289,14 @@ class LobbyLayoutController extends Controller
     {
         // If not progressive, return the already calculated prize_sum for the game
         if ($game->prize_sum_initial === null || $game->prize_sum_final === null || $game->increment_interval_minutes === null) {
-            \Illuminate\Support\Facades\Log::warning('[PrizeCalc] Game ' . $game->id . ' is missing progressive prize parameters. Returning base prize_sum.', [
+            \Illuminate\Support\Facades\Log::warning('[PrizeCalc] Game '.$game->id.' is missing progressive prize parameters. Returning base prize_sum.', [
                 'game_id' => $game->id,
                 'slot_id' => $game->slot_id,
                 'prize_sum_initial' => $game->prize_sum_initial,
                 'prize_sum_final' => $game->prize_sum_final,
                 'increment_interval_minutes' => $game->increment_interval_minutes,
             ]);
+
             return $game->prize_sum;
         }
 
@@ -302,13 +304,14 @@ class LobbyLayoutController extends Controller
         $start = $game->batch->published_at ?? $game->batch->period_start;
         $end = $game->batch->period_end;
 
-        if (!$start || !$end) {
-            \Illuminate\Support\Facades\Log::error('[PrizeCalc] Game ' . $game->id . ' batch has NULL start or end dates.', [
+        if (! $start || ! $end) {
+            \Illuminate\Support\Facades\Log::error('[PrizeCalc] Game '.$game->id.' batch has NULL start or end dates.', [
                 'game_id' => $game->id,
                 'batch_id' => $game->batch->id,
                 'start' => $start?->toIso8601String(),
                 'end' => $end?->toIso8601String(),
             ]);
+
             return (float) $game->prize_sum_initial;
         }
 
@@ -318,6 +321,7 @@ class LobbyLayoutController extends Controller
                 'now' => $now->toIso8601String(),
                 'start' => $start->toIso8601String(),
             ]);
+
             return (float) $game->prize_sum_initial;
         }
         if ($now->greaterThanOrEqualTo($end)) {
@@ -326,6 +330,7 @@ class LobbyLayoutController extends Controller
                 'now' => $now->toIso8601String(),
                 'end' => $end->toIso8601String(),
             ]);
+
             return (float) $game->prize_sum_final;
         }
 
@@ -346,6 +351,7 @@ class LobbyLayoutController extends Controller
                 'intervalMinutes' => $intervalMinutes,
                 'totalIntervals' => $totalIntervals,
             ]);
+
             return (float) $game->prize_sum_initial;
         }
 
@@ -368,7 +374,7 @@ class LobbyLayoutController extends Controller
         array $metadata
     ): ?array {
         $batchId = $this->extractNumericId($section, ['winnersBatchId', 'winners_batch_id', 'batchId', 'batch_id']);
-        
+
         $query = TopWinnerBatch::query();
 
         if ($batchId) {
@@ -436,7 +442,7 @@ class LobbyLayoutController extends Controller
             $result['games'] = $payload['games'];
         }
 
-        if (!empty($payload['providers'])) {
+        if (! empty($payload['providers'])) {
             $result['providers'] = $payload['providers'];
         }
 
@@ -446,7 +452,7 @@ class LobbyLayoutController extends Controller
             $result['finalPrizeSum'] = $payload['finalPrizeSum'];
         }
 
-        if (!empty($payload['metadata'])) {
+        if (! empty($payload['metadata'])) {
             $result['metadata'] = $payload['metadata'];
         }
 
@@ -461,7 +467,7 @@ class LobbyLayoutController extends Controller
     private function extractNumericId(array $section, array $keys): ?int
     {
         foreach ($keys as $key) {
-            if (!array_key_exists($key, $section)) {
+            if (! array_key_exists($key, $section)) {
                 continue;
             }
             $value = $section[$key];
@@ -499,14 +505,15 @@ class LobbyLayoutController extends Controller
         return $portalGames->map(function ($pg) use ($gameExtras) {
             $extra = $gameExtras->get($pg->external_id);
             $payload = $pg->payload ?? [];
-            
+
             if ($extra) {
                 $payload['rtp'] = $extra->rtp;
                 $payload['volatility'] = \App\Support\Casino\GameExtraResolver::mapVolatility($extra->volatility);
                 $payload['minBet'] = $extra->min_bet;
             }
-            
+
             $pg->payload = $payload;
+
             return $pg;
         });
     }
@@ -515,9 +522,10 @@ class LobbyLayoutController extends Controller
     {
         return collect($slots)
             ->map(function ($slot) use ($portalGames) {
-                if (!$slot?->provider_game_id) {
+                if (! $slot?->provider_game_id) {
                     return null;
                 }
+
                 return $portalGames->get($slot->provider_game_id)?->payload;
             })
             ->filter()
@@ -528,13 +536,14 @@ class LobbyLayoutController extends Controller
     private function resolveGamesFromSlots(Collection $slots): array
     {
         $portalGames = $this->loadPortalGames($slots->pluck('provider_game_id'));
+
         return $this->mapSlotsToGameMains($slots, $portalGames);
     }
 
     private function resolveGamesFromResults(Collection $results, \App\Models\Domain\Casino\AwardedGameBatch $batch): array
     {
         $externalIds = $results
-            ->map(fn($result) => $result->slot?->provider_game_id)
+            ->map(fn ($result) => $result->slot?->provider_game_id)
             ->filter()
             ->unique()
             ->values();
@@ -551,8 +560,9 @@ class LobbyLayoutController extends Controller
                     'slot_provider_game_id' => $externalId,
                 ]);
 
-                if (!$externalId) {
+                if (! $externalId) {
                     \Illuminate\Support\Facades\Log::warning('[AwardedGames] No externalId (provider_game_id) found for awarded game.', ['awarded_game_id' => $result->id]);
+
                     return null;
                 }
 
@@ -580,7 +590,7 @@ class LobbyLayoutController extends Controller
     private function applyDisplayCount(array $games, array $metadata): array
     {
         $displayCount = $metadata['displayCount'] ?? $metadata['display_count'] ?? null;
-        if ($displayCount === null || !is_numeric($displayCount)) {
+        if ($displayCount === null || ! is_numeric($displayCount)) {
             return $games;
         }
 

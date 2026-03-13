@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -19,17 +19,17 @@ return new class extends Migration
 
         // 2. Migrate data and Merge duplicates based on slug
         $categories = DB::table('categories')->get();
-        
+
         // Group by slug to identify duplicates to merge
         $grouped = $categories->groupBy('slug');
 
         foreach ($grouped as $slug => $rows) {
             // Take the first one as the master
             $master = $rows->first();
-            
+
             // Collect all verticals from the group
             $allVerticals = $rows->pluck('vertical')->unique()->values()->toArray();
-            
+
             // Update master with all verticals
             DB::table('categories')
                 ->where('id', $master->id)
@@ -38,7 +38,7 @@ return new class extends Migration
             // If there are duplicates, merge relations and delete them
             if ($rows->count() > 1) {
                 $duplicateIds = $rows->where('id', '!=', $master->id)->pluck('id')->toArray();
-                
+
                 // Re-point category_slot pivot entries to master
                 DB::table('category_slot')
                     ->whereIn('category_id', $duplicateIds)
@@ -70,7 +70,7 @@ return new class extends Migration
         foreach ($categories as $cat) {
             $verticals = json_decode($cat->verticals, true);
             $primaryVertical = is_array($verticals) && count($verticals) > 0 ? $verticals[0] : 'slots';
-            
+
             DB::table('categories')
                 ->where('id', $cat->id)
                 ->update(['vertical' => $primaryVertical]);

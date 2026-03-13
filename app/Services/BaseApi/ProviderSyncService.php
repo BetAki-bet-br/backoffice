@@ -2,14 +2,9 @@
 
 namespace App\Services\BaseApi;
 
-use App\Models\Domain\Casino\Provider;
-use Illuminate\Support\Facades\Log;
-
 class ProviderSyncService
 {
-    public function __construct(protected BasePortalApiClient $client)
-    {
-    }
+    public function __construct(protected BasePortalApiClient $client) {}
 
     public static function make(): self
     {

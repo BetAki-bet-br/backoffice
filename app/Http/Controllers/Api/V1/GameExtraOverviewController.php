@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\Domain\Casino\GameExtra;
 use App\Models\Domain\Casino\PortalGame;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,8 +16,10 @@ class GameExtraOverviewController extends Controller
      *   tags={"Game Extras"},
      *   security={{"bearerAuth": {}}},
      *   summary="Listar Game Extras com status de match na base (portal_games)",
+     *
      *   @OA\Parameter(name="portal_id", in="query", @OA\Schema(type="integer", example=1)),
      *   @OA\Parameter(name="q", in="query", @OA\Schema(type="string")),
+     *
      *   @OA\Response(response=200, description="OK")
      * )
      */
@@ -45,13 +46,12 @@ class GameExtraOverviewController extends Controller
                 'game_extras.volatility',
                 'game_extras.min_bet',
                 'game_extras.source',
-                
+
                 // Como estamos listando da base, sempre existe na base
                 DB::raw('true as exists_in_base'),
             ])
-            ->when($request->filled('q'), fn($q) =>
-                $q->where('portal_games.external_id', 'like', '%'.$request->q.'%')
-                  ->orWhere('portal_games.name', 'ilike', '%'.$request->q.'%')
+            ->when($request->filled('q'), fn ($q) => $q->where('portal_games.external_id', 'like', '%'.$request->q.'%')
+                ->orWhere('portal_games.name', 'ilike', '%'.$request->q.'%')
             )
             ->orderByDesc('portal_games.id');
 

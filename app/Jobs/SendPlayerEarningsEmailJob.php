@@ -65,6 +65,6 @@ class SendPlayerEarningsEmailJob implements ShouldQueue
         $jobId = $this->job?->getJobId() ?? 'unknown';
         $mailer = config('mail.default');
 
-        Log::channel('earnings')->error("[EARNINGS][JOB:{$jobId}] FALHA DEFINITIVA — Todas as {$this->tries} tentativas esgotadas. Player ID: {$playerId}, Username: {$username}, CPF: {$cpf}, Email: {$email}, Ano: {$this->year}, Mailer: {$mailer}, Tentativa final: {$attempt}/{$this->tries}, Exceção: {$exception->getMessage()}, Trace: " . $exception->getTraceAsString());
+        Log::channel('earnings')->error("[EARNINGS][JOB:{$jobId}] FALHA DEFINITIVA — Todas as {$this->tries} tentativas esgotadas. Player ID: {$playerId}, Username: {$username}, CPF: {$cpf}, Email: {$email}, Ano: {$this->year}, Mailer: {$mailer}, Tentativa final: {$attempt}/{$this->tries}, Exceção: {$exception->getMessage()}, Trace: ".$exception->getTraceAsString());
     }
 }
