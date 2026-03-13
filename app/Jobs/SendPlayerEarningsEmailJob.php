@@ -33,12 +33,26 @@ class SendPlayerEarningsEmailJob implements ShouldQueue
         $playerId = $this->playerData['player_id'];
         $username = $this->playerData['username'];
         $email = $this->playerData['email'];
+        $cpf = $this->playerData['cpf'] ?? 'N/A';
+        $netIncome = $this->playerData['net_income'] ?? 'N/A';
+        $currency = $this->playerData['currency'] ?? 'N/A';
+        $attempt = $this->attempts();
+        $jobId = $this->job?->getJobId() ?? 'sync';
+        $mailer = config('mail.default');
+        $fromAddress = config('mail.from.address');
+        $fromName = config('mail.from.name');
 
-        Log::channel('earnings')->info("Sending earnings report to player {$playerId} ({$username}) at {$email}...");
+        Log::channel('earnings')->info("[EARNINGS][JOB:{$jobId}] Iniciando envio de email — Tentativa: {$attempt}/{$this->tries}, Player ID: {$playerId}, Username: {$username}, CPF: {$cpf}, Email destino: {$email}, Ano: {$this->year}, Net Income: {$netIncome} {$currency}, Mailer: {$mailer}, From: {$fromName} <{$fromAddress}>");
 
-        Mail::to($email)->send(new AnnualEarningsReportMail($this->playerData, $this->year));
+        $mailable = new AnnualEarningsReportMail($this->playerData, $this->year);
 
-        Log::channel('earnings')->info("SUCCESS: Earnings report sent to player {$playerId} ({$username}) at {$email}.");
+        Mail::to($email)->send($mailable);
+
+        $messageId = method_exists($mailable, 'getSymfonySentMessage') && $mailable->getSymfonySentMessage()
+            ? $mailable->getSymfonySentMessage()->getMessageId()
+            : 'N/A';
+
+        Log::channel('earnings')->info("[EARNINGS][JOB:{$jobId}] SUCESSO — Email enviado com sucesso para Player ID: {$playerId}, Username: {$username}, Email: {$email}, Ano: {$this->year}, Message-ID: {$messageId}, Tentativa: {$attempt}/{$this->tries}");
     }
 
     public function failed(\Throwable $exception): void
@@ -46,7 +60,11 @@ class SendPlayerEarningsEmailJob implements ShouldQueue
         $playerId = $this->playerData['player_id'] ?? 'unknown';
         $username = $this->playerData['username'] ?? 'unknown';
         $email = $this->playerData['email'] ?? 'unknown';
+        $cpf = $this->playerData['cpf'] ?? 'unknown';
+        $attempt = $this->attempts();
+        $jobId = $this->job?->getJobId() ?? 'unknown';
+        $mailer = config('mail.default');
 
-        Log::channel('earnings')->error("FAILED: Player {$playerId} ({$username}) at {$email} — {$exception->getMessage()}");
+        Log::channel('earnings')->error("[EARNINGS][JOB:{$jobId}] FALHA DEFINITIVA — Todas as {$this->tries} tentativas esgotadas. Player ID: {$playerId}, Username: {$username}, CPF: {$cpf}, Email: {$email}, Ano: {$this->year}, Mailer: {$mailer}, Tentativa final: {$attempt}/{$this->tries}, Exceção: {$exception->getMessage()}, Trace: " . $exception->getTraceAsString());
     }
 }

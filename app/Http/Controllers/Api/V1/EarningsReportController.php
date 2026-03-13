@@ -7,6 +7,7 @@ use App\Jobs\SendPlayerEarningsEmailJob;
 use App\Services\EarningsReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class EarningsReportController extends Controller
 {
@@ -15,30 +16,7 @@ class EarningsReportController extends Controller
     ) {}
 
     /**
-     * Upload the earnings xlsx file for later use.
-     */
-    public function upload(Request $request): JsonResponse
-    {
-        $request->validate([
-            'file' => ['required', 'file', 'mimes:xlsx'],
-        ]);
-
-        $dir = storage_path('app/earnings');
-        if (! is_dir($dir)) {
-            mkdir($dir, 0755, true);
-        }
-
-        $request->file('file')->move($dir, 'current.xlsx');
-
-        return response()->json([
-            'message' => 'Arquivo de earnings enviado com sucesso.',
-            'file' => 'current.xlsx',
-            'uploaded_at' => now()->toIso8601String(),
-        ]);
-    }
-
-    /**
-     * Check if an earnings file is currently uploaded.
+     * Check if the committed earnings file is present.
      */
     public function status(): JsonResponse
     {
@@ -50,7 +28,7 @@ class EarningsReportController extends Controller
 
         return response()->json([
             'uploaded' => true,
-            'file' => 'current.xlsx',
+            'file' => basename($path),
             'size' => filesize($path),
             'uploaded_at' => date('c', filemtime($path)),
         ]);
@@ -72,8 +50,10 @@ class EarningsReportController extends Controller
         $filePath = EarningsReportService::storagePath();
 
         if (! file_exists($filePath)) {
+            Log::channel('earnings')->error('[EARNINGS] Arquivo earnings.xlsx não encontrado em: ' . $filePath);
+
             return response()->json([
-                'error' => ['message' => 'Nenhum arquivo de earnings foi enviado. Faça o upload primeiro.'],
+                'error' => ['message' => 'Arquivo earnings.xlsx não encontrado no repositório. Verifique o deploy.'],
             ], 422);
         }
 
@@ -81,10 +61,18 @@ class EarningsReportController extends Controller
         $players = $request->input('players');
         $results = [];
 
-        foreach ($players as $player) {
+        $requestId = uniqid('req_');
+        $totalPlayers = count($players);
+
+        Log::channel('earnings')->info("[EARNINGS][{$requestId}] Iniciando envio de relatórios — Ano: {$year}, Total de jogadores: {$totalPlayers}, Arquivo: {$filePath}");
+
+        foreach ($players as $index => $player) {
+            $seq = $index + 1;
             $playerData = $this->service->findPlayerById($filePath, $player['player_id']);
 
             if ($playerData === null) {
+                Log::channel('earnings')->warning("[EARNINGS][{$requestId}] [{$seq}/{$totalPlayers}] Jogador NÃO ENCONTRADO na planilha — Player ID: {$player['player_id']}, CPF: {$player['cpf']}, Email: {$player['email']}");
+
                 $results[] = [
                     'player_id' => $player['player_id'],
                     'cpf' => $player['cpf'],
@@ -100,6 +88,8 @@ class EarningsReportController extends Controller
 
             SendPlayerEarningsEmailJob::dispatch($playerData, $year);
 
+            Log::channel('earnings')->info("[EARNINGS][{$requestId}] [{$seq}/{$totalPlayers}] Job de envio DESPACHADO — Player ID: {$player['player_id']}, Username: {$playerData['username']}, CPF: {$player['cpf']}, Email: {$player['email']}, Net Income: {$playerData['net_income']}");
+
             $results[] = [
                 'player_id' => $player['player_id'],
                 'cpf' => $player['cpf'],
@@ -111,8 +101,10 @@ class EarningsReportController extends Controller
         $sent = count(array_filter($results, fn ($r) => $r['status'] === 'sent'));
         $notFound = count($results) - $sent;
 
+        Log::channel('earnings')->info("[EARNINGS][{$requestId}] Envio finalizado — Despachados: {$sent}, Não encontrados: {$notFound}");
+
         return response()->json([
-            'message' => "{$sent} relatório(s) enviado(s) para a fila.".($notFound > 0 ? " {$notFound} jogador(es) não encontrado(s)." : ''),
+            'message' => "{$sent} relatório(s) enviado(s) para a fila." . ($notFound > 0 ? " {$notFound} jogador(es) não encontrado(s)." : ''),
             'results' => $results,
         ]);
     }
