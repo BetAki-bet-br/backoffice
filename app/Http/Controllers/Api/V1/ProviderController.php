@@ -70,10 +70,16 @@ class ProviderController extends Controller
      * ) */
     public function show(Provider $provider)
     {
-        // Busca os jogos vinculados via tags->productId
-        // O external_id do provider corresponde ao productId nos tags do slot
-        $games = Slot::whereJsonContains('tags->productId', (int) $provider->external_id)
-            ->where('status', 'active')
+        // Busca os jogos vinculados via tags->productId (portal sync) ou provider name (SoftSwiss sync)
+        $games = Slot::where('status', 'active')
+            ->where(function ($q) use ($provider) {
+                if (is_numeric($provider->external_id)) {
+                    $q->whereJsonContains('tags->productId', (int) $provider->external_id);
+                } else {
+                    $q->whereJsonContains('tags->productId', $provider->external_id);
+                }
+                $q->orWhere('provider', $provider->external_id);
+            })
             ->orderBy('title')
             ->get();
 
