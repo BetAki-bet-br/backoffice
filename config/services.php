@@ -42,4 +42,17 @@ return [
         'api_key' => env('BASE_API_KEY'),
     ],
 
+    'softswiss' => [
+        'cdn_url' => env('SOFTSWISS_CDN_URL', 'https://cdn.softswiss.net/l'),
+        'timeout' => (int) env('SOFTSWISS_TIMEOUT', 30),
+        'providers' => [
+            'bgmng' => ['basic', 'new', 'standard'],
+            'booming' => ['basic'],
+            'evoplay' => ['basic', 'basic_mt'],
+            'wazdan' => ['basic', 'basic_lv', 'rtp'],
+            'yggdrasil_4theplayer' => ['basic'],
+            'yggdrasil' => ['basic'],
+        ],
+    ],
+
 ];
