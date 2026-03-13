@@ -180,9 +180,11 @@ class EarningsReportService
 
     /**
      * Get the default storage path for the earnings file.
+     *
+     * Uses the committed earnings.xlsx at the project root.
      */
     public static function storagePath(): string
     {
-        return storage_path('app/earnings/current.xlsx');
+        return base_path('earnings.xlsx');
     }
 }

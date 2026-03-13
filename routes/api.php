@@ -332,8 +332,6 @@ Route::prefix('v1')->group(function () {
             ->name('slots.syncFromPortal');
 
         // Earnings Reports
-        Route::post('earnings-reports/upload', [\App\Http\Controllers\Api\V1\EarningsReportController::class, 'upload'])
-            ->name('earnings.upload');
         Route::get('earnings-reports/status', [\App\Http\Controllers\Api\V1\EarningsReportController::class, 'status'])
             ->name('earnings.status');
         Route::post('earnings-reports/send', [\App\Http\Controllers\Api\V1\EarningsReportController::class, 'send'])
