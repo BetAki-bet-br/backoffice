@@ -9,6 +9,9 @@
     <h2 class="h5 mb-1">ComprovaBet — Envio de Relatórios Anuais</h2>
     <div class="text-muted small">Dispare relatórios de ganhos anuais por email para jogadores a partir da planilha de earnings</div>
   </div>
+  <button class="btn btn-outline-secondary btn-sm" id="btnExportLog" type="button">
+    Exportar Relatório de Envios (PDF)
+  </button>
 </div>
 
 {{-- Status do arquivo de earnings --}}
@@ -91,6 +94,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const resultsArea = document.getElementById('resultsArea');
   const resultsContent = document.getElementById('resultsContent');
   const resultsSummary = document.getElementById('resultsSummary');
+
+  const btnExport = document.getElementById('btnExportLog');
 
   let rowCounter = 0;
   const rowStatuses = {};
@@ -234,6 +239,40 @@ document.addEventListener('DOMContentLoaded', function () {
       } else {
         rowIds.forEach(function (rid) { setRowStatus(rid, 'error'); });
         await toastApiError(res, 'enviar relatórios');
+      }
+    });
+  });
+
+  // --- Export PDF ---
+  btnExport.addEventListener('click', function () {
+    withLoading(btnExport, async () => {
+      try {
+        const token = getToken();
+        const res = await fetch('/api/v1/earnings-reports/export-log', {
+          headers: {
+            'Accept': 'application/pdf',
+            ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+          },
+        });
+
+        if (!res.ok) {
+          toast('Erro ao gerar relatório PDF (' + res.status + ')', 'danger');
+          return;
+        }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'relatorio-emails-earnings.pdf';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+
+        toast('Relatório PDF exportado com sucesso.');
+      } catch (e) {
+        toast('Erro de conexão ao exportar relatório.', 'danger');
       }
     });
   });

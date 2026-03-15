@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Jobs\SendPlayerEarningsEmailJob;
 use App\Services\EarningsReportService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 
 class EarningsReportController extends Controller
@@ -107,5 +109,122 @@ class EarningsReportController extends Controller
             'message' => "{$sent} relatório(s) enviado(s) para a fila." . ($notFound > 0 ? " {$notFound} jogador(es) não encontrado(s)." : ''),
             'results' => $results,
         ]);
+    }
+
+    /**
+     * Export a PDF report of sent earnings emails based on the log file.
+     */
+    public function exportLog(): Response
+    {
+        $logPath = storage_path('logs/earnings-emails.log');
+
+        $entries = [];
+
+        if (file_exists($logPath)) {
+            $handle = fopen($logPath, 'r');
+
+            while (($line = fgets($handle)) !== false) {
+                // Match SUCCESS lines: contain "SUCESSO" with player details
+                if (str_contains($line, 'SUCESSO')) {
+                    $entry = $this->parseSuccessLine($line);
+                    if ($entry) {
+                        $entries[] = $entry;
+                    }
+
+                    continue;
+                }
+
+                // Match FAILURE lines: contain "FALHA DEFINITIVA"
+                if (str_contains($line, 'FALHA DEFINITIVA')) {
+                    $entry = $this->parseFailureLine($line);
+                    if ($entry) {
+                        $entries[] = $entry;
+                    }
+                }
+            }
+
+            fclose($handle);
+        }
+
+        $summary = [
+            'total' => count($entries),
+            'success' => count(array_filter($entries, fn ($e) => $e['status'] === 'success')),
+            'failed' => count(array_filter($entries, fn ($e) => $e['status'] === 'failed')),
+            'generated_at' => now()->format('d/m/Y H:i:s'),
+        ];
+
+        $pdf = Pdf::loadView('reports.earnings-email-log', [
+            'entries' => $entries,
+            'summary' => $summary,
+        ])->setPaper('a4', 'landscape');
+
+        return $pdf->download('relatorio-emails-earnings-' . now()->format('Y-m-d_His') . '.pdf');
+    }
+
+    private function parseSuccessLine(string $line): ?array
+    {
+        // Extract timestamp
+        $timestamp = null;
+        if (preg_match('/^\[(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})/', $line, $m)) {
+            $timestamp = $m[1];
+        }
+
+        // Extract player details from SUCCESS log line
+        $playerId = $this->extractField($line, 'Player ID');
+        $username = $this->extractField($line, 'Username');
+        $email = $this->extractField($line, 'Email');
+        $year = $this->extractField($line, 'Ano');
+        $messageId = $this->extractField($line, 'Message-ID');
+
+        if (! $playerId) {
+            return null;
+        }
+
+        return [
+            'timestamp' => $timestamp,
+            'player_id' => $playerId,
+            'username' => $username,
+            'email' => $email,
+            'year' => $year,
+            'message_id' => $messageId,
+            'status' => 'success',
+        ];
+    }
+
+    private function parseFailureLine(string $line): ?array
+    {
+        $timestamp = null;
+        if (preg_match('/^\[(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})/', $line, $m)) {
+            $timestamp = $m[1];
+        }
+
+        $playerId = $this->extractField($line, 'Player ID');
+        $username = $this->extractField($line, 'Username');
+        $email = $this->extractField($line, 'Email');
+        $year = $this->extractField($line, 'Ano');
+
+        if (! $playerId) {
+            return null;
+        }
+
+        return [
+            'timestamp' => $timestamp,
+            'player_id' => $playerId,
+            'username' => $username,
+            'email' => $email,
+            'year' => $year,
+            'message_id' => null,
+            'status' => 'failed',
+        ];
+    }
+
+    private function extractField(string $line, string $field): ?string
+    {
+        $pattern = '/' . preg_quote($field, '/') . ':\s*([^,\n]+)/';
+        if (preg_match($pattern, $line, $m)) {
+            return trim($m[1]);
+        }
+
+        return null;
     }
 }

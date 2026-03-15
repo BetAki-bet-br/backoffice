@@ -336,5 +336,7 @@ Route::prefix('v1')->group(function () {
             ->name('earnings.status');
         Route::post('earnings-reports/send', [\App\Http\Controllers\Api\V1\EarningsReportController::class, 'send'])
             ->name('earnings.send');
+        Route::get('earnings-reports/export-log', [\App\Http\Controllers\Api\V1\EarningsReportController::class, 'exportLog'])
+            ->name('earnings.exportLog');
     });
 });
