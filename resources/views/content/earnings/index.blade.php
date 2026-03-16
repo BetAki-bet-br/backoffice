@@ -4,7 +4,7 @@
 @section('page-title', 'Relatórios de Ganhos')
 
 @section('content')
-<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-4">
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
   <div>
     <h2 class="h5 mb-1">ComprovaBet — Envio de Relatórios Anuais</h2>
     <div class="text-muted small">Dispare relatórios de ganhos anuais por email para jogadores a partir da planilha de earnings</div>
@@ -15,7 +15,7 @@
 </div>
 
 {{-- Status do arquivo de earnings --}}
-<div class="card card-soft mb-4">
+<div class="card card-soft mb-3">
   <div class="card-body d-flex align-items-center gap-3 py-3">
     <div class="rounded-circle d-flex align-items-center justify-content-center" id="fileIcon"
          style="width: 44px; height: 44px; background: rgba(134,149,2,.12); flex-shrink: 0;">
@@ -30,7 +30,7 @@
 </div>
 
 {{-- Formulário de envio --}}
-<div class="card card-soft mb-4">
+<div class="card card-soft mb-3">
   <div class="card-body">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
       <h6 class="card-title mb-0">Disparar Relatórios</h6>
@@ -72,7 +72,7 @@
 
 {{-- Resultado do envio --}}
 <div id="resultsArea" class="d-none">
-  <div class="card card-soft mb-4">
+  <div class="card card-soft mb-3">
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h6 class="card-title mb-0">Resultado do envio</h6>

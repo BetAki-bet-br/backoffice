@@ -52,7 +52,7 @@ class EarningsReportController extends Controller
         $filePath = EarningsReportService::storagePath();
 
         if (! file_exists($filePath)) {
-            Log::channel('earnings')->error('[EARNINGS] Arquivo earnings.xlsx não encontrado em: ' . $filePath);
+            Log::channel('earnings')->error('[EARNINGS] Arquivo earnings.xlsx não encontrado em: '.$filePath);
 
             return response()->json([
                 'error' => ['message' => 'Arquivo earnings.xlsx não encontrado no repositório. Verifique o deploy.'],
@@ -106,7 +106,7 @@ class EarningsReportController extends Controller
         Log::channel('earnings')->info("[EARNINGS][{$requestId}] Envio finalizado — Despachados: {$sent}, Não encontrados: {$notFound}");
 
         return response()->json([
-            'message' => "{$sent} relatório(s) enviado(s) para a fila." . ($notFound > 0 ? " {$notFound} jogador(es) não encontrado(s)." : ''),
+            'message' => "{$sent} relatório(s) enviado(s) para a fila.".($notFound > 0 ? " {$notFound} jogador(es) não encontrado(s)." : ''),
             'results' => $results,
         ]);
     }
@@ -118,27 +118,68 @@ class EarningsReportController extends Controller
     {
         $logPath = storage_path('logs/earnings-emails.log');
 
-        $entries = [];
+        $dispatched = [];    // player_id → {email, net_income}
+        $successEntries = []; // keyed by player_id (dedup)
+        $notFoundEntries = [];
+        $failedEntries = [];
 
         if (file_exists($logPath)) {
             $handle = fopen($logPath, 'r');
 
             while (($line = fgets($handle)) !== false) {
-                // Match SUCCESS lines: contain "SUCESSO" with player details
-                if (str_contains($line, 'SUCESSO')) {
-                    $entry = $this->parseSuccessLine($line);
-                    if ($entry) {
-                        $entries[] = $entry;
+                // 1) DESPACHADO lines — capture net_income lookup
+                if (str_contains($line, 'DESPACHADO')) {
+                    $playerId = $this->extractField($line, 'Player ID');
+                    if ($playerId) {
+                        $dispatched[$playerId] = [
+                            'email' => $this->extractField($line, 'Email'),
+                            'net_income' => $this->extractField($line, 'Net Income'),
+                        ];
                     }
 
                     continue;
                 }
 
-                // Match FAILURE lines: contain "FALHA DEFINITIVA"
+                // 2) NÃO ENCONTRADO lines
+                if (str_contains($line, 'NÃO ENCONTRADO')) {
+                    $playerId = $this->extractField($line, 'Player ID');
+                    if ($playerId) {
+                        $notFoundEntries[$playerId] = [
+                            'player_id' => $playerId,
+                            'email' => $this->extractField($line, 'Email'),
+                        ];
+                    }
+
+                    continue;
+                }
+
+                // 3) SUCESSO lines
+                if (str_contains($line, 'SUCESSO')) {
+                    $playerId = $this->extractField($line, 'Player ID');
+                    if ($playerId) {
+                        $email = $this->extractField($line, 'Email');
+                        $netIncome = $dispatched[$playerId]['net_income'] ?? null;
+                        $successEntries[$playerId] = [
+                            'player_id' => $playerId,
+                            'email' => $email,
+                            'net_income' => $netIncome,
+                        ];
+                    }
+
+                    continue;
+                }
+
+                // 4) FALHA DEFINITIVA lines
                 if (str_contains($line, 'FALHA DEFINITIVA')) {
-                    $entry = $this->parseFailureLine($line);
-                    if ($entry) {
-                        $entries[] = $entry;
+                    $playerId = $this->extractField($line, 'Player ID');
+                    if ($playerId) {
+                        $email = $this->extractField($line, 'Email');
+                        $netIncome = $dispatched[$playerId]['net_income'] ?? null;
+                        $failedEntries[$playerId] = [
+                            'player_id' => $playerId,
+                            'email' => $email,
+                            'net_income' => $netIncome,
+                        ];
                     }
                 }
             }
@@ -146,81 +187,34 @@ class EarningsReportController extends Controller
             fclose($handle);
         }
 
+        // Merge failed into not-found for the "problems" section
+        $problemEntries = array_values($notFoundEntries);
+        foreach ($failedEntries as $entry) {
+            $problemEntries[] = array_merge($entry, ['reason' => 'Falha no envio']);
+        }
+
+        $successList = array_values($successEntries);
+        $year = now()->year;
+
         $summary = [
-            'total' => count($entries),
-            'success' => count(array_filter($entries, fn ($e) => $e['status'] === 'success')),
-            'failed' => count(array_filter($entries, fn ($e) => $e['status'] === 'failed')),
+            'success' => count($successList),
+            'problems' => count($problemEntries),
             'generated_at' => now()->format('d/m/Y H:i:s'),
+            'year' => $year,
         ];
 
         $pdf = Pdf::loadView('reports.earnings-email-log', [
-            'entries' => $entries,
+            'successEntries' => $successList,
+            'problemEntries' => $problemEntries,
             'summary' => $summary,
-        ])->setPaper('a4', 'landscape');
+        ])->setPaper('a4', 'portrait');
 
-        return $pdf->download('relatorio-emails-earnings-' . now()->format('Y-m-d_His') . '.pdf');
-    }
-
-    private function parseSuccessLine(string $line): ?array
-    {
-        // Extract timestamp
-        $timestamp = null;
-        if (preg_match('/^\[(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})/', $line, $m)) {
-            $timestamp = $m[1];
-        }
-
-        // Extract player details from SUCCESS log line
-        $playerId = $this->extractField($line, 'Player ID');
-        $username = $this->extractField($line, 'Username');
-        $email = $this->extractField($line, 'Email');
-        $year = $this->extractField($line, 'Ano');
-        $messageId = $this->extractField($line, 'Message-ID');
-
-        if (! $playerId) {
-            return null;
-        }
-
-        return [
-            'timestamp' => $timestamp,
-            'player_id' => $playerId,
-            'username' => $username,
-            'email' => $email,
-            'year' => $year,
-            'message_id' => $messageId,
-            'status' => 'success',
-        ];
-    }
-
-    private function parseFailureLine(string $line): ?array
-    {
-        $timestamp = null;
-        if (preg_match('/^\[(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})/', $line, $m)) {
-            $timestamp = $m[1];
-        }
-
-        $playerId = $this->extractField($line, 'Player ID');
-        $username = $this->extractField($line, 'Username');
-        $email = $this->extractField($line, 'Email');
-        $year = $this->extractField($line, 'Ano');
-
-        if (! $playerId) {
-            return null;
-        }
-
-        return [
-            'timestamp' => $timestamp,
-            'player_id' => $playerId,
-            'username' => $username,
-            'email' => $email,
-            'year' => $year,
-            'message_id' => null,
-            'status' => 'failed',
-        ];
+        return $pdf->download('relatorio-emails-earnings-'.now()->format('Y-m-d_His').'.pdf');
     }
 
     private function extractField(string $line, string $field): ?string
     {
-        $pattern = '/' . preg_quote($field, '/') . ':\s*([^,\n]+)/';
+        $pattern = '/'.preg_quote($field, '/').':\s*([^,\n]+)/';
         if (preg_match($pattern, $line, $m)) {
             return trim($m[1]);
         }
