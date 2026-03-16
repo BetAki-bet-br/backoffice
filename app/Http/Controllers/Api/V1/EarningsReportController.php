@@ -5,10 +5,8 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Jobs\SendPlayerEarningsEmailJob;
 use App\Services\EarningsReportService;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 
 class EarningsReportController extends Controller
@@ -112,14 +110,14 @@ class EarningsReportController extends Controller
     }
 
     /**
-     * Export a PDF report of sent earnings emails based on the log file.
+     * Return parsed log data for client-side PDF generation.
      */
-    public function exportLog(): Response
+    public function exportLog(): JsonResponse
     {
         $logPath = storage_path('logs/earnings-emails.log');
 
-        $dispatched = [];    // player_id → {email, net_income}
-        $successEntries = []; // keyed by player_id (dedup)
+        $dispatched = [];
+        $successEntries = [];
         $notFoundEntries = [];
         $failedEntries = [];
 
@@ -127,7 +125,6 @@ class EarningsReportController extends Controller
             $handle = fopen($logPath, 'r');
 
             while (($line = fgets($handle)) !== false) {
-                // 1) DESPACHADO lines — capture net_income lookup
                 if (str_contains($line, 'DESPACHADO')) {
                     $playerId = $this->extractField($line, 'Player ID');
                     if ($playerId) {
@@ -140,7 +137,6 @@ class EarningsReportController extends Controller
                     continue;
                 }
 
-                // 2) NÃO ENCONTRADO lines
                 if (str_contains($line, 'NÃO ENCONTRADO')) {
                     $playerId = $this->extractField($line, 'Player ID');
                     if ($playerId) {
@@ -153,32 +149,27 @@ class EarningsReportController extends Controller
                     continue;
                 }
 
-                // 3) SUCESSO lines
                 if (str_contains($line, 'SUCESSO')) {
                     $playerId = $this->extractField($line, 'Player ID');
                     if ($playerId) {
-                        $email = $this->extractField($line, 'Email');
-                        $netIncome = $dispatched[$playerId]['net_income'] ?? null;
                         $successEntries[$playerId] = [
                             'player_id' => $playerId,
-                            'email' => $email,
-                            'net_income' => $netIncome,
+                            'email' => $this->extractField($line, 'Email'),
+                            'net_income' => $dispatched[$playerId]['net_income'] ?? null,
                         ];
                     }
 
                     continue;
                 }
 
-                // 4) FALHA DEFINITIVA lines
                 if (str_contains($line, 'FALHA DEFINITIVA')) {
                     $playerId = $this->extractField($line, 'Player ID');
                     if ($playerId) {
-                        $email = $this->extractField($line, 'Email');
-                        $netIncome = $dispatched[$playerId]['net_income'] ?? null;
                         $failedEntries[$playerId] = [
                             'player_id' => $playerId,
-                            'email' => $email,
-                            'net_income' => $netIncome,
+                            'email' => $this->extractField($line, 'Email'),
+                            'net_income' => $dispatched[$playerId]['net_income'] ?? null,
+                            'reason' => 'Falha no envio',
                         ];
                     }
                 }
@@ -187,29 +178,15 @@ class EarningsReportController extends Controller
             fclose($handle);
         }
 
-        // Merge failed into not-found for the "problems" section
         $problemEntries = array_values($notFoundEntries);
         foreach ($failedEntries as $entry) {
-            $problemEntries[] = array_merge($entry, ['reason' => 'Falha no envio']);
+            $problemEntries[] = $entry;
         }
 
-        $successList = array_values($successEntries);
-        $year = now()->year;
-
-        $summary = [
-            'success' => count($successList),
-            'problems' => count($problemEntries),
-            'generated_at' => now()->format('d/m/Y H:i:s'),
-            'year' => $year,
-        ];
-
-        $pdf = Pdf::loadView('reports.earnings-email-log', [
-            'successEntries' => $successList,
-            'problemEntries' => $problemEntries,
-            'summary' => $summary,
-        ])->setPaper('a4', 'portrait');
-
-        return $pdf->download('relatorio-emails-earnings-'.now()->format('Y-m-d_His').'.pdf');
+        return response()->json([
+            'success' => array_values($successEntries),
+            'problems' => $problemEntries,
+        ]);
     }
 
     private function extractField(string $line, string $field): ?string
