@@ -2,16 +2,16 @@
 
 namespace App\Models\Domain\Navigation;
 
+use App\Enums\ActiveStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Enums\ActiveStatus;
 
 class Menu extends Model
 {
     use SoftDeletes;
 
     protected $fillable = [
-        'name','slug','status','position','meta','created_by','updated_by',
+        'name', 'slug', 'status', 'position', 'meta', 'created_by', 'updated_by',
     ];
 
     protected $casts = [
@@ -28,5 +28,13 @@ class Menu extends Model
     public function allItems()
     {
         return $this->hasMany(MenuItem::class)->orderBy('position')->orderBy('id');
+    }
+
+    public function scopeVisibleTo($query, bool $isPublic): void
+    {
+        if ($isPublic) {
+            $query->where('status',
+                ActiveStatus::Active);
+        }
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\ActiveStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Navigation\MenuRequest;
 use App\Models\Domain\Navigation\Menu;
@@ -20,12 +21,16 @@ class MenuController extends Controller
      * ) */
     public function index(Request $request)
     {
+        $isPublic = !auth('sanctum')->check();
+
         $q = Menu::query()
+            ->when($isPublic, fn($qq) =>
+                $qq->where('status', ActiveStatus::Active))
+            ->when(!$isPublic && $request->filled('status'), fn($qq) =>
+                $qq->where('status', $request->status))
             ->when($request->filled('q'), fn($qq) =>
                 $qq->where('name','ilike','%'.$request->q.'%')
                    ->orWhere('slug','ilike','%'.$request->q.'%'))
-            ->when($request->filled('status'), fn($qq) =>
-                $qq->where('status',$request->status))
             ->orderBy('position')->orderBy('id');
 
         return response()->json($q->cursorPaginate(20));
@@ -97,7 +102,19 @@ class MenuController extends Controller
      * ) */
     public function show(Menu $menu)
     {
-        $menu->load(['items.children.children']);
+        $isPublic = !auth('sanctum')->check();
+
+        if ($isPublic && $menu->status !== ActiveStatus::Active) {
+            abort(404);
+        }
+
+        $activeFilter = fn($q) => $q->where('status', ActiveStatus::Active);
+
+        $menu->load($isPublic
+            ? ['items' => $activeFilter, 'items.children' => $activeFilter, 'items.children.children' => $activeFilter]
+            : ['items.children.children']
+        );
+
         return response()->json($menu);
     }
 

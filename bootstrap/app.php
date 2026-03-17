@@ -23,19 +23,19 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Grupo "api" minimalista (sem stateful/CSRF)
         $middleware->group('api', [
-            \Illuminate\Routing\Middleware\ThrottleRequests::class . ':api',
+            \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\ParseJsonFormData::class,
         ]);
 
         $middleware->alias([
-            'auth'      => \App\Http\Middleware\Authenticate::class,
-            'auth.basic'=> \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
-            'can'       => \Illuminate\Auth\Middleware\Authorize::class,
+            'auth' => \App\Http\Middleware\Authenticate::class,
+            'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
+            'can' => \Illuminate\Auth\Middleware\Authorize::class,
             'password.confirm' => \Illuminate\Auth\Middleware\RequirePassword::class,
-            'signed'    => \Illuminate\Routing\Middleware\ValidateSignature::class,
-            'throttle'  => \Illuminate\Routing\Middleware\ThrottleRequests::class,
-            'verified'  => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+            'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
+            'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
+            'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -45,9 +45,9 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->is('api/*') || $request->expectsJson()) {
                 return response()->json([
                     'error' => [
-                        'code'     => 'VALIDATION_ERROR',
-                        'message'  => 'Dados inválidos.',
-                        'details'  => $e->errors(),
+                        'code' => 'VALIDATION_ERROR',
+                        'message' => 'Dados inválidos.',
+                        'details' => $e->errors(),
                         'trace_id' => (string) Str::uuid(),
                     ],
                 ], 422);
@@ -76,8 +76,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
             return response()->json([
                 'error' => [
-                    'code'     => $code,
-                    'message'  => $e->getMessage() ?: 'Erro inesperado.',
+                    'code' => $code,
+                    'message' => $e->getMessage() ?: 'Erro inesperado.',
                     'trace_id' => (string) Str::uuid(),
                 ],
             ], $status);

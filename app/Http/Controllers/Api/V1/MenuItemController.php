@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\ActiveStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Navigation\MenuItemRequest;
 use App\Http\Requests\Navigation\MenuItemTreeSyncRequest;
@@ -21,7 +22,14 @@ class MenuItemController extends Controller
      * ) */
     public function index(Menu $menu)
     {
-        $menu->load(['items.children.children']);
+        $isPublic = !auth('sanctum')->check();
+        $activeFilter = fn($q) => $q->where('status', ActiveStatus::Active);
+
+        $menu->load($isPublic
+            ? ['items' => $activeFilter, 'items.children' => $activeFilter, 'items.children.children' => $activeFilter]
+            : ['items.children.children']
+        );
+
         return response()->json($menu->items);
     }
 
@@ -47,7 +55,20 @@ class MenuItemController extends Controller
     public function show(Menu $menu, MenuItem $item)
     {
         abort_unless($item->menu_id === $menu->id, 404);
-        $item->load('children.children');
+
+        $isPublic = !auth('sanctum')->check();
+
+        if ($isPublic && $item->status !== ActiveStatus::Active) {
+            abort(404);
+        }
+
+        $activeFilter = fn($q) => $q->where('status', ActiveStatus::Active);
+
+        $item->load($isPublic
+            ? ['children' => $activeFilter, 'children.children' => $activeFilter]
+            : ['children.children']
+        );
+
         return response()->json($item);
     }
 
