@@ -4,15 +4,18 @@
 @section('page-title', 'Relatórios de Ganhos')
 
 @section('content')
-<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-4">
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
   <div>
     <h2 class="h5 mb-1">ComprovaBet — Envio de Relatórios Anuais</h2>
     <div class="text-muted small">Dispare relatórios de ganhos anuais por email para jogadores a partir da planilha de earnings</div>
   </div>
+  <button class="btn btn-outline-secondary btn-sm" id="btnExportLog" type="button">
+    Exportar Relatório de Envios (PDF)
+  </button>
 </div>
 
 {{-- Status do arquivo de earnings --}}
-<div class="card card-soft mb-4">
+<div class="card card-soft mb-3">
   <div class="card-body d-flex align-items-center gap-3 py-3">
     <div class="rounded-circle d-flex align-items-center justify-content-center" id="fileIcon"
          style="width: 44px; height: 44px; background: rgba(134,149,2,.12); flex-shrink: 0;">
@@ -27,7 +30,7 @@
 </div>
 
 {{-- Formulário de envio --}}
-<div class="card card-soft mb-4">
+<div class="card card-soft mb-3">
   <div class="card-body">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
       <h6 class="card-title mb-0">Disparar Relatórios</h6>
@@ -69,7 +72,7 @@
 
 {{-- Resultado do envio --}}
 <div id="resultsArea" class="d-none">
-  <div class="card card-soft mb-4">
+  <div class="card card-soft mb-3">
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h6 class="card-title mb-0">Resultado do envio</h6>
@@ -83,6 +86,7 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js" integrity="sha512-MpDFIChbcXl2QgipQrt1VcPHMldRILetapBEmo2jLETXCwSBiMNJxg6LoaFqgSXewNjon06CY6fxEaxMQjKMNw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   const playersBody = document.getElementById('playersBody');
@@ -91,6 +95,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const resultsArea = document.getElementById('resultsArea');
   const resultsContent = document.getElementById('resultsContent');
   const resultsSummary = document.getElementById('resultsSummary');
+
+  const btnExport = document.getElementById('btnExportLog');
 
   let rowCounter = 0;
   const rowStatuses = {};
@@ -234,6 +240,114 @@ document.addEventListener('DOMContentLoaded', function () {
       } else {
         rowIds.forEach(function (rid) { setRowStatus(rid, 'error'); });
         await toastApiError(res, 'enviar relatórios');
+      }
+    });
+  });
+
+  // --- Export PDF ---
+  function buildReportHtml(data) {
+    const year = document.getElementById('reportYear').value;
+    const successCount = data.success.length;
+    const problemsCount = data.problems.length;
+
+    let successRows = '';
+    data.success.forEach(function (e) {
+      const income = e.net_income !== null ? parseFloat(e.net_income) : null;
+      const incomeClass = income !== null && income >= 0 ? 'income-positive' : 'income-negative';
+      const incomeText = income !== null ? income.toFixed(2) : '—';
+      successRows += '<tr>' +
+        '<td>' + escapeHtml(e.player_id) + '</td>' +
+        '<td>' + escapeHtml(e.email || '—') + '</td>' +
+        '<td class="' + incomeClass + '">' + escapeHtml(incomeText) + '</td>' +
+        '<td class="status-success">Enviado</td>' +
+        '</tr>';
+    });
+
+    let problemsSection = '';
+    if (problemsCount > 0) {
+      let problemRows = '';
+      data.problems.forEach(function (e) {
+        problemRows += '<tr>' +
+          '<td>' + escapeHtml(e.player_id) + '</td>' +
+          '<td>' + escapeHtml(e.email || '—') + '</td>' +
+          '<td class="status-error">' + escapeHtml(e.reason || 'Falha - Não Encontrado') + '</td>' +
+          '</tr>';
+      });
+      problemsSection = '<h2>\u26A0\uFE0F Jogadores Não Encontrados na Planilha</h2>' +
+        '<table><thead><tr><th>Player ID</th><th>Email Buscado</th><th>Status</th></tr></thead>' +
+        '<tbody>' + problemRows + '</tbody></table>';
+    }
+
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8" />' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0" />' +
+      '<title>Sumário de Logs - Relatórios de Ganhos (' + escapeHtml(year) + ')</title>' +
+      '<style>' +
+      'body{font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;background-color:#f4f7f6;color:#333;margin:0;padding:20px;}' +
+      '.container{max-width:900px;margin:0 auto;background:#fff;padding:30px;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,0.1);}' +
+      'h1,h2{color:#2c3e50;}' +
+      '.summary-cards{display:flex;gap:20px;margin-bottom:30px;}' +
+      '.card{flex:1;padding:20px;border-radius:8px;color:white;text-align:center;}' +
+      '.card.success{background-color:#27ae60;}' +
+      '.card.warning{background-color:#e67e22;}' +
+      '.card h3{margin:0;font-size:2em;}' +
+      '.card p{margin:5px 0 0;font-size:1.1em;}' +
+      'table{width:100%;border-collapse:collapse;margin-bottom:30px;}' +
+      'th,td{padding:12px;text-align:left;border-bottom:1px solid #ddd;}' +
+      'th{background-color:#ecf0f1;color:#333;}' +
+      'tr:hover{background-color:#f9f9f9;}' +
+      '.status-success{color:#27ae60;font-weight:bold;}' +
+      '.status-error{color:#c0392b;font-weight:bold;}' +
+      '.income-positive{color:#27ae60;}' +
+      '.income-negative{color:#c0392b;}' +
+      '</style></head><body><div class="container">' +
+      '<h1>Sumário de Disparos de Email (Betaki)</h1>' +
+      '<p>Resumo da extração de logs referente ao ano-base de ' + escapeHtml(year) + '. ' +
+      'Registros duplicados do mesmo usuário nas requisições foram agrupados para melhor visualização.</p>' +
+      '<div class="summary-cards">' +
+      '<div class="card success"><h3>' + successCount + '</h3><p>Emails Enviados com Sucesso</p></div>' +
+      '<div class="card warning"><h3>' + problemsCount + '</h3><p>Jogadores Não Encontrados</p></div>' +
+      '</div>' +
+      '<h2>\u2705 Emails Despachados com Sucesso</h2>' +
+      '<table><thead><tr><th>Player ID</th><th>Email Destino</th><th>Net Income (BRL)</th><th>Status</th></tr></thead>' +
+      '<tbody>' + (successRows || '<tr><td colspan="4" style="text-align:center;color:#999;">Nenhum registro encontrado.</td></tr>') + '</tbody></table>' +
+      problemsSection +
+      '</div></body></html>';
+  }
+
+  btnExport.addEventListener('click', function () {
+    withLoading(btnExport, async () => {
+      try {
+        const res = await apiFetch('/api/v1/earnings-reports/export-log');
+
+        if (!res.ok) {
+          toast('Erro ao buscar dados do relatório (' + res.status + ')', 'danger');
+          return;
+        }
+
+        const data = await res.json();
+        const html = buildReportHtml(data);
+
+        const container = document.createElement('div');
+        container.innerHTML = html;
+        container.style.position = 'fixed';
+        container.style.left = '-9999px';
+        document.body.appendChild(container);
+
+        await html2pdf()
+          .set({
+            margin: 0,
+            filename: 'relatorio-emails-earnings.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+          })
+          .from(container)
+          .save();
+
+        container.remove();
+        toast('Relatório PDF exportado com sucesso.');
+      } catch (e) {
+        toast('Erro ao gerar relatório PDF.', 'danger');
       }
     });
   });

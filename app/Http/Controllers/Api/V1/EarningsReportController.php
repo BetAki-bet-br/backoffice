@@ -50,7 +50,7 @@ class EarningsReportController extends Controller
         $filePath = EarningsReportService::storagePath();
 
         if (! file_exists($filePath)) {
-            Log::channel('earnings')->error('[EARNINGS] Arquivo earnings.xlsx não encontrado em: ' . $filePath);
+            Log::channel('earnings')->error('[EARNINGS] Arquivo earnings.xlsx não encontrado em: '.$filePath);
 
             return response()->json([
                 'error' => ['message' => 'Arquivo earnings.xlsx não encontrado no repositório. Verifique o deploy.'],
@@ -104,8 +104,98 @@ class EarningsReportController extends Controller
         Log::channel('earnings')->info("[EARNINGS][{$requestId}] Envio finalizado — Despachados: {$sent}, Não encontrados: {$notFound}");
 
         return response()->json([
-            'message' => "{$sent} relatório(s) enviado(s) para a fila." . ($notFound > 0 ? " {$notFound} jogador(es) não encontrado(s)." : ''),
+            'message' => "{$sent} relatório(s) enviado(s) para a fila.".($notFound > 0 ? " {$notFound} jogador(es) não encontrado(s)." : ''),
             'results' => $results,
         ]);
+    }
+
+    /**
+     * Return parsed log data for client-side PDF generation.
+     */
+    public function exportLog(): JsonResponse
+    {
+        $logPath = storage_path('logs/earnings-emails.log');
+
+        $dispatched = [];
+        $successEntries = [];
+        $notFoundEntries = [];
+        $failedEntries = [];
+
+        if (file_exists($logPath)) {
+            $handle = fopen($logPath, 'r');
+
+            while (($line = fgets($handle)) !== false) {
+                if (str_contains($line, 'DESPACHADO')) {
+                    $playerId = $this->extractField($line, 'Player ID');
+                    if ($playerId) {
+                        $dispatched[$playerId] = [
+                            'email' => $this->extractField($line, 'Email'),
+                            'net_income' => $this->extractField($line, 'Net Income'),
+                        ];
+                    }
+
+                    continue;
+                }
+
+                if (str_contains($line, 'NÃO ENCONTRADO')) {
+                    $playerId = $this->extractField($line, 'Player ID');
+                    if ($playerId) {
+                        $notFoundEntries[$playerId] = [
+                            'player_id' => $playerId,
+                            'email' => $this->extractField($line, 'Email'),
+                        ];
+                    }
+
+                    continue;
+                }
+
+                if (str_contains($line, 'SUCESSO')) {
+                    $playerId = $this->extractField($line, 'Player ID');
+                    if ($playerId) {
+                        $successEntries[$playerId] = [
+                            'player_id' => $playerId,
+                            'email' => $this->extractField($line, 'Email'),
+                            'net_income' => $dispatched[$playerId]['net_income'] ?? null,
+                        ];
+                    }
+
+                    continue;
+                }
+
+                if (str_contains($line, 'FALHA DEFINITIVA')) {
+                    $playerId = $this->extractField($line, 'Player ID');
+                    if ($playerId) {
+                        $failedEntries[$playerId] = [
+                            'player_id' => $playerId,
+                            'email' => $this->extractField($line, 'Email'),
+                            'net_income' => $dispatched[$playerId]['net_income'] ?? null,
+                            'reason' => 'Falha no envio',
+                        ];
+                    }
+                }
+            }
+
+            fclose($handle);
+        }
+
+        $problemEntries = array_values($notFoundEntries);
+        foreach ($failedEntries as $entry) {
+            $problemEntries[] = $entry;
+        }
+
+        return response()->json([
+            'success' => array_values($successEntries),
+            'problems' => $problemEntries,
+        ]);
+    }
+
+    private function extractField(string $line, string $field): ?string
+    {
+        $pattern = '/'.preg_quote($field, '/').':\s*([^,\n]+)/';
+        if (preg_match($pattern, $line, $m)) {
+            return trim($m[1]);
+        }
+
+        return null;
     }
 }
