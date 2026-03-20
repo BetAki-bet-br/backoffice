@@ -258,7 +258,7 @@ class CategorySyncService
             Provider::upsert(
                 $providersToUpsert,
                 ['external_id'],
-                ['name', 'game_count', 'status', 'verticals']
+                ['name', 'game_count', 'verticals']
             );
         }
         return $count;
