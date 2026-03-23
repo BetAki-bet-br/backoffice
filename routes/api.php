@@ -1,48 +1,35 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\Api\V1\AwardedController;
 // Auth
-use App\Http\Controllers\AuthController;
-
-use App\Http\Controllers\Api\V1\GameExtraSyncController;
-
-// Settings
-use App\Http\Controllers\Api\V1\SettingController;
-
-// RBAC
-use App\Http\Controllers\Api\V1\RoleController;
-use App\Http\Controllers\Api\V1\PermissionController;
-
-// Banners
 use App\Http\Controllers\Api\V1\BannerController;
 use App\Http\Controllers\Api\V1\CarouselController;
-use App\Http\Controllers\Api\V1\LobbyLayoutController;
-
-// Casino
-use App\Http\Controllers\Api\V1\SlotController;
-
-// Categories
+// Settings
 use App\Http\Controllers\Api\V1\CategoryController;
-
-// Showcases
-use App\Http\Controllers\Api\V1\ShowcaseController;
-
-// Menus
+// RBAC
+use App\Http\Controllers\Api\V1\FooterController;
+use App\Http\Controllers\Api\V1\GameExtraSyncController;
+// Banners
+use App\Http\Controllers\Api\V1\LobbyLayoutController;
 use App\Http\Controllers\Api\V1\MenuController;
 use App\Http\Controllers\Api\V1\MenuItemController;
-
+// Casino
+use App\Http\Controllers\Api\V1\PermissionController;
+// Categories
+use App\Http\Controllers\Api\V1\RoleController;
+// Showcases
+use App\Http\Controllers\Api\V1\SettingController;
+// Menus
+use App\Http\Controllers\Api\V1\ShowcaseController;
+use App\Http\Controllers\Api\V1\SlotController;
 // Top Lists
 use App\Http\Controllers\Api\V1\TopListController;
-
 // Awarded
-use App\Http\Controllers\Api\V1\AwardedController;
-
-// Top Winners
 use App\Http\Controllers\Api\V1\TopWinnersController;
-
+// Top Winners
+use App\Http\Controllers\AuthController;
 // Footers
-use App\Http\Controllers\Api\V1\FooterController;
+use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
     /*
@@ -117,13 +104,13 @@ Route::prefix('v1')->group(function () {
 
     // Awarded
     Route::prefix('awards')->group(function () {
-        Route::get('batches',         [AwardedController::class, 'index']);
+        Route::get('batches', [AwardedController::class, 'index']);
         Route::get('batches/{batch}', [AwardedController::class, 'show']);
     });
 
     // Top Winners
     Route::prefix('winners')->group(function () {
-        Route::get('batches',         [TopWinnersController::class, 'index']);
+        Route::get('batches', [TopWinnersController::class, 'index']);
         Route::get('batches/{batch}', [TopWinnersController::class, 'show']);
     });
 
@@ -271,22 +258,22 @@ Route::prefix('v1')->group(function () {
 
         // Awarded
         Route::prefix('awards')->group(function () {
-            Route::post('batches',          [AwardedController::class, 'store']);
-            Route::put('batches/{batch}',   [AwardedController::class, 'update']);
-            Route::delete('batches/{batch}',[AwardedController::class, 'destroy']);
+            Route::post('batches', [AwardedController::class, 'store']);
+            Route::put('batches/{batch}', [AwardedController::class, 'update']);
+            Route::delete('batches/{batch}', [AwardedController::class, 'destroy']);
 
-            Route::put('batches/{batch}/results',  [AwardedController::class, 'syncResults']);
+            Route::put('batches/{batch}/results', [AwardedController::class, 'syncResults']);
             Route::post('batches/{batch}/publish', [AwardedController::class, 'publish']);
             Route::post('batches/{batch}/archive', [AwardedController::class, 'archive']);
         });
 
         // Top Winners
         Route::prefix('winners')->group(function () {
-            Route::post('batches',           [TopWinnersController::class, 'store']);
-            Route::put('batches/{batch}',    [TopWinnersController::class, 'update']);
+            Route::post('batches', [TopWinnersController::class, 'store']);
+            Route::put('batches/{batch}', [TopWinnersController::class, 'update']);
             Route::delete('batches/{batch}', [TopWinnersController::class, 'destroy']);
 
-            Route::put('batches/{batch}/results',  [TopWinnersController::class, 'syncResults']);
+            Route::put('batches/{batch}/results', [TopWinnersController::class, 'syncResults']);
             Route::post('batches/{batch}/publish', [TopWinnersController::class, 'publish']);
             Route::post('batches/{batch}/archive', [TopWinnersController::class, 'archive']);
         });
@@ -336,5 +323,9 @@ Route::prefix('v1')->group(function () {
             ->name('earnings.status');
         Route::post('earnings-reports/send', [\App\Http\Controllers\Api\V1\EarningsReportController::class, 'send'])
             ->name('earnings.send');
+        Route::get('earnings-reports/history', [\App\Http\Controllers\Api\V1\EarningsReportController::class, 'history'])
+            ->name('earnings.history');
+        Route::post('earnings-reports/history/{log}/resend', [\App\Http\Controllers\Api\V1\EarningsReportController::class, 'resend'])
+            ->name('earnings.resend');
     });
 });

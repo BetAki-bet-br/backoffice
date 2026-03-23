@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Mail\AnnualEarningsReportMail;
+use App\Models\EarningsReportLog;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -24,6 +25,7 @@ class SendPlayerEarningsEmailJob implements ShouldQueue
     public function __construct(
         public readonly array $playerData,
         public readonly int $year,
+        public readonly ?int $logId = null,
     ) {
         $this->onQueue('emails');
     }
@@ -53,6 +55,13 @@ class SendPlayerEarningsEmailJob implements ShouldQueue
             : 'N/A';
 
         Log::channel('earnings')->info("[EARNINGS][JOB:{$jobId}] SUCESSO — Email enviado com sucesso para Player ID: {$playerId}, Username: {$username}, Email: {$email}, Ano: {$this->year}, Message-ID: {$messageId}, Tentativa: {$attempt}/{$this->tries}");
+
+        if ($this->logId) {
+            EarningsReportLog::where('id', $this->logId)->update([
+                'status' => 'sent',
+                'sent_at' => now(),
+            ]);
+        }
     }
 
     public function failed(\Throwable $exception): void
@@ -65,6 +74,13 @@ class SendPlayerEarningsEmailJob implements ShouldQueue
         $jobId = $this->job?->getJobId() ?? 'unknown';
         $mailer = config('mail.default');
 
-        Log::channel('earnings')->error("[EARNINGS][JOB:{$jobId}] FALHA DEFINITIVA — Todas as {$this->tries} tentativas esgotadas. Player ID: {$playerId}, Username: {$username}, CPF: {$cpf}, Email: {$email}, Ano: {$this->year}, Mailer: {$mailer}, Tentativa final: {$attempt}/{$this->tries}, Exceção: {$exception->getMessage()}, Trace: " . $exception->getTraceAsString());
+        Log::channel('earnings')->error("[EARNINGS][JOB:{$jobId}] FALHA DEFINITIVA — Todas as {$this->tries} tentativas esgotadas. Player ID: {$playerId}, Username: {$username}, CPF: {$cpf}, Email: {$email}, Ano: {$this->year}, Mailer: {$mailer}, Tentativa final: {$attempt}/{$this->tries}, Exceção: {$exception->getMessage()}, Trace: ".$exception->getTraceAsString());
+
+        if ($this->logId) {
+            EarningsReportLog::where('id', $this->logId)->update([
+                'status' => 'failed',
+                'error_message' => mb_substr($exception->getMessage(), 0, 1000),
+            ]);
+        }
     }
 }

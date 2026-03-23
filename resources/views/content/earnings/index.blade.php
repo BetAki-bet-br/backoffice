@@ -9,6 +9,7 @@
     <h2 class="h5 mb-1">ComprovaBet — Envio de Relatórios Anuais</h2>
     <div class="text-muted small">Dispare relatórios de ganhos anuais por email para jogadores a partir da planilha de earnings</div>
   </div>
+  <button class="btn btn-outline-secondary btn-sm" id="btnToggleHistory" type="button">Ver Histórico</button>
 </div>
 
 {{-- Status do arquivo de earnings --}}
@@ -76,6 +77,63 @@
         <div id="resultsSummary" class="small text-muted"></div>
       </div>
       <div id="resultsContent"></div>
+    </div>
+  </div>
+</div>
+
+{{-- Histórico de lançamentos --}}
+<div id="historyArea" class="d-none">
+  <div class="card card-soft mb-4">
+    <div class="card-body">
+      <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+        <h6 class="card-title mb-0">Histórico de Lançamentos</h6>
+        <div class="d-flex align-items-center gap-2">
+          <select class="form-select form-select-sm" id="historyYear" style="width: auto;">
+            <option value="">Todos os anos</option>
+            <option value="2025" selected>2025</option>
+            <option value="2024">2024</option>
+            <option value="2026">2026</option>
+          </select>
+          <select class="form-select form-select-sm" id="historyStatus" style="width: auto;">
+            <option value="">Todos</option>
+            <option value="queued">Na fila</option>
+            <option value="sent">Enviado</option>
+            <option value="sent_zeroed">Zerado</option>
+            <option value="failed">Falhou</option>
+          </select>
+          <input type="text" class="form-control form-control-sm" id="historyPlayerId" placeholder="Player ID" style="width: 130px;">
+          <button class="btn btn-sm btn-outline-primary" id="btnHistorySearch" type="button">Buscar</button>
+        </div>
+      </div>
+
+      <div class="table-soft mb-3">
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0 align-middle">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Player ID</th>
+                <th>CPF</th>
+                <th>Email</th>
+                <th>Ano</th>
+                <th>Status</th>
+                <th style="text-align: center;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody">
+              {{-- Dynamic rows --}}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center">
+        <div id="historyInfo" class="small text-muted"></div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-outline-secondary" id="btnHistoryPrev" type="button" disabled>Anterior</button>
+          <button class="btn btn-sm btn-outline-secondary" id="btnHistoryNext" type="button" disabled>Próxima</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -176,6 +234,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!cell) return;
     if (status === 'sent') {
       cell.innerHTML = '<span class="badge bg-success-subtle text-success">Enviado</span>';
+    } else if (status === 'sent_zeroed') {
+      cell.innerHTML = '<span class="badge bg-warning-subtle text-warning">Enviado (zerado)</span>';
     } else if (status === 'not_found') {
       cell.innerHTML = '<span class="badge bg-danger-subtle text-danger">Não encontrado</span>';
     } else if (status === 'sending') {
@@ -231,6 +291,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         showResults(data);
         toast(data.message);
+        // Refresh history if visible
+        if (!historyArea.classList.contains('d-none')) loadHistory();
       } else {
         rowIds.forEach(function (rid) { setRowStatus(rid, 'error'); });
         await toastApiError(res, 'enviar relatórios');
@@ -242,16 +304,25 @@ document.addEventListener('DOMContentLoaded', function () {
     resultsArea.classList.remove('d-none');
 
     const sent = data.results.filter(r => r.status === 'sent').length;
+    const sentZeroed = data.results.filter(r => r.status === 'sent_zeroed').length;
     const notFound = data.results.filter(r => r.status === 'not_found').length;
-    resultsSummary.textContent = sent + ' enviado(s)' + (notFound > 0 ? ', ' + notFound + ' não encontrado(s)' : '');
+    let summary = (sent + sentZeroed) + ' enviado(s)';
+    if (sentZeroed > 0) summary += ' (' + sentZeroed + ' zerado(s))';
+    if (notFound > 0) summary += ', ' + notFound + ' não encontrado(s)';
+    resultsSummary.textContent = summary;
 
     let html = '<div class="table-soft"><table class="table table-sm mb-0"><thead><tr>' +
       '<th>Player ID</th><th>CPF</th><th>Email</th><th>Status</th></tr></thead><tbody>';
 
     data.results.forEach(function (r) {
-      const statusBadge = r.status === 'sent'
-        ? '<span class="badge bg-success-subtle text-success">Enviado</span>'
-        : '<span class="badge bg-danger-subtle text-danger">Não encontrado</span>';
+      let statusBadge;
+      if (r.status === 'sent') {
+        statusBadge = '<span class="badge bg-success-subtle text-success">Enviado</span>';
+      } else if (r.status === 'sent_zeroed') {
+        statusBadge = '<span class="badge bg-warning-subtle text-warning">Enviado (zerado)</span>';
+      } else {
+        statusBadge = '<span class="badge bg-danger-subtle text-danger">Não encontrado</span>';
+      }
       html += '<tr><td>' + escapeHtml(r.player_id) + '</td><td>' + escapeHtml(r.cpf) +
         '</td><td>' + escapeHtml(r.email) + '</td><td>' + statusBadge + '</td></tr>';
     });
@@ -259,6 +330,140 @@ document.addEventListener('DOMContentLoaded', function () {
     html += '</tbody></table></div>';
     resultsContent.innerHTML = html;
   }
+
+  // =============================================
+  // --- History section ---
+  // =============================================
+  const historyArea = document.getElementById('historyArea');
+  const historyBody = document.getElementById('historyBody');
+  const historyInfo = document.getElementById('historyInfo');
+  const btnToggleHistory = document.getElementById('btnToggleHistory');
+  const btnHistoryPrev = document.getElementById('btnHistoryPrev');
+  const btnHistoryNext = document.getElementById('btnHistoryNext');
+  const btnHistorySearch = document.getElementById('btnHistorySearch');
+
+  let historyNextCursor = null;
+  let historyPrevCursor = null;
+  let historyVisible = false;
+
+  btnToggleHistory.addEventListener('click', function () {
+    historyVisible = !historyVisible;
+    if (historyVisible) {
+      historyArea.classList.remove('d-none');
+      btnToggleHistory.textContent = 'Ocultar Histórico';
+      loadHistory();
+    } else {
+      historyArea.classList.add('d-none');
+      btnToggleHistory.textContent = 'Ver Histórico';
+    }
+  });
+
+  btnHistorySearch.addEventListener('click', function () {
+    loadHistory();
+  });
+
+  btnHistoryNext.addEventListener('click', function () {
+    if (historyNextCursor) loadHistory(historyNextCursor);
+  });
+
+  btnHistoryPrev.addEventListener('click', function () {
+    if (historyPrevCursor) loadHistory(null, historyPrevCursor);
+  });
+
+  function historyStatusBadge(status, zeroed) {
+    if (zeroed && (status === 'queued' || status === 'sent')) {
+      if (status === 'sent') return '<span class="badge bg-warning-subtle text-warning">Enviado (zerado)</span>';
+      return '<span class="badge bg-secondary-subtle text-secondary">Na fila (zerado)</span>';
+    }
+    if (status === 'sent') return '<span class="badge bg-success-subtle text-success">Enviado</span>';
+    if (status === 'queued') return '<span class="badge bg-secondary-subtle text-secondary">Na fila</span>';
+    if (status === 'failed') return '<span class="badge bg-danger-subtle text-danger">Falhou</span>';
+    return '<span class="badge bg-secondary-subtle text-secondary">' + escapeHtml(status) + '</span>';
+  }
+
+  async function loadHistory(nextCursor, prevCursor) {
+    const year = document.getElementById('historyYear').value;
+    const status = document.getElementById('historyStatus').value;
+    const playerId = document.getElementById('historyPlayerId').value.trim();
+
+    let url = '/api/v1/earnings-reports/history?';
+    const params = [];
+    if (year) params.push('year=' + encodeURIComponent(year));
+    if (status) params.push('status=' + encodeURIComponent(status));
+    if (playerId) params.push('player_id=' + encodeURIComponent(playerId));
+    if (nextCursor) params.push('cursor=' + encodeURIComponent(nextCursor));
+    if (prevCursor) params.push('cursor=' + encodeURIComponent(prevCursor));
+    url += params.join('&');
+
+    tableLoading(historyBody, 7);
+
+    try {
+      const res = await apiFetch(url);
+      if (!res.ok) {
+        tableError(historyBody, 7, res.status);
+        return;
+      }
+      const data = await res.json();
+
+      historyNextCursor = data.next_cursor;
+      historyPrevCursor = data.prev_cursor;
+      btnHistoryNext.disabled = !historyNextCursor;
+      btnHistoryPrev.disabled = !historyPrevCursor;
+
+      if (!data.data || data.data.length === 0) {
+        tableEmpty(historyBody, 7, 'Nenhum registro encontrado.');
+        historyInfo.textContent = '';
+        return;
+      }
+
+      historyInfo.textContent = 'Exibindo ' + data.data.length + ' registro(s)';
+
+      let html = '';
+      data.data.forEach(function (log) {
+        const dt = new Date(log.created_at).toLocaleString('pt-BR');
+        const canResend = log.status === 'failed' || log.zeroed;
+        html += '<tr>' +
+          '<td class="small">' + escapeHtml(dt) + '</td>' +
+          '<td>' + escapeHtml(log.player_id) + '</td>' +
+          '<td>' + escapeHtml(log.cpf) + '</td>' +
+          '<td>' + escapeHtml(log.email) + '</td>' +
+          '<td>' + log.year + '</td>' +
+          '<td>' + historyStatusBadge(log.status, log.zeroed) + '</td>' +
+          '<td class="text-center">' +
+            (canResend
+              ? '<button class="btn btn-sm btn-outline-primary btn-resend" data-log-id="' + log.id + '" title="Reenviar">Reenviar</button>'
+              : '<span class="text-muted small">—</span>') +
+          '</td>' +
+          '</tr>';
+      });
+      historyBody.innerHTML = html;
+
+    } catch (e) {
+      tableError(historyBody, 7, 'Erro de conexão');
+    }
+  }
+
+  // --- Resend from history ---
+  historyBody.addEventListener('click', async function (e) {
+    const btn = e.target.closest('.btn-resend');
+    if (!btn) return;
+
+    const logId = btn.dataset.logId;
+
+    await withLoading(btn, async () => {
+      const res = await apiFetch('/api/v1/earnings-reports/history/' + logId + '/resend', {
+        method: 'POST',
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        toast(data.message);
+        loadHistory();
+      } else {
+        await toastApiError(res, 'reenviar relatório');
+      }
+    });
+  });
 });
 </script>
 @endpush

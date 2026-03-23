@@ -179,6 +179,29 @@ class EarningsReportService
     }
 
     /**
+     * Build a zeroed-out player data array for players not found in the spreadsheet.
+     */
+    public static function buildZeroedPlayerData(string $playerId): array
+    {
+        return [
+            'currency' => 'BRL',
+            'player_id' => $playerId,
+            'username' => '',
+            'bets' => 0.0,
+            'bet_count' => 0.0,
+            'wins' => 0.0,
+            'redeemed_bonuses' => 0.0,
+            'net_income' => 0.0,
+            'deposits' => 0.0,
+            'withdrawals' => 0.0,
+            'balance_start_real' => 0.0,
+            'balance_end_real' => 0.0,
+            'balance_start_bonus' => 0.0,
+            'balance_end_bonus' => 0.0,
+        ];
+    }
+
+    /**
      * Get the default storage path for the earnings file.
      *
      * Uses the committed earnings.xlsx at the project root.
