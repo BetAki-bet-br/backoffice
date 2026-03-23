@@ -80,6 +80,58 @@ class EarningsReportService
     }
 
     /**
+     * Find multiple players by their IDs in a single pass through the earnings file.
+     *
+     * @param  array<string>  $playerIds
+     * @return array<string, array> Keyed by player_id. Missing IDs are not included.
+     */
+    public function findPlayersByIds(string $filePath, array $playerIds): array
+    {
+        $lookup = array_flip($playerIds);
+        $results = [];
+
+        $reader = new XlsxReader;
+        $reader->open($filePath);
+
+        $headerFound = false;
+
+        foreach ($reader->getSheetIterator() as $sheet) {
+            foreach ($sheet->getRowIterator() as $row) {
+                $cells = $row->toArray();
+
+                if (! $headerFound) {
+                    $firstCell = trim((string) ($cells[0] ?? ''));
+                    if ($firstCell === self::EARNINGS_HEADER_MARKER) {
+                        $headerFound = true;
+                    }
+
+                    continue;
+                }
+
+                $cellPlayerId = $cells[1] ?? null;
+                if (empty($cellPlayerId) || ! is_numeric($cellPlayerId)) {
+                    continue;
+                }
+
+                $id = (string) $cellPlayerId;
+                if (isset($lookup[$id]) && ! isset($results[$id])) {
+                    $results[$id] = $this->parseRow($cells);
+
+                    if (count($results) === count($lookup)) {
+                        break 2;
+                    }
+                }
+            }
+
+            break;
+        }
+
+        $reader->close();
+
+        return $results;
+    }
+
+    /**
      * Stream all players from the earnings file, calling the callback for each valid row.
      *
      * @param  callable(array $playerData): ?bool  $callback  Return false to stop iteration

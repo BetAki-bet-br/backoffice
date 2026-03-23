@@ -67,9 +67,13 @@ class EarningsReportController extends Controller
 
         Log::channel('earnings')->info("[EARNINGS][{$requestId}] Iniciando envio de relatórios — Ano: {$year}, Total de jogadores: {$totalPlayers}, Arquivo: {$filePath}");
 
+        // Single pass through the xlsx for all player IDs
+        $playerIds = array_column($players, 'player_id');
+        $foundPlayers = $this->service->findPlayersByIds($filePath, $playerIds);
+
         foreach ($players as $index => $player) {
             $seq = $index + 1;
-            $playerData = $this->service->findPlayerById($filePath, $player['player_id']);
+            $playerData = $foundPlayers[$player['player_id']] ?? null;
             $zeroed = false;
 
             if ($playerData === null) {
