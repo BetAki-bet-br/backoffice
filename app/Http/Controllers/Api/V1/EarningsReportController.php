@@ -58,6 +58,8 @@ class EarningsReportController extends Controller
             ], 422);
         }
 
+        set_time_limit(300);
+
         $year = (int) $request->input('year');
         $players = $request->input('players');
         $results = [];
