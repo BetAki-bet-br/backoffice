@@ -66,6 +66,70 @@ class LobbyController extends Controller
         return ['sections' => $sections];
     }
 
+    /** @OA\Get(
+     *  path="/api/v1/lobbies/{vertical}/status",
+     *  tags={"Lobbies"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Obter status do lobby",
+     *  @OA\Parameter(name="vertical", in="path", required=true, @OA\Schema(type="string", enum={"slots","live"})),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
+    public function getStatus(string $vertical)
+    {
+        if (!in_array($vertical, ['slots', 'live'])) {
+            abort(400, 'Vertical inválida');
+        }
+
+        $key = "lobby.status.{$vertical}";
+        $setting = Setting::where('key', $key)->first();
+
+        $status = 'active'; // default
+        if ($setting) {
+            $value = $setting->value;
+            $status = is_array($value) ? ($value['value'] ?? 'active') : $value;
+        }
+
+        return response()->json(['vertical' => $vertical, 'status' => $status]);
+    }
+
+    /** @OA\Put(
+     *  path="/api/v1/lobbies/{vertical}/status",
+     *  tags={"Lobbies"},
+     *  security={{"bearerAuth": {}}},
+     *  summary="Atualizar status do lobby",
+     *  @OA\Parameter(name="vertical", in="path", required=true, @OA\Schema(type="string", enum={"slots","live"})),
+     *  @OA\RequestBody(required=true, @OA\JsonContent(
+     *      @OA\Property(property="status", type="string", enum={"active","inactive","maintenance"})
+     *  )),
+     *  @OA\Response(response=200, description="OK")
+     * ) */
+    public function updateStatus(Request $request, string $vertical)
+    {
+        if (!in_array($vertical, ['slots', 'live'])) {
+            abort(400, 'Vertical inválida');
+        }
+
+        $request->validate([
+            'status' => 'required|string|in:active,inactive,maintenance',
+        ]);
+
+        $key = "lobby.status.{$vertical}";
+        $status = $request->input('status');
+
+        DB::transaction(function () use ($key, $status) {
+            Setting::updateOrCreate(
+                ['key' => $key],
+                [
+                    'value' => ['value' => $status],
+                    'group' => 'lobby',
+                    'type' => 'string'
+                ]
+            );
+        });
+
+        return response()->json(['vertical' => $vertical, 'status' => $status]);
+    }
+
     /** @OA\Put(
      *  path="/api/v1/lobbies/{vertical}/config",
      *  tags={"Lobbies"},

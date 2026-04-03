@@ -187,6 +187,14 @@ Route::prefix('v1')->group(function () {
             ->whereIn('vertical', ['slots', 'live'])
             ->name('lobbies.config.update');
 
+        Route::get('lobbies/{vertical}/status', [\App\Http\Controllers\Api\V1\LobbyController::class, 'getStatus'])
+            ->whereIn('vertical', ['slots', 'live'])
+            ->name('lobbies.status.show');
+
+        Route::put('lobbies/{vertical}/status', [\App\Http\Controllers\Api\V1\LobbyController::class, 'updateStatus'])
+            ->whereIn('vertical', ['slots', 'live'])
+            ->name('lobbies.status.update');
+
         // Categories
         Route::post('categories/sync', [CategoryController::class, 'sync'])
             ->name('categories.sync');

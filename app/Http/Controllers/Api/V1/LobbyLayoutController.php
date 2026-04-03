@@ -23,6 +23,11 @@ class LobbyLayoutController extends Controller
      * ) */
     public function casino(Request $request)
     {
+        $statusCheck = $this->checkLobbyStatus('slots');
+        if ($statusCheck !== null) {
+            return $statusCheck;
+        }
+
         return response()->json($this->buildLayout('slots'));
     }
 
@@ -34,7 +39,42 @@ class LobbyLayoutController extends Controller
      * ) */
     public function live(Request $request)
     {
+        $statusCheck = $this->checkLobbyStatus('live');
+        if ($statusCheck !== null) {
+            return $statusCheck;
+        }
+
         return response()->json($this->buildLayout('live'));
+    }
+
+    private function checkLobbyStatus(string $vertical): ?\Illuminate\Http\JsonResponse
+    {
+        $key = "lobby.status.{$vertical}";
+        $setting = Setting::where('key', $key)->first();
+
+        $status = 'active';
+        if ($setting) {
+            $value = $setting->value;
+            $status = is_array($value) ? ($value['value'] ?? 'active') : $value;
+        }
+
+        if ($status === 'inactive') {
+            return response()->json([
+                'status' => 'inactive',
+                'message' => 'Este lobby está desativado.',
+                'sections' => [],
+            ]);
+        }
+
+        if ($status === 'maintenance') {
+            return response()->json([
+                'status' => 'maintenance',
+                'message' => 'Este lobby está em manutenção.',
+                'sections' => [],
+            ]);
+        }
+
+        return null;
     }
 
     private function buildLayout(string $vertical): array

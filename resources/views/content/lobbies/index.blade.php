@@ -15,6 +15,45 @@
         </div>
     </div>
 
+    {{-- Status dos Lobbies --}}
+    <div class="card card-soft mb-3">
+        <div class="card-body">
+            <h5 class="h6 mb-3">Status dos Lobbies</h5>
+            <div class="row g-3">
+                <div class="col-12 col-md-6">
+                    <div class="d-flex align-items-center justify-content-between p-3 border rounded bg-white">
+                        <div>
+                            <div class="fw-semibold">Casino (Slots)</div>
+                            <small class="text-muted" id="statusLabelSlots">Carregando...</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <select class="form-select form-select-sm" id="statusSlots" style="width: auto;">
+                                <option value="active">Ativo</option>
+                                <option value="inactive">Desativado</option>
+                                <option value="maintenance">Manutenção</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="d-flex align-items-center justify-content-between p-3 border rounded bg-white">
+                        <div>
+                            <div class="fw-semibold">Live Casino</div>
+                            <small class="text-muted" id="statusLabelLive">Carregando...</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <select class="form-select form-select-sm" id="statusLive" style="width: auto;">
+                                <option value="active">Ativo</option>
+                                <option value="inactive">Desativado</option>
+                                <option value="maintenance">Manutenção</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card card-soft mb-3">
         <div class="card-body">
             <div class="row g-2 align-items-end">
@@ -140,8 +179,27 @@
                 winnersBatches: []
             };
 
+            // Status elements
+            const statusSlots = document.getElementById('statusSlots');
+            const statusLive = document.getElementById('statusLive');
+            const statusLabelSlots = document.getElementById('statusLabelSlots');
+            const statusLabelLive = document.getElementById('statusLabelLive');
+
+            const statusLabels = {
+                active: 'Lobby ativo e acessível',
+                inactive: 'Lobby desativado',
+                maintenance: 'Lobby em manutenção'
+            };
+
+            const statusColors = {
+                active: 'text-success',
+                inactive: 'text-secondary',
+                maintenance: 'text-warning'
+            };
+
             // --- Init ---
             initSortable();
+            loadLobbyStatuses();
             loadResources(); // Load resource lists once (or per vertical change if needed)
 
             // --- Event Listeners ---
@@ -154,7 +212,60 @@
 
             secType.addEventListener('change', updateModalFields);
 
+            statusSlots.addEventListener('change', () => updateLobbyStatus('slots', statusSlots.value));
+            statusLive.addEventListener('change', () => updateLobbyStatus('live', statusLive.value));
+
             // --- Functions ---
+
+            async function loadLobbyStatuses() {
+                try {
+                    const [resSlots, resLive] = await Promise.all([
+                        apiFetch('/api/v1/lobbies/slots/status'),
+                        apiFetch('/api/v1/lobbies/live/status')
+                    ]);
+
+                    if (resSlots.ok) {
+                        const data = await resSlots.json();
+                        statusSlots.value = data.status;
+                        applyStatusLabel('slots', data.status);
+                    }
+
+                    if (resLive.ok) {
+                        const data = await resLive.json();
+                        statusLive.value = data.status;
+                        applyStatusLabel('live', data.status);
+                    }
+                } catch (e) {
+                    console.error('Erro ao carregar status dos lobbies', e);
+                }
+            }
+
+            function applyStatusLabel(vertical, status) {
+                const label = vertical === 'slots' ? statusLabelSlots : statusLabelLive;
+                label.textContent = statusLabels[status] || status;
+                label.className = 'small ' + (statusColors[status] || 'text-muted');
+            }
+
+            async function updateLobbyStatus(vertical, status) {
+                try {
+                    const res = await apiFetch(`/api/v1/lobbies/${vertical}/status`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ status })
+                    });
+
+                    if (!res.ok) {
+                        await toastApiError(res, 'atualizar status');
+                        return;
+                    }
+
+                    applyStatusLabel(vertical, status);
+                    const verticalLabel = vertical === 'slots' ? 'Casino' : 'Live Casino';
+                    toast(`Status do lobby ${verticalLabel} atualizado para: ${statusLabels[status]}`);
+                } catch (e) {
+                    console.error(e);
+                    toast('Erro ao atualizar status do lobby.', 'danger');
+                }
+            }
 
             function loadAllCategories() {
                 if (!confirm(

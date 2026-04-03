@@ -39,6 +39,7 @@
       inactive: 'bg-secondary-subtle text-secondary',
       suspended: 'bg-warning-subtle text-warning',
       disabled: 'bg-secondary-subtle text-secondary',
+      maintenance: 'bg-warning-subtle text-warning',
       casino: 'bg-info-subtle text-info-emphasis',
       live_casino: 'bg-warning-subtle text-warning-emphasis',
       sportbook: 'bg-primary-subtle text-primary',
