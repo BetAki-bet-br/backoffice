@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\ContentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Casino\TopListRequest;
 use App\Http\Requests\Casino\TopListSlotsSyncRequest;
 use App\Models\Domain\Casino\TopList;
-use App\Enums\ContentStatus;
 use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 
@@ -17,22 +17,21 @@ class TopListController extends Controller
      *  tags={"TopLists"},
      *  security={{"bearerAuth": {}}},
      *  summary="Listar top lists",
+     *
      *  @OA\Parameter(name="q", in="query", @OA\Schema(type="string")),
      *  @OA\Parameter(name="status", in="query", @OA\Schema(type="string", enum={"draft","scheduled","published","archived"})),
      *  @OA\Parameter(name="vertical", in="query", @OA\Schema(type="string", enum={"slots","live"})),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function index(Request $request)
     {
         $q = TopList::query()
             ->withCount('slots')
-            ->when($request->filled('q'), fn($qq) =>
-                $qq->where('title','ilike','%'.$request->q.'%')
-                   ->orWhere('slug','ilike','%'.$request->q.'%'))
-            ->when($request->filled('status'), fn($qq) =>
-                $qq->where('status',$request->status))
-            ->when($request->filled('vertical'), fn($qq) =>
-                $qq->where('vertical',$request->vertical))
+            ->when($request->filled('q'), fn ($qq) => $qq->where('title', 'ilike', '%'.$request->q.'%')
+                ->orWhere('slug', 'ilike', '%'.$request->q.'%'))
+            ->when($request->filled('status'), fn ($qq) => $qq->where('status', $request->status))
+            ->when($request->filled('vertical'), fn ($qq) => $qq->where('vertical', $request->vertical))
             ->orderBy('position')->orderByDesc('id');
 
         return response()->json($q->cursorPaginate(20));
@@ -43,7 +42,9 @@ class TopListController extends Controller
      *  tags={"TopLists"},
      *  security={{"bearerAuth": {}}},
      *  summary="Criar top list",
+     *
      *  @OA\RequestBody(required=true),
+     *
      *  @OA\Response(response=201, description="Criado")
      * ) */
     public function store(TopListRequest $request)
@@ -51,7 +52,7 @@ class TopListController extends Controller
         $data = $request->validated();
         $data['created_by'] = $request->user()->id;
 
-        $topList = \DB::transaction(fn() => TopList::create($data));
+        $topList = \DB::transaction(fn () => TopList::create($data));
 
         return response()->json($topList, 201);
     }
@@ -61,6 +62,7 @@ class TopListController extends Controller
      *  tags={"TopLists"},
      *  security={{"bearerAuth": {}}},
      *  summary="Detalhar top list",
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function show(TopList $top_list)
@@ -73,6 +75,7 @@ class TopListController extends Controller
      *  tags={"TopLists"},
      *  security={{"bearerAuth": {}}},
      *  summary="Atualizar top list",
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function update(TopListRequest $request, TopList $top_list)
@@ -80,7 +83,7 @@ class TopListController extends Controller
         $data = $request->validated();
         $data['updated_by'] = $request->user()->id;
 
-        \DB::transaction(fn() => $top_list->update($data));
+        \DB::transaction(fn () => $top_list->update($data));
 
         return response()->json($top_list->refresh());
     }
@@ -90,11 +93,13 @@ class TopListController extends Controller
      *  tags={"TopLists"},
      *  security={{"bearerAuth": {}}},
      *  summary="Remover top list",
+     *
      *  @OA\Response(response=204, description="Sem conteúdo")
      * ) */
     public function destroy(TopList $top_list)
     {
         $top_list->delete();
+
         return response()->noContent();
     }
 
@@ -103,6 +108,7 @@ class TopListController extends Controller
      *  tags={"TopLists"},
      *  security={{"bearerAuth": {}}},
      *  summary="Sincronizar slots da top list (manual)",
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function syncSlots(TopListSlotsSyncRequest $request, TopList $top_list)
@@ -111,10 +117,10 @@ class TopListController extends Controller
 
         $payload = collect($request->validated()['items'])
             ->keyBy('slot_id')
-            ->map(fn($i) => ['position' => (int) ($i['position'] ?? 0)])
+            ->map(fn ($i) => ['position' => (int) ($i['position'] ?? 0)])
             ->all();
 
-        \DB::transaction(fn() => $top_list->slots()->sync($payload));
+        \DB::transaction(fn () => $top_list->slots()->sync($payload));
 
         return response()->json($top_list->load('slots'));
     }
@@ -122,9 +128,9 @@ class TopListController extends Controller
     public function publish(Request $request, TopList $top_list)
     {
         $top_list->update([
-            'status'       => ContentStatus::Published,
+            'status' => ContentStatus::Published,
             'published_by' => $request->user()->id,
-            'valid_from'   => $top_list->valid_from ?? now(),
+            'valid_from' => $top_list->valid_from ?? now(),
         ]);
 
         return response()->json($top_list->refresh());

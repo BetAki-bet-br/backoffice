@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\ContentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Navigation\FooterLinkSyncRequest;
 use App\Http\Requests\Navigation\FooterRequest;
 use App\Models\Domain\Navigation\Footer;
 use App\Models\Domain\Navigation\FooterLink;
 use App\Models\Domain\Navigation\FooterTranslation;
-use App\Enums\ContentStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Annotations as OA;
@@ -29,38 +29,49 @@ class FooterController extends Controller
      *   tags={"Footers"},
      *   security={{"bearerAuth": {}}},
      *   summary="Listar footers (cursor paginate)",
+     *
      *   @OA\Parameter(
      *     name="q",
      *     in="query",
      *     description="Busca pelo campo key",
      *     required=false,
+     *
      *     @OA\Schema(type="string")
      *   ),
+     *
      *   @OA\Parameter(
      *     name="status",
      *     in="query",
      *     description="Filtrar por status (draft, published, archived)",
      *     required=false,
+     *
      *     @OA\Schema(type="string")
      *   ),
+     *
      *   @OA\Parameter(
      *     name="country",
      *     in="query",
      *     description="Filtrar por país (BR, PT, ES, ...)",
      *     required=false,
+     *
      *     @OA\Schema(type="string", maxLength=2)
      *   ),
+     *
      *   @OA\Response(
      *     response=200,
      *     description="OK",
+     *
      *     @OA\JsonContent(
      *       type="object",
+     *
      *       @OA\Property(property="current_page", type="integer", example=1),
      *       @OA\Property(
      *         property="data",
      *         type="array",
+     *
      *         @OA\Items(
      *           type="object",
+     *
      *           @OA\Property(property="id", type="integer", example=1),
      *           @OA\Property(property="key", type="string", example="main-footer"),
      *           @OA\Property(property="status", type="string", example="draft"),
@@ -102,11 +113,14 @@ class FooterController extends Controller
      *   tags={"Footers"},
      *   security={{"bearerAuth": {}}},
      *   summary="Criar novo footer",
+     *
      *   @OA\RequestBody(
      *     required=true,
+     *
      *     @OA\JsonContent(
      *       type="object",
      *       required={"key"},
+     *
      *       @OA\Property(property="key", type="string", example="main-footer"),
      *       @OA\Property(property="status", type="string", example="draft"),
      *       @OA\Property(property="country", type="string", nullable=true, example="BR"),
@@ -115,9 +129,11 @@ class FooterController extends Controller
      *       @OA\Property(
      *         property="translations",
      *         type="array",
+     *
      *         @OA\Items(
      *           type="object",
      *           required={"locale"},
+     *
      *           @OA\Property(property="locale", type="string", example="pt-BR"),
      *           @OA\Property(property="legal_title", type="string", nullable=true),
      *           @OA\Property(property="legal_text", type="string", nullable=true),
@@ -126,11 +142,14 @@ class FooterController extends Controller
      *       )
      *     )
      *   ),
+     *
      *   @OA\Response(
      *     response=201,
      *     description="Footer criado",
+     *
      *     @OA\JsonContent(
      *       type="object",
+     *
      *       @OA\Property(property="id", type="integer", example=1),
      *       @OA\Property(property="key", type="string", example="main-footer"),
      *       @OA\Property(property="status", type="string", example="draft"),
@@ -141,8 +160,10 @@ class FooterController extends Controller
      *       @OA\Property(
      *         property="translations",
      *         type="array",
+     *
      *         @OA\Items(
      *           type="object",
+     *
      *           @OA\Property(property="id", type="integer", example=10),
      *           @OA\Property(property="locale", type="string", example="pt-BR"),
      *           @OA\Property(property="legal_title", type="string", nullable=true),
@@ -153,8 +174,10 @@ class FooterController extends Controller
      *       @OA\Property(
      *         property="links",
      *         type="array",
+     *
      *         @OA\Items(
      *           type="object",
+     *
      *           @OA\Property(property="id", type="integer", example=5),
      *           @OA\Property(property="block", type="string", example="legal"),
      *           @OA\Property(property="label", type="string", example="Política de Privacidade"),
@@ -166,6 +189,7 @@ class FooterController extends Controller
      *       )
      *     )
      *   ),
+     *
      *   @OA\Response(response=422, description="Erro de validação")
      * )
      */
@@ -177,13 +201,13 @@ class FooterController extends Controller
 
             $data = $request->validated();
 
-            $footer = new Footer();
+            $footer = new Footer;
             $footer->fill($data);
             $footer->created_by = $user->id;
             $footer->updated_by = $user->id;
             $footer->save();
 
-            if (!empty($data['translations'])) {
+            if (! empty($data['translations'])) {
                 $this->syncTranslations($footer, $data['translations']);
             }
 
@@ -199,18 +223,23 @@ class FooterController extends Controller
      *   tags={"Footers"},
      *   security={{"bearerAuth": {}}},
      *   summary="Obter detalhes de um footer",
+     *
      *   @OA\Parameter(
      *     name="footer",
      *     in="path",
      *     required=true,
      *     description="ID do footer",
+     *
      *     @OA\Schema(type="integer", format="int64")
      *   ),
+     *
      *   @OA\Response(
      *     response=200,
      *     description="OK",
+     *
      *     @OA\JsonContent(
      *       type="object",
+     *
      *       @OA\Property(property="id", type="integer", example=1),
      *       @OA\Property(property="key", type="string", example="main-footer"),
      *       @OA\Property(property="status", type="string", example="draft"),
@@ -221,8 +250,10 @@ class FooterController extends Controller
      *       @OA\Property(
      *         property="translations",
      *         type="array",
+     *
      *         @OA\Items(
      *           type="object",
+     *
      *           @OA\Property(property="id", type="integer", example=10),
      *           @OA\Property(property="locale", type="string", example="pt-BR"),
      *           @OA\Property(property="legal_title", type="string", nullable=true),
@@ -233,8 +264,10 @@ class FooterController extends Controller
      *       @OA\Property(
      *         property="links",
      *         type="array",
+     *
      *         @OA\Items(
      *           type="object",
+     *
      *           @OA\Property(property="id", type="integer", example=5),
      *           @OA\Property(property="block", type="string", example="legal"),
      *           @OA\Property(property="label", type="string", example="Política de Privacidade"),
@@ -246,6 +279,7 @@ class FooterController extends Controller
      *       )
      *     )
      *   ),
+     *
      *   @OA\Response(response=404, description="Footer não encontrado")
      * )
      */
@@ -262,17 +296,22 @@ class FooterController extends Controller
      *   tags={"Footers"},
      *   security={{"bearerAuth": {}}},
      *   summary="Atualizar footer existente",
+     *
      *   @OA\Parameter(
      *     name="footer",
      *     in="path",
      *     required=true,
      *     description="ID do footer",
+     *
      *     @OA\Schema(type="integer", format="int64")
      *   ),
+     *
      *   @OA\RequestBody(
      *     required=true,
+     *
      *     @OA\JsonContent(
      *       type="object",
+     *
      *       @OA\Property(property="key", type="string", example="main-footer"),
      *       @OA\Property(property="status", type="string", example="draft"),
      *       @OA\Property(property="country", type="string", nullable=true, example="BR"),
@@ -281,9 +320,11 @@ class FooterController extends Controller
      *       @OA\Property(
      *         property="translations",
      *         type="array",
+     *
      *         @OA\Items(
      *           type="object",
      *           required={"locale"},
+     *
      *           @OA\Property(property="locale", type="string", example="pt-BR"),
      *           @OA\Property(property="legal_title", type="string", nullable=true),
      *           @OA\Property(property="legal_text", type="string", nullable=true),
@@ -292,11 +333,14 @@ class FooterController extends Controller
      *       )
      *     )
      *   ),
+     *
      *   @OA\Response(
      *     response=200,
      *     description="Footer atualizado",
+     *
      *     @OA\JsonContent(
      *       type="object",
+     *
      *       @OA\Property(property="id", type="integer", example=1),
      *       @OA\Property(property="key", type="string", example="main-footer"),
      *       @OA\Property(property="status", type="string", example="draft"),
@@ -306,6 +350,7 @@ class FooterController extends Controller
      *       @OA\Property(property="published_at", type="string", format="date-time", nullable=true)
      *     )
      *   ),
+     *
      *   @OA\Response(response=404, description="Footer não encontrado"),
      *   @OA\Response(response=422, description="Erro de validação")
      * )
@@ -337,13 +382,16 @@ class FooterController extends Controller
      *   tags={"Footers"},
      *   security={{"bearerAuth": {}}},
      *   summary="Remover footer",
+     *
      *   @OA\Parameter(
      *     name="footer",
      *     in="path",
      *     required=true,
      *     description="ID do footer",
+     *
      *     @OA\Schema(type="integer", format="int64")
      *   ),
+     *
      *   @OA\Response(
      *     response=204,
      *     description="Footer removido com sucesso"
@@ -366,18 +414,23 @@ class FooterController extends Controller
      *   tags={"Footers"},
      *   security={{"bearerAuth": {}}},
      *   summary="Publicar footer",
+     *
      *   @OA\Parameter(
      *     name="footer",
      *     in="path",
      *     required=true,
      *     description="ID do footer",
+     *
      *     @OA\Schema(type="integer", format="int64")
      *   ),
+     *
      *   @OA\Response(
      *     response=200,
      *     description="Footer publicado",
+     *
      *     @OA\JsonContent(
      *       type="object",
+     *
      *       @OA\Property(property="id", type="integer", example=1),
      *       @OA\Property(property="key", type="string", example="main-footer"),
      *       @OA\Property(property="status", type="string", example="published"),
@@ -385,6 +438,7 @@ class FooterController extends Controller
      *       @OA\Property(property="published_at", type="string", format="date-time")
      *     )
      *   ),
+     *
      *   @OA\Response(response=404, description="Footer não encontrado")
      * )
      */
@@ -410,23 +464,30 @@ class FooterController extends Controller
      *   tags={"Footers"},
      *   security={{"bearerAuth": {}}},
      *   summary="Sincronizar links de um footer",
+     *
      *   @OA\Parameter(
      *     name="footer",
      *     in="path",
      *     required=true,
      *     description="ID do footer",
+     *
      *     @OA\Schema(type="integer", format="int64")
      *   ),
+     *
      *   @OA\RequestBody(
      *     required=true,
+     *
      *     @OA\JsonContent(
      *       type="object",
      *       required={"links"},
+     *
      *       @OA\Property(
      *         property="links",
      *         type="array",
+     *
      *         @OA\Items(
      *           type="object",
+     *
      *           @OA\Property(property="id", type="integer", nullable=true, example=5),
      *           @OA\Property(property="block", type="string", nullable=true, example="legal"),
      *           @OA\Property(property="label", type="string", example="Política de Privacidade"),
@@ -439,16 +500,20 @@ class FooterController extends Controller
      *       )
      *     )
      *   ),
+     *
      *   @OA\Response(
      *     response=200,
      *     description="Links sincronizados",
+     *
      *     @OA\JsonContent(
      *       type="object",
+     *
      *       @OA\Property(property="id", type="integer", example=1),
      *       @OA\Property(property="key", type="string", example="main-footer"),
      *       @OA\Property(property="status", type="string", example="draft")
      *     )
      *   ),
+     *
      *   @OA\Response(response=404, description="Footer não encontrado"),
      *   @OA\Response(response=422, description="Erro de validação")
      * )
@@ -465,7 +530,7 @@ class FooterController extends Controller
                 $linkData['target'] = $linkData['target'] ?? '_self';
                 $linkData['is_active'] = $linkData['is_active'] ?? true;
 
-                if (!empty($linkData['id'])) {
+                if (! empty($linkData['id'])) {
                     /** @var FooterLink $link */
                     $link = $footer->links()->whereKey($linkData['id'])->firstOrFail();
                     $link->fill($linkData);
@@ -495,12 +560,12 @@ class FooterController extends Controller
             $translation = FooterTranslation::updateOrCreate(
                 [
                     'footer_id' => $footer->id,
-                    'locale'    => $translationData['locale'],
+                    'locale' => $translationData['locale'],
                 ],
                 [
                     'legal_title' => $translationData['legal_title'] ?? null,
-                    'legal_text'  => $translationData['legal_text'] ?? null,
-                    'disclaimer'  => $translationData['disclaimer'] ?? null,
+                    'legal_text' => $translationData['legal_text'] ?? null,
+                    'disclaimer' => $translationData['disclaimer'] ?? null,
                 ]
             );
 

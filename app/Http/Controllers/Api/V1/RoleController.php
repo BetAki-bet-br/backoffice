@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Roles\RoleRequest;
 use Illuminate\Http\Request;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
 use OpenApi\Annotations as OA;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
@@ -17,14 +17,14 @@ class RoleController extends Controller
      *   tags={"RBAC"},
      *   security={{"bearerAuth": {}}},
      *   summary="Listar roles",
+     *
      *   @OA\Response(response=200, description="OK")
      * )
      */
     public function index(Request $request)
     {
         $q = Role::query()
-            ->when($request->filled('q'), fn($qq) =>
-                $qq->where('name', 'ilike', '%'.$request->q.'%')
+            ->when($request->filled('q'), fn ($qq) => $qq->where('name', 'ilike', '%'.$request->q.'%')
             )
             ->with('permissions');
 
@@ -38,20 +38,24 @@ class RoleController extends Controller
      *   tags={"RBAC"},
      *   security={{"bearerAuth": {}}},
      *   summary="Criar role",
+     *
      *   @OA\RequestBody(required=true,
+     *
      *     @OA\JsonContent(
      *       required={"name"},
+     *
      *       @OA\Property(property="name", type="string", example="marketing"),
      *       @OA\Property(property="permissions", type="array", @OA\Items(type="string", example="banners.publish"))
      *     )
      *   ),
+     *
      *   @OA\Response(response=201, description="Criado")
      * )
      */
     public function store(RoleRequest $request)
     {
         $role = \DB::transaction(function () use ($request) {
-            $role = Role::create($request->only('name','guard_name'));
+            $role = Role::create($request->only('name', 'guard_name'));
 
             if ($perms = $request->input('permissions')) {
                 $perms = Permission::whereIn('name', $perms)->where('guard_name', $role->guard_name)->get();
@@ -70,7 +74,9 @@ class RoleController extends Controller
      *   tags={"RBAC"},
      *   security={{"bearerAuth": {}}},
      *   summary="Obter role por ID",
+     *
      *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *   @OA\Response(response=200, description="OK")
      * )
      */
@@ -85,20 +91,25 @@ class RoleController extends Controller
      *   tags={"RBAC"},
      *   security={{"bearerAuth": {}}},
      *   summary="Atualizar role",
+     *
      *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *   @OA\RequestBody(required=true,
+     *
      *     @OA\JsonContent(
+     *
      *       @OA\Property(property="name", type="string", example="content"),
      *       @OA\Property(property="permissions", type="array", @OA\Items(type="string", example="banners.update"))
      *     )
      *   ),
+     *
      *   @OA\Response(response=200, description="OK")
      * )
      */
     public function update(RoleRequest $request, Role $role)
     {
         $role = \DB::transaction(function () use ($request, $role) {
-            $role->update($request->only('name','guard_name'));
+            $role->update($request->only('name', 'guard_name'));
 
             if ($request->has('permissions')) {
                 $perms = Permission::whereIn('name', (array) $request->permissions)
@@ -118,7 +129,9 @@ class RoleController extends Controller
      *   tags={"RBAC"},
      *   security={{"bearerAuth": {}}},
      *   summary="Remover role",
+     *
      *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *   @OA\Response(response=204, description="Sem conteúdo")
      * )
      */
@@ -134,6 +147,7 @@ class RoleController extends Controller
         }
 
         $role->delete();
+
         return response()->noContent();
     }
 }

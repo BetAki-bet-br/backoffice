@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('menu_items', function (Blueprint $table) {
@@ -24,7 +25,7 @@ return new class extends Migration {
             $table->jsonb('route_params')->nullable();
             $table->string('target')->nullable();
 
-            $table->enum('status', ['active','inactive'])->default('active');
+            $table->enum('status', ['active', 'inactive'])->default('active');
             $table->integer('position')->default(0);
 
             // Controle de visibilidade por roles e/ou permissões
@@ -37,8 +38,8 @@ return new class extends Migration {
             $table->timestampsTz();
             $table->softDeletesTz();
 
-            $table->index(['menu_id','parent_id','position']);
-            $table->index(['status','depth']);
+            $table->index(['menu_id', 'parent_id', 'position']);
+            $table->index(['status', 'depth']);
             $table->index('title');
         });
     }

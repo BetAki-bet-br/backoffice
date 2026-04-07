@@ -18,7 +18,7 @@ return new class extends Migration
                 'mais-premiados',
                 'winners-list',
                 'top-10-list',
-                'providers-carousel'
+                'providers-carousel',
             ])->default('game-list')->after('verticals')->index();
         });
     }

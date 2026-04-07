@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\Domain\Casino\PortalGame;
 use App\Models\Domain\Casino\GameExtra;
+use App\Models\Domain\Casino\PortalGame;
 use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 
@@ -16,16 +16,18 @@ class PortalGamesController extends Controller
      *   tags={"Portal Games"},
      *   security={{"bearerAuth": {}}},
      *   summary="Listar jogos do portal (portal_games) enriquecidos com RTP/Volatilidade/Aposta mínima",
+     *
      *   @OA\Parameter(name="portal_id", in="query", required=true, @OA\Schema(type="integer", example=1)),
      *   @OA\Parameter(name="q", in="query", @OA\Schema(type="string", example="Roulette")),
+     *
      *   @OA\Response(response=200, description="OK")
      * )
      */
     public function index(Request $request)
     {
         $request->validate([
-            'portal_id' => ['required','integer','min:1'],
-            'q' => ['nullable','string','max:200'],
+            'portal_id' => ['required', 'integer', 'min:1'],
+            'q' => ['nullable', 'string', 'max:200'],
         ]);
 
         $portalId = (int) $request->portal_id;
@@ -36,9 +38,9 @@ class PortalGamesController extends Controller
                 $term = $request->q;
                 $qq->where(function ($w) use ($term) {
                     $w->where('name', 'ilike', "%{$term}%")
-                      ->orWhere('external_id', 'ilike', "%{$term}%")
-                      ->orWhere('product_name', 'ilike', "%{$term}%")
-                      ->orWhere('supplier_name', 'ilike', "%{$term}%");
+                        ->orWhere('external_id', 'ilike', "%{$term}%")
+                        ->orWhere('product_name', 'ilike', "%{$term}%")
+                        ->orWhere('supplier_name', 'ilike', "%{$term}%");
                 });
             })
             ->orderByDesc('id');

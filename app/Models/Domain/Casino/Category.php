@@ -2,16 +2,16 @@
 
 namespace App\Models\Domain\Casino;
 
+use App\Enums\ActiveStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Enums\ActiveStatus;
 
 class Category extends Model
 {
     use SoftDeletes;
 
     protected $fillable = [
-        'name','slug','cover_url','verticals','type','status','position','meta','created_by','updated_by',
+        'name', 'slug', 'cover_url', 'verticals', 'type', 'status', 'position', 'meta', 'created_by', 'updated_by',
     ];
 
     protected $casts = [
@@ -27,10 +27,15 @@ class Category extends Model
 
     // Category Types Constants
     const TYPE_GAME_LIST = 'game-list';
+
     const TYPE_RECENT_GAMES = 'recent-games';
+
     const TYPE_MAIS_PREMIADOS = 'mais-premiados';
+
     const TYPE_WINNERS_LIST = 'winners-list';
+
     const TYPE_TOP_10_LIST = 'top-10-list';
+
     const TYPE_PROVIDERS_CAROUSEL = 'providers-carousel';
 
     const TYPES = [

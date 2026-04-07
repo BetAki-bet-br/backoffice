@@ -13,7 +13,7 @@ class CategoryFactory extends Factory
     public function definition(): array
     {
         $name = $this->faker->unique()->words(3, true);
-        
+
         return [
             'name' => $name,
             'slug' => Str::slug($name),
@@ -24,7 +24,7 @@ class CategoryFactory extends Factory
                 'mais-premiados',
                 'winners-list',
                 'top-10-list',
-                'providers-carousel'
+                'providers-carousel',
             ]),
             'status' => $this->faker->randomElement(['active', 'inactive']),
             'position' => $this->faker->numberBetween(0, 1000),

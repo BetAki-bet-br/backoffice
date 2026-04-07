@@ -101,7 +101,7 @@ class SlotApiTest extends TestCase
 
         $response->assertStatus(201);
         $slot = Slot::where('provider_game_id', 'test-game-1')->first();
-        
+
         $this->assertNull($slot->rtp);
         $this->assertNull($slot->volatility);
         $this->assertNull($slot->min_bet);
@@ -147,7 +147,7 @@ class SlotApiTest extends TestCase
 
         $response->assertStatus(200);
         $data = $response->json();
-        
+
         $slotData = collect($data['data'])->firstWhere('id', $slot->id);
         $this->assertNotNull($slotData);
         $this->assertEquals(95.5, $slotData['rtp']);

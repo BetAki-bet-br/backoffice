@@ -8,12 +8,12 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
-use Illuminate\Support\Str;
 
 class Handler extends ExceptionHandler
 {
@@ -34,15 +34,15 @@ class Handler extends ExceptionHandler
     {
         // API-only: sempre JSON
         $traceId = (string) Str::uuid();
-        $debug   = (bool) config('app.debug');
+        $debug = (bool) config('app.debug');
 
         // 422 - validação
         if ($e instanceof ValidationException) {
             return response()->json([
                 'error' => [
-                    'code'     => 'VALIDATION_ERROR',
-                    'message'  => 'There were validation errors.',
-                    'details'  => $e->errors(),
+                    'code' => 'VALIDATION_ERROR',
+                    'message' => 'There were validation errors.',
+                    'details' => $e->errors(),
                     'trace_id' => $traceId,
                 ],
             ], 422);
@@ -52,8 +52,8 @@ class Handler extends ExceptionHandler
         if ($e instanceof AuthenticationException) {
             return response()->json([
                 'error' => [
-                    'code'     => 'UNAUTHENTICATED',
-                    'message'  => 'Authentication required.',
+                    'code' => 'UNAUTHENTICATED',
+                    'message' => 'Authentication required.',
                     'trace_id' => $traceId,
                 ],
             ], 401);
@@ -63,8 +63,8 @@ class Handler extends ExceptionHandler
         if ($e instanceof AuthorizationException) {
             return response()->json([
                 'error' => [
-                    'code'     => 'FORBIDDEN',
-                    'message'  => $e->getMessage() ?: 'You are not allowed to perform this action.',
+                    'code' => 'FORBIDDEN',
+                    'message' => $e->getMessage() ?: 'You are not allowed to perform this action.',
                     'trace_id' => $traceId,
                 ],
             ], 403);
@@ -74,8 +74,8 @@ class Handler extends ExceptionHandler
         if ($e instanceof NotFoundHttpException || $e instanceof ModelNotFoundException) {
             return response()->json([
                 'error' => [
-                    'code'     => 'NOT_FOUND',
-                    'message'  => 'Resource not found.',
+                    'code' => 'NOT_FOUND',
+                    'message' => 'Resource not found.',
                     'trace_id' => $traceId,
                 ],
             ], 404);
@@ -85,8 +85,8 @@ class Handler extends ExceptionHandler
         if ($e instanceof MethodNotAllowedHttpException) {
             return response()->json([
                 'error' => [
-                    'code'     => 'METHOD_NOT_ALLOWED',
-                    'message'  => 'HTTP method not allowed for this route.',
+                    'code' => 'METHOD_NOT_ALLOWED',
+                    'message' => 'HTTP method not allowed for this route.',
                     'trace_id' => $traceId,
                 ],
             ], 405);
@@ -96,8 +96,8 @@ class Handler extends ExceptionHandler
         if ($e instanceof ThrottleRequestsException) {
             return response()->json([
                 'error' => [
-                    'code'     => 'TOO_MANY_REQUESTS',
-                    'message'  => 'Too many requests. Please try again later.',
+                    'code' => 'TOO_MANY_REQUESTS',
+                    'message' => 'Too many requests. Please try again later.',
                     'trace_id' => $traceId,
                 ],
             ], 429);
@@ -117,8 +117,8 @@ class Handler extends ExceptionHandler
 
                 return response()->json([
                     'error' => [
-                        'code'     => 'DUPLICATE_ENTRY',
-                        'message'  => $msg,
+                        'code' => 'DUPLICATE_ENTRY',
+                        'message' => $msg,
                         'trace_id' => $traceId,
                     ],
                 ], 409);
@@ -128,8 +128,8 @@ class Handler extends ExceptionHandler
             if ($sqlState === '23503' || $driverCode === 1451 || $driverCode === 1452) {
                 return response()->json([
                     'error' => [
-                        'code'     => 'FOREIGN_KEY_VIOLATION',
-                        'message'  => 'Não é possível completar a operação pois existem registros relacionados.',
+                        'code' => 'FOREIGN_KEY_VIOLATION',
+                        'message' => 'Não é possível completar a operação pois existem registros relacionados.',
                         'trace_id' => $traceId,
                     ],
                 ], 409);
@@ -137,8 +137,8 @@ class Handler extends ExceptionHandler
 
             return response()->json([
                 'error' => [
-                    'code'     => 'DATABASE_ERROR',
-                    'message'  => $debug ? $e->getMessage() : 'Ocorreu um erro no banco de dados.',
+                    'code' => 'DATABASE_ERROR',
+                    'message' => $debug ? $e->getMessage() : 'Ocorreu um erro no banco de dados.',
                     'trace_id' => $traceId,
                 ],
             ], 500);
@@ -146,13 +146,13 @@ class Handler extends ExceptionHandler
 
         // HttpExceptions com status específico
         if ($e instanceof HttpExceptionInterface) {
-            $status  = $e->getStatusCode();
+            $status = $e->getStatusCode();
             $message = $e->getMessage() ?: 'HTTP error.';
 
             return response()->json([
                 'error' => [
-                    'code'     => 'HTTP_ERROR',
-                    'message'  => $message,
+                    'code' => 'HTTP_ERROR',
+                    'message' => $message,
                     'trace_id' => $traceId,
                 ],
             ], $status);
@@ -161,8 +161,8 @@ class Handler extends ExceptionHandler
         // Fallback 500 - erro não tratado
         return response()->json([
             'error' => [
-                'code'     => 'SERVER_ERROR',
-                'message'  => $debug ? $e->getMessage() : 'Erro interno do servidor.',
+                'code' => 'SERVER_ERROR',
+                'message' => $debug ? $e->getMessage() : 'Erro interno do servidor.',
                 'trace_id' => $traceId,
             ],
         ], 500);

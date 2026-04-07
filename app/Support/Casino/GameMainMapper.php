@@ -14,11 +14,11 @@ class GameMainMapper
         if (is_string($p)) {
             $p = json_decode($p, true);
         }
-        if (!is_array($p)) {
+        if (! is_array($p)) {
             $p = [];
         }
 
-        $externalId = (string)($p['externalId'] ?? $portalGame->external_id);
+        $externalId = (string) ($p['externalId'] ?? $portalGame->external_id);
 
         return new GameMainDTO(
             id: self::intOrNull($p['id'] ?? null),
@@ -45,23 +45,38 @@ class GameMainMapper
 
     private static function strOrNull(mixed $v): ?string
     {
-        if ($v === null) return null;
-        $s = trim((string)$v);
+        if ($v === null) {
+            return null;
+        }
+        $s = trim((string) $v);
+
         return $s === '' ? null : $s;
     }
 
     private static function intOrNull(mixed $v): ?int
     {
-        if ($v === null || $v === '') return null;
-        return is_numeric($v) ? (int)$v : null;
+        if ($v === null || $v === '') {
+            return null;
+        }
+
+        return is_numeric($v) ? (int) $v : null;
     }
 
     private static function boolOrNull(mixed $v): ?bool
     {
-        if ($v === null) return null;
-        if (is_bool($v)) return $v;
-        if ($v === 1 || $v === '1' || $v === 'true') return true;
-        if ($v === 0 || $v === '0' || $v === 'false') return false;
+        if ($v === null) {
+            return null;
+        }
+        if (is_bool($v)) {
+            return $v;
+        }
+        if ($v === 1 || $v === '1' || $v === 'true') {
+            return true;
+        }
+        if ($v === 0 || $v === '0' || $v === 'false') {
+            return false;
+        }
+
         return null;
     }
 }

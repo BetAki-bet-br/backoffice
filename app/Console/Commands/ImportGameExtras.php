@@ -2,10 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Domain\Casino\GameExtra;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
-use App\Models\Domain\Casino\GameExtra;
 
 class ImportGameExtras extends Command
 {
@@ -30,8 +30,9 @@ class ImportGameExtras extends Command
     {
         $file = $this->argument('file');
 
-        if (!File::exists($file)) {
+        if (! File::exists($file)) {
             $this->error("Arquivo não encontrado: {$file}");
+
             return 1;
         }
 
@@ -39,13 +40,14 @@ class ImportGameExtras extends Command
 
         $handle = fopen($file, 'r');
         if ($handle === false) {
-            $this->error("Não foi possível abrir o arquivo.");
+            $this->error('Não foi possível abrir o arquivo.');
+
             return 1;
         }
 
         // Lê o cabeçalho
         $headers = fgetcsv($handle, 0, ';');
-        
+
         // Mapeamento simples baseado nos nomes das colunas ou índices fixos se preferir
         // Usaremos índices fixos baseados na análise do arquivo fornecido:
         // 0: Game id -> external_id
@@ -67,11 +69,13 @@ class ImportGameExtras extends Command
                 $count++;
 
                 $externalId = $data[0] ?? null;
-                if (!$externalId || $externalId === 'Game id') continue;
+                if (! $externalId || $externalId === 'Game id') {
+                    continue;
+                }
 
                 // Normaliza o ID para coincidir com portal_games (ALE-{id})
-                if (!str_starts_with($externalId, 'ALE-')) {
-                    $externalId = 'ALE-' . $externalId;
+                if (! str_starts_with($externalId, 'ALE-')) {
+                    $externalId = 'ALE-'.$externalId;
                 }
 
                 $volatility = $data[11] ?? null;
@@ -82,7 +86,7 @@ class ImportGameExtras extends Command
                 if ($volatility === 'Not applicable' || $volatility === 'NOT_AVAILABLE' || $volatility === '') {
                     $volatility = null;
                 }
-                
+
                 if ($minBet === 'Not applicable' || $minBet === 'Not available' || $minBet === '') {
                     $minBet = null;
                 } else {
@@ -102,10 +106,10 @@ class ImportGameExtras extends Command
                         'volatility' => $volatility,
                         'min_bet' => $minBet,
                         'rtp' => $rtp,
-                        'source' => 'csv_import'
+                        'source' => 'csv_import',
                     ]
                 );
-                
+
                 $updated++; // updateOrCreate conta como "processado"
 
                 if ($count % 100 == 0) {
@@ -116,14 +120,15 @@ class ImportGameExtras extends Command
             DB::commit();
             fclose($handle);
 
-            $this->info("Importação concluída com sucesso!");
+            $this->info('Importação concluída com sucesso!');
             $this->info("Total de linhas processadas: {$count}");
             $this->info("Registros atualizados/criados: {$updated}");
 
         } catch (\Exception $e) {
             DB::rollBack();
             fclose($handle);
-            $this->error("Erro durante a importação: " . $e->getMessage());
+            $this->error('Erro durante a importação: '.$e->getMessage());
+
             return 1;
         }
 

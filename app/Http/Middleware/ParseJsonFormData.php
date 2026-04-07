@@ -16,7 +16,7 @@ class ParseJsonFormData
     public function handle(Request $request, Closure $next)
     {
         // Processar qualquer requisição POST, PUT ou PATCH com dados
-        if (($request->isMethod('post') || $request->isMethod('put') || $request->isMethod('patch')) 
+        if (($request->isMethod('post') || $request->isMethod('put') || $request->isMethod('patch'))
             && count($request->all()) > 0) {
             $data = $request->all();
             $this->convertJsonStringsToArrays($data);

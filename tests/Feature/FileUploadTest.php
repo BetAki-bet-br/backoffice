@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\Services\FileUploadService;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -21,7 +21,7 @@ class FileUploadTest extends TestCase
     public function test_upload_banner_image()
     {
         $file = UploadedFile::fake()->image('banner.jpg');
-        
+
         $url = FileUploadService::uploadBannerImage($file);
 
         $this->assertStringContainsString('banners/', $url);
@@ -32,7 +32,7 @@ class FileUploadTest extends TestCase
     public function test_upload_slot_image()
     {
         $file = UploadedFile::fake()->image('slot.png');
-        
+
         $url = FileUploadService::uploadSlotImage($file);
 
         $this->assertStringContainsString('slots/', $url);
@@ -43,7 +43,7 @@ class FileUploadTest extends TestCase
     public function test_upload_category_image()
     {
         $file = UploadedFile::fake()->image('category.webp');
-        
+
         $url = FileUploadService::uploadCategoryImage($file);
 
         $this->assertStringContainsString('categories/', $url);
@@ -82,7 +82,7 @@ class FileUploadTest extends TestCase
     public function test_delete_nonexistent_image_returns_true()
     {
         $result = FileUploadService::deleteImageByUrl('https://s3.example.com/nonexistent/image.jpg');
-        
+
         $this->assertTrue($result);
     }
 

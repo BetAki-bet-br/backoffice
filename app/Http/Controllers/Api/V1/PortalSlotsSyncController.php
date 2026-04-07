@@ -16,22 +16,26 @@ class PortalSlotsSyncController extends Controller
      *   tags={"Slots"},
      *   security={{"bearerAuth": {}}},
      *   summary="Pré-cadastrar (upsert) slots a partir de portal_games",
+     *
      *   @OA\RequestBody(
      *     required=true,
+     *
      *     @OA\JsonContent(
      *       required={"portal_id"},
+     *
      *       @OA\Property(property="portal_id", type="integer", example=1),
      *       @OA\Property(property="status", type="string", example="active", enum={"active","inactive"})
      *     )
      *   ),
+     *
      *   @OA\Response(response=200, description="OK")
      * )
      */
     public function sync(Request $request)
     {
         $request->validate([
-            'portal_id' => ['nullable','integer','min:1'],
-            'status' => ['nullable','in:active,inactive'],
+            'portal_id' => ['nullable', 'integer', 'min:1'],
+            'status' => ['nullable', 'in:active,inactive'],
         ]);
 
         $portalId = (int) ($request->portal_id ?? config('services.base_api.portal_id', 1));
@@ -43,7 +47,7 @@ class PortalSlotsSyncController extends Controller
         $games = PortalGame::query()
             ->where('portal_id', $portalId)
             ->orderBy('id')
-            ->get(['id','external_id','name','product_name','payload']);
+            ->get(['id', 'external_id', 'name', 'product_name', 'payload']);
 
         $created = 0;
         $updated = 0;
@@ -54,8 +58,9 @@ class PortalSlotsSyncController extends Controller
         \DB::transaction(function () use ($games, $user, $defaultStatus, $now, &$created, &$updated, &$skipped) {
             foreach ($games as $g) {
                 // Só faz sentido criar slot se tiver external_id e product_name
-                if (!$g->external_id || !$g->product_name) {
+                if (! $g->external_id || ! $g->product_name) {
                     $skipped++;
+
                     continue;
                 }
 
@@ -68,10 +73,10 @@ class PortalSlotsSyncController extends Controller
                 ];
 
                 $data = [
-                    'title'      => $g->name ?: ($g->payload['name'] ?? $g->external_id),
-                    'cover_url'  => null,
-                    'status'     => $defaultStatus,
-                    'tags'       => [],
+                    'title' => $g->name ?: ($g->payload['name'] ?? $g->external_id),
+                    'cover_url' => null,
+                    'status' => $defaultStatus,
+                    'tags' => [],
                     'updated_by' => $user->id,
                     'updated_at' => $now,
                 ];
@@ -82,7 +87,7 @@ class PortalSlotsSyncController extends Controller
 
                 $existing = Slot::query()->where($key)->first();
 
-                if (!$existing) {
+                if (! $existing) {
                     $data['created_by'] = $user->id;
                     $data['created_at'] = $now;
                     Slot::query()->create(array_merge($key, $data));

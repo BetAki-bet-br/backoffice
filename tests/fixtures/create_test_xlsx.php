@@ -4,14 +4,14 @@
  * Helper script to generate the test fixture .xlsx files.
  * Run: php tests/fixtures/create_test_xlsx.php
  */
-require __DIR__ . '/../../vendor/autoload.php';
+require __DIR__.'/../../vendor/autoload.php';
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 // --- Earnings file ---
 
-$spreadsheet = new Spreadsheet();
+$spreadsheet = new Spreadsheet;
 $sheet = $spreadsheet->getActiveSheet();
 
 $metadata = [
@@ -69,12 +69,12 @@ foreach ($data as $row) {
 }
 
 $writer = new Xlsx($spreadsheet);
-$writer->save(__DIR__ . '/earnings_sample.xlsx');
+$writer->save(__DIR__.'/earnings_sample.xlsx');
 echo "Created tests/fixtures/earnings_sample.xlsx\n";
 
 // --- Player info file ---
 
-$spreadsheet2 = new Spreadsheet();
+$spreadsheet2 = new Spreadsheet;
 $sheet2 = $spreadsheet2->getActiveSheet();
 
 $playerMetadata = [
@@ -129,5 +129,5 @@ foreach ($playerData as $row) {
 }
 
 $writer2 = new Xlsx($spreadsheet2);
-$writer2->save(__DIR__ . '/player_info_sample.xlsx');
+$writer2->save(__DIR__.'/player_info_sample.xlsx');
 echo "Created tests/fixtures/player_info_sample.xlsx\n";

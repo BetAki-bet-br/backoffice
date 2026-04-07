@@ -2,8 +2,8 @@
 
 namespace App\Models\Domain\Casino;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Enums\ActiveStatus;
+use Illuminate\Database\Eloquent\Model;
 
 class Provider extends Model
 {

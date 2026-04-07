@@ -14,6 +14,7 @@ class PublishScheduledBannersJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $tries = 3;
+
     public $timeout = 30;
 
     public function handle(): void
@@ -23,7 +24,7 @@ class PublishScheduledBannersJob implements ShouldQueue
             ->where('status', 'scheduled')
             ->whereNotNull('publish_at')
             ->where('publish_at', '<=', now())
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->whereNull('expire_at')->orWhere('expire_at', '>', now());
             })
             ->orderBy('id')

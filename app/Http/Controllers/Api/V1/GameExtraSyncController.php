@@ -15,6 +15,7 @@ class GameExtraSyncController extends Controller
      *   tags={"Game Extras"},
      *   security={{"bearerAuth": {}}},
      *   summary="Sincronizar dados de RTP/Volatilidade/Aposta mínima do CSV",
+     *
      *   @OA\Response(response=200, description="OK")
      * )
      */
