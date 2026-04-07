@@ -17,16 +17,15 @@ class ShowcaseController extends Controller
      *  tags={"Showcases"},
      *  security={{"bearerAuth": {}}},
      *  summary="Listar vitrines",
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function index(Request $request)
     {
         $q = Showcase::query()
-            ->when($request->filled('q'), fn($qq) =>
-                $qq->where('title','ilike','%'.$request->q.'%')
-                   ->orWhere('slug','ilike','%'.$request->q.'%'))
-            ->when($request->filled('status'), fn($qq) =>
-                $qq->where('status', $request->status))
+            ->when($request->filled('q'), fn ($qq) => $qq->where('title', 'ilike', '%'.$request->q.'%')
+                ->orWhere('slug', 'ilike', '%'.$request->q.'%'))
+            ->when($request->filled('status'), fn ($qq) => $qq->where('status', $request->status))
             ->orderBy('position');
 
         return response()->json($q->cursorPaginate(20));
@@ -37,7 +36,9 @@ class ShowcaseController extends Controller
      *  tags={"Showcases"},
      *  security={{"bearerAuth": {}}},
      *  summary="Criar vitrine",
+     *
      *  @OA\RequestBody(required=true),
+     *
      *  @OA\Response(response=201, description="Criado")
      * ) */
     public function store(ShowcaseRequest $request)
@@ -45,8 +46,10 @@ class ShowcaseController extends Controller
         $showcase = DB::transaction(function () use ($request) {
             $data = $request->validated();
             $data['created_by'] = $request->user()->id;
+
             return Showcase::create($data);
         });
+
         return response()->json($showcase, 201);
     }
 
@@ -55,7 +58,9 @@ class ShowcaseController extends Controller
      *  tags={"Showcases"},
      *  security={{"bearerAuth": {}}},
      *  summary="Exibir vitrine com slots",
+     *
      *  @OA\Parameter(name="showcase", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function show(Showcase $showcase)
@@ -68,8 +73,11 @@ class ShowcaseController extends Controller
      *  tags={"Showcases"},
      *  security={{"bearerAuth": {}}},
      *  summary="Atualizar vitrine",
+     *
      *  @OA\Parameter(name="showcase", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *  @OA\RequestBody(required=true),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function update(ShowcaseRequest $request, Showcase $showcase)
@@ -79,12 +87,14 @@ class ShowcaseController extends Controller
             $data['updated_by'] = $request->user()->id;
             $showcase->update($data);
         });
+
         return response()->json($showcase->refresh());
     }
 
     public function destroy(Showcase $showcase)
     {
         $showcase->delete();
+
         return response()->noContent();
     }
 
@@ -93,6 +103,7 @@ class ShowcaseController extends Controller
      *  tags={"Showcases"},
      *  security={{"bearerAuth": {}}},
      *  summary="Sincronizar slots da vitrine (manual)",
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function syncSlots(ShowcaseSlotsSyncRequest $request, Showcase $showcase)
@@ -101,7 +112,7 @@ class ShowcaseController extends Controller
 
         $payload = collect($request->validated()['items'])
             ->keyBy('slot_id')
-            ->map(fn($i) => ['position' => (int) ($i['position'] ?? 0)])
+            ->map(fn ($i) => ['position' => (int) ($i['position'] ?? 0)])
             ->all();
 
         DB::transaction(function () use ($showcase, $payload) {

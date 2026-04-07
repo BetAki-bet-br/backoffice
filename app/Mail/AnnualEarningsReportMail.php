@@ -15,6 +15,7 @@ class AnnualEarningsReportMail extends Mailable
     public function __construct(
         public readonly array $playerData,
         public readonly int $year,
+        public readonly array $productIncomes = [],
     ) {}
 
     public function envelope(): Envelope
@@ -29,7 +30,7 @@ class AnnualEarningsReportMail extends Mailable
         $currency = $this->playerData['currency'];
         $symbol = $currency === 'BRL' ? 'R$' : $currency;
 
-        $format = fn (float $value) => $symbol . ' ' . number_format($value, 2, ',', '.');
+        $format = fn (float $value) => $symbol.' '.number_format($value, 2, ',', '.');
 
         return new Content(
             view: 'emails.annual-earnings-report',
@@ -48,6 +49,11 @@ class AnnualEarningsReportMail extends Mailable
                 'balanceEndReal' => $format($this->playerData['balance_end_real']),
                 'balanceStartBonus' => $format($this->playerData['balance_start_bonus']),
                 'balanceEndBonus' => $format($this->playerData['balance_end_bonus']),
+                'formattedProductIncomes' => array_map(fn (array $entry) => [
+                    'product_type' => $entry['product_type'],
+                    'income' => $format($entry['income']),
+                    'balance_end' => $format($entry['balance_end']),
+                ], $this->productIncomes),
             ],
         );
     }

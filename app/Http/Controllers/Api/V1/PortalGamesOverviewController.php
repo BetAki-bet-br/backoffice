@@ -17,9 +17,11 @@ class PortalGamesOverviewController extends Controller
      *   tags={"Portal Games"},
      *   security={{"bearerAuth": {}}},
      *   summary="Listar portal_games com RTP/Volatilidade/Aposta mínima (cursor paginate)",
+     *
      *   @OA\Parameter(name="portal_id", in="query", required=true, @OA\Schema(type="integer", example=1)),
      *   @OA\Parameter(name="q", in="query", @OA\Schema(type="string", example="Roulette")),
      *   @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", example=50)),
+     *
      *   @OA\Response(response=200, description="OK")
      * )
      */
@@ -33,18 +35,18 @@ class PortalGamesOverviewController extends Controller
         ]);
 
         $portalId = (int) $data['portal_id'];
-        $perPage  = (int) ($data['per_page'] ?? 50);
+        $perPage = (int) ($data['per_page'] ?? 50);
 
         $query = PortalGame::query()
             ->where('portal_id', $portalId)
-            ->when(!empty($data['q']), function ($qq) use ($data) {
+            ->when(! empty($data['q']), function ($qq) use ($data) {
                 $term = $data['q'];
 
                 $qq->where(function ($w) use ($term) {
                     $w->where('name', 'ilike', "%{$term}%")
-                      ->orWhere('external_id', 'ilike', "%{$term}%")
-                      ->orWhere('product_name', 'ilike', "%{$term}%")
-                      ->orWhere('supplier_name', 'ilike', "%{$term}%");
+                        ->orWhere('external_id', 'ilike', "%{$term}%")
+                        ->orWhere('product_name', 'ilike', "%{$term}%")
+                        ->orWhere('supplier_name', 'ilike', "%{$term}%");
                 });
             })
             ->orderByDesc('id');
@@ -73,7 +75,7 @@ class PortalGamesOverviewController extends Controller
 
         $items = $items->map(function (PortalGame $g) use ($extrasByExternalId, $slotsByExternalId) {
             $extra = $extrasByExternalId->get($g->external_id);
-            $slot  = $slotsByExternalId->get($g->external_id);
+            $slot = $slotsByExternalId->get($g->external_id);
 
             // Campos “prioridade máxima”
             $g->setAttribute('rtp', $extra?->rtp);
@@ -85,7 +87,7 @@ class PortalGamesOverviewController extends Controller
 
             // Ajuda o backoffice/front a saber se já existe slot cadastrado
             $g->setAttribute('slot', $slot ? $slot->only([
-                'id', 'title', 'status', 'provider', 'provider_game_id'
+                'id', 'title', 'status', 'provider', 'provider_game_id',
             ]) : null);
 
             return $g;

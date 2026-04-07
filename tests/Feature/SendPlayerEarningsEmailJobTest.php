@@ -31,6 +31,9 @@ class SendPlayerEarningsEmailJobTest extends TestCase
             'balance_start_bonus' => 0.0,
             'balance_end_bonus' => 0.0,
             'email' => 'player@example.com',
+            'product_incomes' => [
+                ['product_type' => 'Casino', 'income' => 100.03, 'balance_end' => 0.33],
+            ],
         ];
     }
 
@@ -53,5 +56,18 @@ class SendPlayerEarningsEmailJobTest extends TestCase
         $job = new SendPlayerEarningsEmailJob($this->playerData, 2025);
 
         $this->assertEquals('emails', $job->queue);
+    }
+
+    public function test_job_passes_product_incomes_to_mailable(): void
+    {
+        Mail::fake();
+
+        $job = new SendPlayerEarningsEmailJob($this->playerData, 2025);
+        $job->handle();
+
+        Mail::assertSent(AnnualEarningsReportMail::class, function ($mail) {
+            return count($mail->productIncomes) === 1
+                && $mail->productIncomes[0]['product_type'] === 'Casino';
+        });
     }
 }

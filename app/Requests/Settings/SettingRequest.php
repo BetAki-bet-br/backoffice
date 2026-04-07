@@ -7,7 +7,10 @@ use Illuminate\Validation\Rule;
 
 class SettingRequest extends FormRequest
 {
-    public function authorize(): bool { return true; }
+    public function authorize(): bool
+    {
+        return true;
+    }
 
     public function rules(): array
     {
@@ -15,12 +18,12 @@ class SettingRequest extends FormRequest
         $id = is_object($settingParam) ? $settingParam->id : $settingParam;
 
         return [
-            'key'        => ['required','string','max:190', Rule::unique('settings','key')->ignore($id)],
-            'group'      => ['nullable','string','max:100'],
-            'type'       => ['required', Rule::in(['string','number','boolean','json'])],
-            'value'      => ['nullable'],
-            'is_public'  => ['boolean'],
-            'description'=> ['nullable','string','max:500'],
+            'key' => ['required', 'string', 'max:190', Rule::unique('settings', 'key')->ignore($id)],
+            'group' => ['nullable', 'string', 'max:100'],
+            'type' => ['required', Rule::in(['string', 'number', 'boolean', 'json'])],
+            'value' => ['nullable'],
+            'is_public' => ['boolean'],
+            'description' => ['nullable', 'string', 'max:500'],
         ];
     }
 
@@ -28,7 +31,7 @@ class SettingRequest extends FormRequest
     {
         $this->merge([
             'is_public' => filter_var($this->input('is_public', false), FILTER_VALIDATE_BOOLEAN),
-            'type'      => $this->input('type', 'json'),
+            'type' => $this->input('type', 'json'),
         ]);
     }
 }

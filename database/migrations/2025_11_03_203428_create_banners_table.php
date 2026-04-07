@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('banners', function (Blueprint $table) {
             $table->id();
             $table->string('slug')->unique();
-            $table->enum('status', ['draft','review','scheduled','published','archived'])->default('draft');
+            $table->enum('status', ['draft', 'review', 'scheduled', 'published', 'archived'])->default('draft');
             $table->jsonb('countries')->nullable();
             $table->timestampTz('publish_at')->nullable();
             $table->timestampTz('expire_at')->nullable();

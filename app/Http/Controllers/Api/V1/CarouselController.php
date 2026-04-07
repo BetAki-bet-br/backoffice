@@ -20,7 +20,9 @@ class CarouselController extends Controller
      *  tags={"Carousels"},
      *  security={{"bearerAuth": {}}},
      *  summary="Listar carrosséis (paginado)",
+     *
      *  @OA\Parameter(name="page", in="query", @OA\Schema(type="integer")),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function index(): JsonResponse
@@ -35,7 +37,9 @@ class CarouselController extends Controller
      *  tags={"Carousels"},
      *  security={{"bearerAuth": {}}},
      *  summary="Criar carrossel com slides",
+     *
      *  @OA\RequestBody(required=true),
+     *
      *  @OA\Response(response=201, description="Criado")
      * ) */
     public function store(StoreCarouselRequest $request): JsonResponse
@@ -70,7 +74,9 @@ class CarouselController extends Controller
      *  path="/api/v1/carousels/{slug}",
      *  tags={"Carousels"},
      *  summary="Exibir slides do carrossel (público)",
+     *
      *  @OA\Parameter(name="slug", in="path", required=true, @OA\Schema(type="string")),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function show(string $slug): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
@@ -85,8 +91,11 @@ class CarouselController extends Controller
      *  tags={"Carousels"},
      *  security={{"bearerAuth": {}}},
      *  summary="Atualizar carrossel e slides",
+     *
      *  @OA\Parameter(name="carousel", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *  @OA\RequestBody(required=true),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function update(UpdateCarouselRequest $request, Carousel $carousel): JsonResponse
@@ -165,7 +174,9 @@ class CarouselController extends Controller
      *  tags={"Carousels"},
      *  security={{"bearerAuth": {}}},
      *  summary="Excluir carrossel e slides",
+     *
      *  @OA\Parameter(name="carousel", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *  @OA\Response(response=204, description="No Content")
      * ) */
     public function destroy(Carousel $carousel): JsonResponse

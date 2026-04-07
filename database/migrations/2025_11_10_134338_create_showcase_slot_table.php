@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('showcase_slot', function (Blueprint $table) {
@@ -14,7 +15,7 @@ return new class extends Migration {
             $table->integer('position')->default(0);
             $table->timestampsTz();
 
-            $table->unique(['showcase_id','slot_id']);
+            $table->unique(['showcase_id', 'slot_id']);
         });
     }
 

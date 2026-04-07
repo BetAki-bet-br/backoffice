@@ -46,8 +46,8 @@ class SyncProvidersVerticalsCommand extends Command
                 $this->line("  - Games Synced: {$stats['games_synced']}");
                 $this->line("  - Providers Synced/Updated: {$stats['providers_synced']}");
             } catch (\Exception $e) {
-                $this->error("An error occurred while syncing portal ID {$id}: " . $e->getMessage());
-                Log::error('SyncProvidersVerticalsCommand failed for portal ' . $id, [
+                $this->error("An error occurred while syncing portal ID {$id}: ".$e->getMessage());
+                Log::error('SyncProvidersVerticalsCommand failed for portal '.$id, [
                     'exception' => $e,
                 ]);
             }

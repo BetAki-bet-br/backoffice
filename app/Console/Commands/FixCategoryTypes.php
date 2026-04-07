@@ -33,8 +33,8 @@ class FixCategoryTypes extends Command
 
         foreach ($categories as $category) {
             $meta = $category->meta;
-            
-            if (empty($meta) || !isset($meta['type'])) {
+
+            if (empty($meta) || ! isset($meta['type'])) {
                 continue;
             }
 
@@ -44,10 +44,10 @@ class FixCategoryTypes extends Command
             // Normaliza para comparação (ex: 'game-list' vs 'game-list')
             if ($metaType !== $currentType) {
                 $this->line("Corrigindo Categoria #{$category->id} ({$category->name}): '{$currentType}' -> '{$metaType}'");
-                
+
                 $category->type = $metaType;
                 $category->save();
-                
+
                 $updatedCount++;
             }
         }

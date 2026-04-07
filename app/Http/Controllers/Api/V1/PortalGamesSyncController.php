@@ -15,12 +15,16 @@ class PortalGamesSyncController extends Controller
      *   tags={"Portal Games"},
      *   security={{"bearerAuth": {}}},
      *   summary="Sincronizar jogos da API base (portal_games) pelo PortalId",
+     *
      *   @OA\RequestBody(
      *     required=false,
+     *
      *     @OA\JsonContent(
+     *
      *       @OA\Property(property="portal_id", type="integer", example=1)
      *     )
      *   ),
+     *
      *   @OA\Response(response=200, description="OK")
      * )
      */
@@ -32,8 +36,8 @@ class PortalGamesSyncController extends Controller
 
         return response()->json([
             'portal_id' => $result['portal_id'],
-            'fetched'   => $result['fetched'],
-            'upserted'  => $result['upserted'],
+            'fetched' => $result['fetched'],
+            'upserted' => $result['upserted'],
         ]);
     }
 }

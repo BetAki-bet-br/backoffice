@@ -31,40 +31,45 @@ class CleanupSlotsCommand extends Command
 
         try {
             $jsonPath = base_path('green_flagged_external_game_ids.json');
-            if (!File::exists($jsonPath)) {
+            if (! File::exists($jsonPath)) {
                 $this->error('green_flagged_external_game_ids.json not found.');
+
                 return 1;
             }
 
             $jsonContent = File::get($jsonPath);
             $data = json_decode($jsonContent, true);
-            
+
             if (json_last_error() !== JSON_ERROR_NONE) {
                 $this->error('Invalid JSON in green_flagged_external_game_ids.json');
+
                 return 1;
             }
 
             $externalGameIds = $data['external_game_ids'];
-            $this->info('Found ' . count($externalGameIds) . ' game IDs in the JSON file.');
+            $this->info('Found '.count($externalGameIds).' game IDs in the JSON file.');
 
             $slotsToDelete = Slot::whereNotIn('provider_game_id', $externalGameIds)->get();
 
             if ($slotsToDelete->isEmpty()) {
                 $this->info('No slots to delete.');
+
                 return 0;
             }
 
-            $this->info('Found ' . $slotsToDelete->count() . ' slots to delete.');
+            $this->info('Found '.$slotsToDelete->count().' slots to delete.');
 
             foreach ($slotsToDelete as $slot) {
                 $slot->delete();
             }
 
             $this->info('Slot cleanup finished successfully.');
+
             return 0;
 
         } catch (\Exception $e) {
-            $this->error('An error occurred during slot cleanup: ' . $e->getMessage());
+            $this->error('An error occurred during slot cleanup: '.$e->getMessage());
+
             return 1;
         }
     }

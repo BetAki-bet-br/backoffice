@@ -12,18 +12,37 @@
   <button class="btn btn-outline-secondary btn-sm" id="btnToggleHistory" type="button">Ver Histórico</button>
 </div>
 
-{{-- Status do arquivo de earnings --}}
-<div class="card card-soft mb-4">
-  <div class="card-body d-flex align-items-center gap-3 py-3">
-    <div class="rounded-circle d-flex align-items-center justify-content-center" id="fileIcon"
-         style="width: 44px; height: 44px; background: rgba(134,149,2,.12); flex-shrink: 0;">
-      <span style="font-size: 1.3rem;">📄</span>
+{{-- Status dos arquivos --}}
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <div class="card card-soft h-100">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <div class="rounded-circle d-flex align-items-center justify-content-center" id="fileIcon"
+             style="width: 44px; height: 44px; background: rgba(134,149,2,.12); flex-shrink: 0;">
+          <span style="font-size: 1.3rem;">📄</span>
+        </div>
+        <div class="flex-grow-1">
+          <div class="fw-semibold small" id="fileName">Verificando planilha...</div>
+          <div class="text-muted" style="font-size: .78rem;" id="fileMeta"></div>
+        </div>
+        <div id="fileBadge"></div>
+      </div>
     </div>
-    <div class="flex-grow-1">
-      <div class="fw-semibold small" id="fileName">Verificando planilha...</div>
-      <div class="text-muted" style="font-size: .78rem;" id="fileMeta"></div>
+  </div>
+  <div class="col-md-6">
+    <div class="card card-soft h-100">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <div class="rounded-circle d-flex align-items-center justify-content-center"
+             style="width: 44px; height: 44px; background: rgba(134,149,2,.12); flex-shrink: 0;">
+          <span style="font-size: 1.3rem;">📊</span>
+        </div>
+        <div class="flex-grow-1">
+          <div class="fw-semibold small" id="incomeFileName">Verificando planilha de income...</div>
+          <div class="text-muted" style="font-size: .78rem;" id="incomeFileMeta"></div>
+        </div>
+        <div id="incomeFileBadge"></div>
+      </div>
     </div>
-    <div id="fileBadge"></div>
   </div>
 </div>
 
@@ -174,6 +193,19 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('fileMeta').textContent = 'O arquivo earnings.xlsx não está presente no repositório.';
         document.getElementById('fileBadge').innerHTML = '<span class="badge bg-warning-subtle text-warning">Ausente</span>';
         btnSend.disabled = true;
+      }
+      // Income by product file status
+      const inc = data.income_by_product || {};
+      if (inc.uploaded) {
+        const incDt = new Date(inc.uploaded_at).toLocaleString('pt-BR');
+        const incSizeMb = (inc.size / (1024 * 1024)).toFixed(1);
+        document.getElementById('incomeFileName').textContent = inc.file;
+        document.getElementById('incomeFileMeta').textContent = incSizeMb + ' MB — Última modificação: ' + incDt;
+        document.getElementById('incomeFileBadge').innerHTML = '<span class="badge bg-success-subtle text-success">Pronta</span>';
+      } else {
+        document.getElementById('incomeFileName').textContent = 'Income por produto não encontrada';
+        document.getElementById('incomeFileMeta').textContent = 'O arquivo income_by_product.xlsx não está presente (detalhamento por produto será omitido).';
+        document.getElementById('incomeFileBadge').innerHTML = '<span class="badge bg-warning-subtle text-warning">Ausente</span>';
       }
     } catch (e) {
       document.getElementById('fileName').textContent = 'Erro de conexão';

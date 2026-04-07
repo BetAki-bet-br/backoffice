@@ -6,7 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class BannerTranslation extends Model
 {
-    protected $fillable = ['banner_id','locale','title','alt_text','media'];
+    protected $fillable = ['banner_id', 'locale', 'title', 'alt_text', 'media'];
+
     protected $casts = ['media' => 'array'];
 
     public function banner()

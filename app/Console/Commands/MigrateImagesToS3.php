@@ -2,17 +2,17 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Domain\Banners\Banner;
+use App\Models\Domain\Casino\Category;
+use App\Models\Domain\Casino\Slot;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use App\Models\Domain\Banners\Banner;
-use App\Models\Domain\Casino\Slot;
-use App\Models\Domain\Casino\Category;
-use App\Services\FileUploadService;
 
 class MigrateImagesToS3 extends Command
 {
     protected $signature = 'migrate:images-to-s3 {--dry-run : Don\'t actually upload, just show what would be done}';
+
     protected $description = 'Migrate existing images to S3 storage';
 
     public function handle()
@@ -48,9 +48,9 @@ class MigrateImagesToS3 extends Command
         $count = 0;
         foreach ($banners as $banner) {
             if ($this->downloadAndUploadImage($banner->cover_url, 'banners')) {
-                if (!$dryRun) {
+                if (! $dryRun) {
                     $banner->update([
-                        'cover_path' => $this->getPathFromUrl($banner->cover_url)
+                        'cover_path' => $this->getPathFromUrl($banner->cover_url),
                     ]);
                 }
                 $count++;
@@ -75,9 +75,9 @@ class MigrateImagesToS3 extends Command
         $count = 0;
         foreach ($slots as $slot) {
             if ($this->downloadAndUploadImage($slot->cover_url, 'slots')) {
-                if (!$dryRun) {
+                if (! $dryRun) {
                     $slot->update([
-                        'cover_path' => $this->getPathFromUrl($slot->cover_url)
+                        'cover_path' => $this->getPathFromUrl($slot->cover_url),
                     ]);
                 }
                 $count++;
@@ -99,9 +99,9 @@ class MigrateImagesToS3 extends Command
 
         $count = 0;
         foreach ($categories as $category) {
-            if (!empty($category->meta['cover_url'])) {
+            if (! empty($category->meta['cover_url'])) {
                 if ($this->downloadAndUploadImage($category->meta['cover_url'], 'categories')) {
-                    if (!$dryRun) {
+                    if (! $dryRun) {
                         $meta = $category->meta ?? [];
                         $meta['cover_path'] = $this->getPathFromUrl($category->meta['cover_url']);
                         $category->update(['meta' => $meta]);
@@ -131,15 +131,16 @@ class MigrateImagesToS3 extends Command
             if (empty($extension)) {
                 $extension = 'jpg';
             }
-            $filename = Str::random(32) . '.' . $extension;
+            $filename = Str::random(32).'.'.$extension;
 
             // Upload to S3
-            $path = "{$folder}/" . now()->format('Y/m/d') . "/{$filename}";
+            $path = "{$folder}/".now()->format('Y/m/d')."/{$filename}";
             Storage::disk('s3')->put($path, $imageContent, 'public');
 
             return true;
         } catch (\Exception $e) {
-            $this->error("Error uploading image: " . $e->getMessage());
+            $this->error('Error uploading image: '.$e->getMessage());
+
             return false;
         }
     }
@@ -148,8 +149,9 @@ class MigrateImagesToS3 extends Command
     {
         $baseUrl = config('filesystems.disks.s3.url');
         if (str_starts_with($url, $baseUrl)) {
-            return str_replace($baseUrl . '/', '', $url);
+            return str_replace($baseUrl.'/', '', $url);
         }
+
         return $url;
     }
 }

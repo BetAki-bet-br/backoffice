@@ -2,20 +2,19 @@
 
 namespace App\Models\Domain\Casino;
 
+use App\Enums\ActiveStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Domain\Casino\GameExtra;
-use App\Enums\ActiveStatus;
 
 class Slot extends Model
 {
     use SoftDeletes;
 
     protected $fillable = [
-        'title','cover_url','status',
-        'provider','provider_game_id',
-        'tags','position','created_by','updated_by',
-        'rtp','volatility','min_bet','max_bet',
+        'title', 'cover_url', 'status',
+        'provider', 'provider_game_id',
+        'tags', 'position', 'created_by', 'updated_by',
+        'rtp', 'volatility', 'min_bet', 'max_bet',
     ];
 
     protected $casts = [
@@ -28,7 +27,9 @@ class Slot extends Model
 
     // Slot Volatility Constants
     const VOLATILITY_LOW = 'low';
+
     const VOLATILITY_MEDIUM = 'medium';
+
     const VOLATILITY_HIGH = 'high';
 
     const VOLATILITY_TYPES = ['low', 'medium', 'high'];

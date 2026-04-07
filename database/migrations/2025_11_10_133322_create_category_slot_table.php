@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('category_slot', function (Blueprint $table) {
@@ -14,8 +15,8 @@ return new class extends Migration {
             $table->integer('position')->default(0);
             $table->timestampsTz();
 
-            $table->unique(['category_id','slot_id']);
-            $table->index(['category_id','position']);
+            $table->unique(['category_id', 'slot_id']);
+            $table->index(['category_id', 'position']);
         });
     }
 

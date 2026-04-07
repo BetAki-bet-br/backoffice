@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Jobs\SendPlayerEarningsEmailJob;
 use App\Services\EarningsReportService;
+use App\Services\ProductIncomeService;
 use Illuminate\Console\Command;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -15,14 +16,16 @@ class SendAnnualEarningsReports extends Command
         {--year=2025 : The report year}
         {--dry-run : Parse and validate without dispatching emails}
         {--skip-player-metadata=19 : Number of metadata rows to skip in the player info file}
-        {--limit=0 : Limit the number of emails dispatched (0 = no limit)}';
+        {--limit=0 : Limit the number of emails dispatched (0 = no limit)}
+        {--income-file= : Path to the income by product type .xlsx file}';
 
     protected $description = 'Parse an annual earnings report spreadsheet and dispatch individual email reports to each player';
 
-    public function handle(EarningsReportService $service): int
+    public function handle(EarningsReportService $service, ProductIncomeService $productIncomeService): int
     {
         $filePath = $this->argument('file');
         $playerInfoPath = $this->argument('player-info');
+        $incomeFilePath = $this->option('income-file');
         $year = (int) $this->option('year');
         $dryRun = $this->option('dry-run');
         $skipPlayerMetadata = (int) $this->option('skip-player-metadata');
@@ -38,6 +41,46 @@ class SendAnnualEarningsReports extends Command
             $this->error("Player info file not found: {$playerInfoPath}");
 
             return self::FAILURE;
+        }
+
+        if ($incomeFilePath && ! file_exists($incomeFilePath)) {
+            $this->error("Income by product file not found: {$incomeFilePath}");
+
+            return self::FAILURE;
+        }
+
+        // Load product income data if provided
+        $productIncomesByPlayer = [];
+        if ($incomeFilePath) {
+            $this->info("Loading income by product: {$incomeFilePath}");
+            // We'll collect all player IDs first then do a single pass — but since we stream,
+            // we pre-load all product incomes keyed by player_id
+            $allProductIncomes = [];
+            $incomeReader = new \OpenSpout\Reader\XLSX\Reader;
+            $incomeReader->open($incomeFilePath);
+            $headerFound = false;
+            foreach ($incomeReader->getSheetIterator() as $sheet) {
+                foreach ($sheet->getRowIterator() as $row) {
+                    $cells = $row->toArray();
+                    if (! $headerFound) {
+                        if (trim((string) ($cells[0] ?? '')) === 'Product type') {
+                            $headerFound = true;
+                        }
+
+                        continue;
+                    }
+                    $pid = $cells[1] ?? null;
+                    if (empty($pid) || ! is_numeric($pid)) {
+                        continue;
+                    }
+                    $allProductIncomes[(string) $pid][] = $productIncomeService->parseRow($cells);
+                }
+
+                break;
+            }
+            $incomeReader->close();
+            $productIncomesByPlayer = $allProductIncomes;
+            $this->info('Loaded product incomes for '.count($productIncomesByPlayer).' players.');
         }
 
         // Load player info (emails) — small file, PhpSpreadsheet is fine
@@ -59,7 +102,7 @@ class SendAnnualEarningsReports extends Command
         }
 
         $stats = $service->streamAllPlayers($filePath, function (array $playerData) use (
-            $emailMap, $dryRun, $year, $limit, &$dispatched, &$noEmail, &$matchedPlayerIds
+            $emailMap, $dryRun, $year, $limit, $productIncomesByPlayer, &$dispatched, &$noEmail, &$matchedPlayerIds
         ) {
             $playerIdStr = $playerData['player_id'];
             $email = $emailMap[$playerIdStr] ?? null;
@@ -72,9 +115,13 @@ class SendAnnualEarningsReports extends Command
 
             $matchedPlayerIds[] = $playerIdStr;
             $playerData['email'] = $email;
+            $playerData['product_incomes'] = $productIncomesByPlayer[$playerIdStr] ?? [];
 
             if ($dryRun) {
-                $this->line("  Match: Player {$playerData['player_id']} ({$playerData['username']}) → {$email} — Bets: {$playerData['bets']}, Net: {$playerData['net_income']}");
+                $productTypes = ! empty($playerData['product_incomes'])
+                    ? implode(', ', array_column($playerData['product_incomes'], 'product_type'))
+                    : 'none';
+                $this->line("  Match: Player {$playerData['player_id']} ({$playerData['username']}) → {$email} — Bets: {$playerData['bets']}, Net: {$playerData['net_income']}, Products: {$productTypes}");
             } else {
                 SendPlayerEarningsEmailJob::dispatch($playerData, $year);
                 $dispatched++;

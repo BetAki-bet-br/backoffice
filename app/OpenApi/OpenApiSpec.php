@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\OpenApi;
@@ -21,6 +22,7 @@ use OpenApi\Annotations as OA;
  *   ),
  *
  *   @OA\Components(
+ *
  *     @OA\SecurityScheme(
  *       securityScheme="bearerAuth",
  *       type="http",
@@ -28,13 +30,15 @@ use OpenApi\Annotations as OA;
  *       bearerFormat="JWT",
  *       description="Envie: Bearer {token}"
  *     ),
+ *
  *    @OA\Schema(
  *      schema="Role",
+ *
  *      @OA\Property(property="name", type="string", example="admin"),
  *      @OA\Property(property="permissions", type="array", @OA\Items(type="string", example="banners.view"))
  *    ),
  *   ),
- * 
+ *
  *   @OA\Tag(
  *     name="Banners",
  *     description="Gestão de banners da dashboard"

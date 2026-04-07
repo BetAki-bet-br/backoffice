@@ -20,7 +20,7 @@ class CategoryApiTest extends TestCase
 
         $response->assertStatus(200);
         $data = $response->json();
-        
+
         $ids = array_column($data, 'id');
         $this->assertContains($category->id, $ids);
         $this->assertNotContains($liveCategory->id, $ids);
@@ -35,7 +35,7 @@ class CategoryApiTest extends TestCase
 
         $response->assertStatus(200);
         $data = $response->json();
-        
+
         $ids = array_column($data, 'id');
         $this->assertContains($liveCategory->id, $ids);
         $this->assertNotContains($slotsCategory->id, $ids);
@@ -50,7 +50,7 @@ class CategoryApiTest extends TestCase
 
         $response->assertStatus(200);
         $data = $response->json();
-        
+
         $ids = array_column($data, 'id');
         $this->assertContains($gameListCategory->id, $ids);
         $this->assertNotContains($recentCategory->id, $ids);
@@ -60,7 +60,7 @@ class CategoryApiTest extends TestCase
     {
         $category = Category::factory()->create();
         $slots = Slot::factory()->count(15)->create();
-        
+
         $category->slots()->attach(
             $slots->pluck('id')->take(10)->toArray(),
             ['position' => 0]
@@ -70,7 +70,7 @@ class CategoryApiTest extends TestCase
 
         $response->assertStatus(200);
         $data = $response->json();
-        
+
         $this->assertEquals($category->id, $data['id']);
         $this->assertIsArray($data['slots']);
         $this->assertLessThanOrEqual(5, count($data['slots']));
@@ -80,7 +80,7 @@ class CategoryApiTest extends TestCase
     {
         $category = Category::factory()->create();
         $slots = Slot::factory()->count(5)->create();
-        
+
         $category->slots()->attach(
             $slots->pluck('id')->toArray(),
             ['position' => 0]
@@ -90,7 +90,7 @@ class CategoryApiTest extends TestCase
 
         $response->assertStatus(200);
         $data = $response->json();
-        
+
         $this->assertEquals(5, $data['slots_count']);
     }
 

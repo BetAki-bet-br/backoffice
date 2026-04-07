@@ -2,9 +2,9 @@
 
 namespace App\Models\Domain\Casino;
 
+use App\Enums\ActiveStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Enums\ActiveStatus;
 
 class Showcase extends Model
 {
@@ -12,7 +12,7 @@ class Showcase extends Model
 
     protected $fillable = [
         'title', 'slug', 'status', 'type', 'position', 'filters',
-        'created_by', 'updated_by'
+        'created_by', 'updated_by',
     ];
 
     protected $casts = [

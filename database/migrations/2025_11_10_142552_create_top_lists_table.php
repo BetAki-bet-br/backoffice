@@ -4,15 +4,17 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
-    public function up(): void {
+return new class extends Migration
+{
+    public function up(): void
+    {
         Schema::create('top_lists', function (Blueprint $table) {
             $table->id();
             $table->string('title');
             $table->string('slug')->unique();
-            $table->enum('vertical', ['slots','live'])->default('slots');
-            $table->enum('type', ['manual','auto'])->default('manual');
-            $table->enum('status', ['draft','scheduled','published','archived'])->default('draft');
+            $table->enum('vertical', ['slots', 'live'])->default('slots');
+            $table->enum('type', ['manual', 'auto'])->default('manual');
+            $table->enum('status', ['draft', 'scheduled', 'published', 'archived'])->default('draft');
             $table->integer('position')->default(0);
             $table->timestampTz('valid_from')->nullable();
             $table->timestampTz('valid_until')->nullable();
@@ -26,12 +28,13 @@ return new class extends Migration {
             $table->timestampsTz();
             $table->softDeletesTz();
 
-            $table->index(['status','position']);
-            $table->index(['valid_from','valid_until']);
+            $table->index(['status', 'position']);
+            $table->index(['valid_from', 'valid_until']);
         });
     }
 
-    public function down(): void {
+    public function down(): void
+    {
         Schema::dropIfExists('top_lists');
     }
 };

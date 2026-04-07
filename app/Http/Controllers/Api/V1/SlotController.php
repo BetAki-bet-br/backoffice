@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Casino\SlotRequest;
-use App\Services\FileUploadService;
-use App\Models\Domain\Casino\Slot;
 use App\Models\Domain\Casino\GameExtra;
 use App\Models\Domain\Casino\PortalGame;
+use App\Models\Domain\Casino\Slot;
+use App\Services\FileUploadService;
 use Illuminate\Http\Request;
 use OpenApi\Annotations as OA;
 
@@ -19,20 +19,20 @@ class SlotController extends Controller
      *   tags={"Slots"},
      *   security={{"bearerAuth": {}}},
      *   summary="Listar slots",
+     *
      *   @OA\Parameter(name="q", in="query", @OA\Schema(type="string")),
      *   @OA\Parameter(name="status", in="query", @OA\Schema(type="string", enum={"active","inactive"})),
+     *
      *   @OA\Response(response=200, description="OK")
      * )
      */
     public function index(Request $request)
     {
         $q = Slot::query()
-            ->when($request->filled('q'), fn($qq) =>
-                $qq->where(fn($sub) =>
-                    $sub->where('title', 'ilike', '%'.$request->q.'%')
-                        ->orWhere('provider', 'ilike', '%'.$request->q.'%')
-                        ->orWhere('provider_game_id', 'ilike', '%'.$request->q.'%')
-                )
+            ->when($request->filled('q'), fn ($qq) => $qq->where(fn ($sub) => $sub->where('title', 'ilike', '%'.$request->q.'%')
+                ->orWhere('provider', 'ilike', '%'.$request->q.'%')
+                ->orWhere('provider_game_id', 'ilike', '%'.$request->q.'%')
+            )
             )
             ->where('status', $request->input('status', 'active'))
             ->orderBy('position')
@@ -72,14 +72,16 @@ class SlotController extends Controller
 
         return response()->json($paginator);
     }
-    
+
     /**
      * @OAGet(
      *   path="/api/v1/slots/by-external-id/{external_id}",
      *   tags={"Slots"},
      *   security={{"bearerAuth": {}}},
      *   summary="Detalhar slot por ID Externo",
+     *
      *   @OA\Parameter(name="external_id", in="path", required=true, @OA\Schema(type="string")),
+     *
      *   @OA\Response(response=200, description="OK")
      * )
      */
@@ -111,12 +113,16 @@ class SlotController extends Controller
      *   tags={"Slots"},
      *   security={{"bearerAuth": {}}},
      *   summary="Listar slots por IDs externos",
+     *
      *   @OA\RequestBody(
      *     required=true,
+     *
      *     @OA\JsonContent(
+     *
      *       @OA\Property(property="externalIds", type="array", @OA\Items(type="string"))
      *     )
      *   ),
+     *
      *   @OA\Response(response=200, description="OK")
      * )
      */
@@ -164,7 +170,9 @@ class SlotController extends Controller
      *   tags={"Slots"},
      *   security={{"bearerAuth": {}}},
      *   summary="Criar slot",
+     *
      *   @OA\RequestBody(required=true),
+     *
      *   @OA\Response(response=201, description="Criado")
      * )
      */
@@ -191,7 +199,9 @@ class SlotController extends Controller
      *   tags={"Slots"},
      *   security={{"bearerAuth": {}}},
      *   summary="Detalhar slot",
+     *
      *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *   @OA\Response(response=200, description="OK")
      * )
      */
@@ -219,8 +229,11 @@ class SlotController extends Controller
      *   tags={"Slots"},
      *   security={{"bearerAuth": {}}},
      *   summary="Atualizar slot",
+     *
      *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *   @OA\RequestBody(required=true),
+     *
      *   @OA\Response(response=200, description="OK")
      * )
      */
@@ -241,6 +254,7 @@ class SlotController extends Controller
             }
 
             $slot->update($data);
+
             return $slot;
         });
 
@@ -253,13 +267,16 @@ class SlotController extends Controller
      *   tags={"Slots"},
      *   security={{"bearerAuth": {}}},
      *   summary="Remover slot",
+     *
      *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *   @OA\Response(response=204, description="Sem conteúdo")
      * )
      */
     public function destroy(Slot $slot)
     {
         $slot->delete();
+
         return response()->noContent();
     }
 }

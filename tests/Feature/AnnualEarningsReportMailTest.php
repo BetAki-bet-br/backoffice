@@ -67,4 +67,27 @@ class AnnualEarningsReportMailTest extends TestCase
 
         $this->assertEquals('emails.annual-earnings-report', $mail->content()->view);
     }
+
+    public function test_email_shows_product_income_section_when_provided(): void
+    {
+        $productIncomes = [
+            ['product_type' => 'Casino', 'income' => 100.03, 'balance_end' => 0.33],
+            ['product_type' => 'Sportsbook', 'income' => 5893.71, 'balance_end' => 0.37],
+        ];
+
+        $mail = new AnnualEarningsReportMail($this->playerData, 2025, $productIncomes);
+
+        $mail->assertSeeInHtml('Detalhamento por Tipo de Produto');
+        $mail->assertSeeInHtml('Casino');
+        $mail->assertSeeInHtml('Sportsbook');
+        $mail->assertSeeInHtml('R$ 100,03');
+        $mail->assertSeeInHtml('R$ 5.893,71');
+    }
+
+    public function test_email_hides_product_income_section_when_empty(): void
+    {
+        $mail = new AnnualEarningsReportMail($this->playerData, 2025, []);
+
+        $mail->assertDontSeeInHtml('Detalhamento por Tipo de Produto');
+    }
 }

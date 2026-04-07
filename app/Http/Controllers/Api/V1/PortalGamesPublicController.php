@@ -14,7 +14,9 @@ class PortalGamesPublicController extends Controller
      *   path="/api/v1/public/portal-games/providers",
      *   tags={"Portal Games Public"},
      *   summary="Get providers with game count for a portal",
+     *
      *   @OA\Parameter(name="portal_id", in="query", required=true, @OA\Schema(type="integer")),
+     *
      *   @OA\Response(response=200, description="List of providers")
      * )
      */
@@ -34,7 +36,7 @@ class PortalGamesPublicController extends Controller
 
         foreach ($games as $game) {
             $payload = $game->payload;
-            if (empty($payload) || !is_array($payload)) {
+            if (empty($payload) || ! is_array($payload)) {
                 continue;
             }
 
@@ -42,7 +44,7 @@ class PortalGamesPublicController extends Controller
             $productName = $payload['productName'] ?? null;
 
             if ($productId && $productName) {
-                if (!isset($providersMap[$productId])) {
+                if (! isset($providersMap[$productId])) {
                     $providersMap[$productId] = [
                         'id' => $productId,
                         'name' => $productName,
@@ -67,8 +69,10 @@ class PortalGamesPublicController extends Controller
      *   path="/api/v1/public/portal-games/by-provider",
      *   tags={"Portal Games Public"},
      *   summary="Get games by provider for a portal",
+     *
      *   @OA\Parameter(name="portal_id", in="query", required=true, @OA\Schema(type="integer")),
      *   @OA\Parameter(name="provider_id", in="query", required=true, @OA\Schema(type="integer")),
+     *
      *   @OA\Response(response=200, description="List of games")
      * )
      */

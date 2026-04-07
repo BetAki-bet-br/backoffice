@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\ActiveStatus;
 use App\Http\Controllers\Controller;
 use App\Jobs\SyncProvidersJob;
-use App\Models\Domain\Casino\GameExtra;
 use App\Models\Domain\Casino\PortalGame;
 use App\Models\Domain\Casino\Provider;
 use App\Models\Domain\Casino\Slot;
-use App\Enums\ActiveStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +20,9 @@ class ProviderController extends Controller
      *  tags={"Providers"},
      *  security={{"bearerAuth": {}}},
      *  summary="Listar provedores",
+     *
      *  @OA\Parameter(name="status", in="query", @OA\Schema(type="string", enum={"active","inactive"})),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function index(Request $request)
@@ -62,14 +63,16 @@ class ProviderController extends Controller
      *  tags={"Providers"},
      *  security={{"bearerAuth": {}}},
      *  summary="Detalhar provedor e seus jogos",
+     *
      *  @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function show(Provider $provider)
     {
         // Busca os jogos vinculados via tags->productId
         // O external_id do provider corresponde ao productId nos tags do slot
-        $games = Slot::whereJsonContains('tags->productId', (int)$provider->external_id)
+        $games = Slot::whereJsonContains('tags->productId', (int) $provider->external_id)
             ->where('status', 'active')
             ->orderBy('title')
             ->get();
@@ -91,14 +94,19 @@ class ProviderController extends Controller
      *  tags={"Providers"},
      *  security={{"bearerAuth": {}}},
      *  summary="Atualizar provedor",
+     *
      *  @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *  @OA\RequestBody(
      *    required=true,
+     *
      *    @OA\JsonContent(
+     *
      *      @OA\Property(property="name", type="string"),
      *      @OA\Property(property="status", type="string", enum={"active","inactive"})
      *    )
      *  ),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function update(Request $request, Provider $provider)
@@ -124,7 +132,9 @@ class ProviderController extends Controller
      *  tags={"Providers"},
      *  security={{"bearerAuth": {}}},
      *  summary="Desativar em cascata todos os slots do provedor",
+     *
      *  @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function deactivateSlots(Provider $provider)
@@ -143,7 +153,9 @@ class ProviderController extends Controller
      *  tags={"Providers"},
      *  security={{"bearerAuth": {}}},
      *  summary="Reativar em cascata todos os slots do provedor",
+     *
      *  @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function activateSlots(Provider $provider)
@@ -162,19 +174,25 @@ class ProviderController extends Controller
      *  tags={"Providers"},
      *  security={{"bearerAuth": {}}},
      *  summary="Reordenar provedores",
+     *
      *  @OA\RequestBody(
      *    required=true,
+     *
      *    @OA\JsonContent(
+     *
      *      @OA\Property(
      *        property="providers",
      *        type="array",
+     *
      *        @OA\Items(
+     *
      *          @OA\Property(property="id", type="integer"),
      *          @OA\Property(property="position", type="integer")
      *        )
      *      )
      *    )
      *  ),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function reorder(Request $request)
@@ -199,12 +217,16 @@ class ProviderController extends Controller
      *  tags={"Providers"},
      *  security={{"bearerAuth": {}}},
      *  summary="Sincronizar provedores da API externa",
+     *
      *  @OA\RequestBody(
      *    required=false,
+     *
      *    @OA\JsonContent(
+     *
      *      @OA\Property(property="portal_id", type="integer", example=1)
      *    )
      *  ),
+     *
      *  @OA\Response(response=200, description="OK")
      * ) */
     public function sync(Request $request)
@@ -242,14 +264,15 @@ class ProviderController extends Controller
         return $portalGames->map(function ($pg) use ($gameExtras) {
             $extra = $gameExtras->get($pg->external_id);
             $payload = $pg->payload ?? [];
-            
+
             if ($extra) {
                 $payload['rtp'] = $extra->rtp;
                 $payload['volatility'] = \App\Support\Casino\GameExtraResolver::mapVolatility($extra->volatility);
                 $payload['minBet'] = $extra->min_bet;
             }
-            
+
             $pg->payload = $payload;
+
             return $pg;
         });
     }
@@ -258,9 +281,10 @@ class ProviderController extends Controller
     {
         return collect($slots)
             ->map(function ($slot) use ($portalGames) {
-                if (!$slot?->provider_game_id) {
+                if (! $slot?->provider_game_id) {
                     return null;
                 }
+
                 return $portalGames->get($slot->provider_game_id)?->payload;
             })
             ->filter()

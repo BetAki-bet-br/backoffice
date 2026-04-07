@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\Domain\Casino\Slot;
-use App\Models\Domain\Casino\Category;
 use App\Models\Domain\Banners\Banner;
+use App\Models\Domain\Casino\Category;
+use App\Models\Domain\Casino\Slot;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -70,7 +70,7 @@ class FileUploadIntegrationTest extends TestCase
         $file = UploadedFile::fake()->image('banner-cover.webp', 1200, 300);
 
         $response = $this->actingAs($this->user)->postJson('/api/v1/banners', [
-            'slug' => 'test-banner-' . now()->timestamp,
+            'slug' => 'test-banner-'.now()->timestamp,
             'cover_url' => $file,
             'status' => 'draft',
         ]);
@@ -92,11 +92,11 @@ class FileUploadIntegrationTest extends TestCase
             'provider_game_id' => 'test-game-456',
             'status' => 'active',
         ])->json();
-        
+
         // Now update with new image
         $newFile = UploadedFile::fake()->image('new-slot.png', 200, 200);
-        
-        $updateResponse = $this->actingAs($this->user)->putJson('/api/v1/slots/' . $slot['id'], [
+
+        $updateResponse = $this->actingAs($this->user)->putJson('/api/v1/slots/'.$slot['id'], [
             'title' => 'Updated Slot',
             'cover_url' => $newFile,
             'provider' => 'test-provider',
@@ -119,11 +119,11 @@ class FileUploadIntegrationTest extends TestCase
             'name' => 'Original Category',
             'status' => 'active',
         ])->json();
-        
+
         // Now update with new image
         $newFile = UploadedFile::fake()->image('new-category.png', 200, 200);
-        
-        $updateResponse = $this->actingAs($this->user)->putJson('/api/v1/categories/' . $category['id'], [
+
+        $updateResponse = $this->actingAs($this->user)->putJson('/api/v1/categories/'.$category['id'], [
             'name' => 'Updated Category',
             'cover_url' => $newFile,
             'status' => 'active',
@@ -142,7 +142,7 @@ class FileUploadIntegrationTest extends TestCase
         $file = UploadedFile::fake()->image('banner-translated.jpg', 1200, 300);
 
         $response = $this->actingAs($this->user)->postJson('/api/v1/banners', [
-            'slug' => 'translated-banner-' . now()->timestamp,
+            'slug' => 'translated-banner-'.now()->timestamp,
             'cover_url' => $file,
             'status' => 'draft',
             'translations' => [
@@ -222,7 +222,7 @@ class FileUploadIntegrationTest extends TestCase
                 'title' => "Test Slot {$ext}",
                 'cover_url' => $file,
                 'provider' => 'test-provider',
-                'provider_game_id' => "test-game-{$ext}-" . now()->timestamp,
+                'provider_game_id' => "test-game-{$ext}-".now()->timestamp,
                 'status' => 'active',
             ]);
 
@@ -279,7 +279,7 @@ class FileUploadIntegrationTest extends TestCase
 
         $response->assertStatus(201);
         $imageUrl = $response->json('cover_url');
-        
+
         // URL should be publicly accessible (contains s3 or similar)
         $this->assertTrue(
             str_contains($imageUrl, 'slots/') || str_contains($imageUrl, 'amazonaws'),

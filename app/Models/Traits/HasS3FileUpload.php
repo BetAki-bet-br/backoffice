@@ -2,7 +2,6 @@
 
 namespace App\Models\Traits;
 
-use Illuminate\Http\UploadedFile;
 use App\Services\FileUploadService;
 
 trait HasS3FileUpload
