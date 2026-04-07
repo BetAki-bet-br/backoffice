@@ -38,15 +38,19 @@ class SendPlayerEarningsEmailJob implements ShouldQueue
         $cpf = $this->playerData['cpf'] ?? 'N/A';
         $netIncome = $this->playerData['net_income'] ?? 'N/A';
         $currency = $this->playerData['currency'] ?? 'N/A';
+        $productTypes = ! empty($this->playerData['product_incomes'])
+            ? implode(', ', array_column($this->playerData['product_incomes'], 'product_type'))
+            : 'N/A';
         $attempt = $this->attempts();
         $jobId = $this->job?->getJobId() ?? 'sync';
         $mailer = config('mail.default');
         $fromAddress = config('mail.from.address');
         $fromName = config('mail.from.name');
 
-        Log::channel('earnings')->info("[EARNINGS][JOB:{$jobId}] Iniciando envio de email — Tentativa: {$attempt}/{$this->tries}, Player ID: {$playerId}, Username: {$username}, CPF: {$cpf}, Email destino: {$email}, Ano: {$this->year}, Net Income: {$netIncome} {$currency}, Mailer: {$mailer}, From: {$fromName} <{$fromAddress}>");
+        Log::channel('earnings')->info("[EARNINGS][JOB:{$jobId}] Iniciando envio de email — Tentativa: {$attempt}/{$this->tries}, Player ID: {$playerId}, Username: {$username}, CPF: {$cpf}, Email destino: {$email}, Ano: {$this->year}, Net Income: {$netIncome} {$currency}, Product Types: {$productTypes}, Mailer: {$mailer}, From: {$fromName} <{$fromAddress}>");
 
-        $mailable = new AnnualEarningsReportMail($this->playerData, $this->year);
+        $productIncomes = $this->playerData['product_incomes'] ?? [];
+        $mailable = new AnnualEarningsReportMail($this->playerData, $this->year, $productIncomes);
 
         Mail::to($email)->send($mailable);
 

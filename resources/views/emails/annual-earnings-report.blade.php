@@ -83,6 +83,33 @@
                                         {{ $netIncome }}</td>
                                 </tr>
                             </table>
+
+                            @if (!empty($formattedProductIncomes))
+                                <p style="margin: 20px 0 8px; font-size: 14px; font-weight: 700; color: #333333;">
+                                    Detalhamento por Tipo de Produto
+                                </p>
+                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                                    style="border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden;">
+                                    <tr style="background-color: #f8f8fc;">
+                                        <td style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: #869502; border-bottom: 1px solid #e0e0e0;">
+                                            Tipo de Produto</td>
+                                        <td style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: #869502; border-bottom: 1px solid #e0e0e0; text-align: right;">
+                                            Rendimento</td>
+                                        <td style="padding: 12px 16px; font-size: 13px; font-weight: 700; color: #869502; border-bottom: 1px solid #e0e0e0; text-align: right;">
+                                            Saldo 31/Dez</td>
+                                    </tr>
+                                    @foreach ($formattedProductIncomes as $index => $productIncome)
+                                        <tr style="background-color: {{ $index % 2 === 0 ? '#ffffff' : '#fafafc' }};">
+                                            <td style="padding: 10px 16px; font-size: 13px; color: #555555; border-bottom: 1px solid #f0f0f0;">
+                                                {{ $productIncome['product_type'] }}</td>
+                                            <td style="padding: 10px 16px; font-size: 13px; color: #333333; text-align: right; border-bottom: 1px solid #f0f0f0;">
+                                                {{ $productIncome['income'] }}</td>
+                                            <td style="padding: 10px 16px; font-size: 13px; color: #333333; text-align: right; border-bottom: 1px solid #f0f0f0;">
+                                                {{ $productIncome['balance_end'] }}</td>
+                                        </tr>
+                                    @endforeach
+                                </table>
+                            @endif
                         </td>
                     </tr>
 

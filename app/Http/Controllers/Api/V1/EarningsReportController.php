@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\SendPlayerEarningsEmailJob;
 use App\Models\EarningsReportLog;
 use App\Services\EarningsReportService;
+use App\Services\ProductIncomeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +15,7 @@ class EarningsReportController extends Controller
 {
     public function __construct(
         private readonly EarningsReportService $service,
+        private readonly ProductIncomeService $productIncomeService,
     ) {}
 
     /**
@@ -22,16 +24,25 @@ class EarningsReportController extends Controller
     public function status(): JsonResponse
     {
         $path = EarningsReportService::storagePath();
+        $incomePath = ProductIncomeService::storagePath();
 
-        if (! file_exists($path)) {
-            return response()->json(['uploaded' => false]);
-        }
-
-        return response()->json([
+        $earnings = file_exists($path) ? [
             'uploaded' => true,
             'file' => basename($path),
             'size' => filesize($path),
             'uploaded_at' => date('c', filemtime($path)),
+        ] : ['uploaded' => false];
+
+        $incomeByProduct = file_exists($incomePath) ? [
+            'uploaded' => true,
+            'file' => basename($incomePath),
+            'size' => filesize($incomePath),
+            'uploaded_at' => date('c', filemtime($incomePath)),
+        ] : ['uploaded' => false];
+
+        return response()->json([
+            ...$earnings,
+            'income_by_product' => $incomeByProduct,
         ]);
     }
 
@@ -73,6 +84,12 @@ class EarningsReportController extends Controller
         $playerIds = array_column($players, 'player_id');
         $foundPlayers = $this->service->findPlayersByIds($filePath, $playerIds);
 
+        // Load product-type income breakdown if available
+        $incomePath = ProductIncomeService::storagePath();
+        $productIncomesByPlayer = file_exists($incomePath)
+            ? $this->productIncomeService->findByPlayerIds($incomePath, $playerIds)
+            : [];
+
         foreach ($players as $index => $player) {
             $seq = $index + 1;
             $playerData = $foundPlayers[$player['player_id']] ?? null;
@@ -90,6 +107,7 @@ class EarningsReportController extends Controller
 
             $playerData['email'] = $player['email'];
             $playerData['cpf'] = $player['cpf'];
+            $playerData['product_incomes'] = $productIncomesByPlayer[$player['player_id']] ?? [];
 
             $log = EarningsReportLog::create([
                 'player_id' => $player['player_id'],
@@ -181,6 +199,11 @@ class EarningsReportController extends Controller
 
         $playerData['email'] = $log->email;
         $playerData['cpf'] = $log->cpf;
+
+        $incomePath = ProductIncomeService::storagePath();
+        $playerData['product_incomes'] = file_exists($incomePath)
+            ? $this->productIncomeService->findByPlayerId($incomePath, $log->player_id)
+            : [];
 
         $newLog = EarningsReportLog::create([
             'player_id' => $log->player_id,
