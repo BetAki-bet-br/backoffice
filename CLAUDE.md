@@ -4,79 +4,116 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Stack
 
-Laravel 12 / PHP 8.4 REST API for the Betaki admin backoffice. PostgreSQL (production), Redis (cache/queues), Laravel Sanctum (auth), Spatie Laravel Permission (RBAC), L5-Swagger for OpenAPI docs, Laravel Horizon (queue worker), AWS S3 (file storage).
+Laravel 12 / PHP 8.4 REST API for the Betaki admin backoffice. PostgreSQL 16 (production), Redis 7 (cache/queues), Laravel Sanctum (auth), Spatie Laravel Permission v6 (RBAC, guard `api`), L5-Swagger for OpenAPI 3 docs, Laravel Horizon (queue worker), AWS S3 (file storage). Frontend assets use Vite 7 + TailwindCSS 4; E2E tests run via Cypress.
 
 ## Commands
 
 ```bash
-# Start all containers (app, nginx, db, redis, horizon)
+# Start all containers (app, web/nginx, db, redis, horizon)
 docker compose up -d
 
-# Run all tests
+# Run all tests (clears config first)
 composer test
 # or
 php artisan test
 
-# Run a single test file
+# Run a single test file / filter
 php artisan test tests/Feature/SlotApiTest.php
+php artisan test --filter=test_list_slots
 
 # Regenerate Swagger docs (required after changing @OA annotations)
 php artisan l5-swagger:generate
 
-# Code formatting
+# Code formatting (Pint / PSR-12)
 vendor/bin/pint
 
-# Static analysis
+# Static analysis (Larastan on top of PHPStan)
 vendor/bin/phpstan analyse
 
 # List all routes
 php artisan route:list
 
-# Fresh migration + seed (dev only)
-php artisan migrate:fresh --seed
+# Tail logs in real time
+php artisan pail
 
-# Initial seed (roles & permissions)
-php artisan db:seed --class=RolePermissionSeeder
+# Cypress E2E (needs app running at localhost:8080)
+npm run cypress:open
+npm run cypress:run
 ```
 
-Tests run against SQLite in-memory (`DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`), not PostgreSQL.
+Tests run against SQLite in-memory (`DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`, `QUEUE_CONNECTION=sync`, `CACHE_STORE=array`), not PostgreSQL — see `phpunit.xml`. Keep migrations/factories compatible with both drivers.
+
+### Docker-first DB workflow
+
+In this project, DB-touching Artisan commands must run **inside the `app` container** (the host `.env` points at the `db` service hostname). Only scaffolding (`make:migration`, `make:model`, etc.) is safe to run on the host.
+
+```bash
+docker compose exec app php artisan migrate
+docker compose exec app php artisan migrate:fresh --seed
+docker compose exec app php artisan db:seed --class=RolePermissionSeeder
+```
 
 ## Architecture
 
-### Route Structure
+### Request lifecycle
 
-All routes live under `/api/v1/` in `routes/api.php`. The file is split into two groups:
+Routes are registered in `routes/api.php` (all under `/api/v1/`) and `bootstrap/app.php` wires middleware. The `api` group is deliberately minimal — no stateful session/CSRF, just `throttle:api`, `SubstituteBindings`, and `App\Http\Middleware\ParseJsonFormData`. CORS is global.
 
-- **Public** — unauthenticated endpoints (reads for banners, slots, categories, showcases, menus, etc.)
-- **Authenticated** (`auth:sanctum`) — write operations plus admin-only reads
+All API errors are rendered as a standardized envelope (see `bootstrap/app.php`):
 
-The pattern for most resources: public `index`/`show` declared first as read-only, then authenticated `except(['index','show'])` for CRUDs. Some write actions require specific Spatie permissions via `->middleware('permission:resource.action')`.
+```json
+{ "error": { "code": "VALIDATION_ERROR", "message": "...", "details": {...}, "trace_id": "uuid" } }
+```
 
-### Domain Model Organization
+Status → code map: 401 `UNAUTHENTICATED`, 403 `FORBIDDEN`, 404 `NOT_FOUND`, 405 `METHOD_NOT_ALLOWED`, 422 `VALIDATION_ERROR`, 429 `TOO_MANY_REQUESTS`, else `SERVER_ERROR`. New handlers should match this shape.
 
-Models are organized under `app/Models/Domain/` by domain:
+Rate limiters are defined in `AppServiceProvider::boot()`: `api` = 300 req/min per IP, `login` = 5/min per IP and per (email+IP). Horizon UI is only exposed in `local`/`staging`.
 
-- `Domain/Banners/` — `Banner`, `BannerTranslation`
-- `Domain/Carousels/` — carousel-related models
-- `Domain/Casino/` — `Slot`, `Category`, `Showcase`, `Provider`, `GameExtra`, `PortalGame`, `TopList`, `TopWinner`, `TopWinnerBatch`, `AwardedGame`, `AwardedGameBatch`
-- `Domain/Navigation/` — `Footer`, `FooterLink`, `FooterTranslation`, `Menu`, `MenuItem`
-- Root `Models/` — `User`, `Setting`, `SyncJob`
+### Route structure
 
-All domain models use `SoftDeletes`. N:M pivot tables (`category_slot`, `showcase_slot`, `top_list_slot`) carry a `position` column for ordering.
+`routes/api.php` is split into **Public** (no auth) and **Authenticated** (`auth:sanctum`) groups. The dominant pattern per resource is: public `apiResource(...)->only(['index','show'])`, then inside the authenticated group `apiResource(...)->except(['index','show'])`. Specific write actions gate on Spatie perms via `->middleware('permission:<resource>.<action>')` (e.g. `banners.publish`).
 
-### Key Patterns
+### Domain layout
 
-**Slot index uses cursor-based pagination** (`cursorPaginate(20)`), not standard page pagination.
+Domain models live under `app/Models/Domain/`:
 
-**Slot responses are enriched** by joining `GameExtra` (RTP, volatility, min_bet) and `PortalGame` (gameTypeName) keyed by `provider_game_id`. This pattern repeats in `index`, `show`, `byIds`, and `getByExternalId`.
+- `Banners/` — `Banner`, `BannerTranslation`
+- `Carousels/` — `Carousel`, `CarouselSlide`
+- `Casino/` — `Slot`, `Category`, `Showcase`, `Provider`, `GameExtra`, `PortalGame`, `TopList`, `TopWinner`, `TopWinnerBatch`, `AwardedGame`, `AwardedGameBatch`
+- `Navigation/` — `Footer`, `FooterLink`, `FooterTranslation`, `Menu`, `MenuItem`
+- `Telegram/` — `BotStatistic`
 
-**`ParseJsonFormData` middleware** (`app/Http/Middleware/`) decodes JSON strings embedded in multipart FormData requests (e.g., when uploading images alongside JSON fields). Applied on POST/PUT/PATCH.
+Root `Models/`: `User`, `Setting`, `SyncJob`, `EarningsReportLog`. Traits live in `Models/Traits/` (`HasS3FileUpload`). Shared enums live in `app/Enums/` (`ActiveStatus`, `BatchStatus`, `ContentStatus`, plus `Casino/` subfolder).
 
-**`FileUploadService`** (`app/Services/`) handles S3 uploads for banners, slots, and categories. Pass the `UploadedFile` directly; it returns the public S3 URL. Always call `deleteImageByUrl()` before replacing an existing image.
+All domain models use `SoftDeletes`. N:M pivot tables (`category_slot`, `showcase_slot`, `top_list_slot`) carry a `position` column for ordering — preserve that when adding new pivots.
 
-**External Portal sync** — `BasePortalApiClient` (`app/Services/BaseApi/`) wraps HTTP calls to an external portal API (configured in `services.base_api`). Sync services (`PortalGamesSyncService`, `CategorySyncService`, `ProviderSyncService`) use it. Background jobs (`SyncCategoriesJob`, `SyncProvidersJob`, `PublishScheduledBannersJob`) run via Horizon.
+### Auth & RBAC
 
-**OpenAPI annotations** live directly in controllers (`@OA\...` docblocks). The root spec definition is in `app/OpenApi/OpenApiSpec.php`. Run `php artisan l5-swagger:generate` after any annotation change.
+`User` model uses `guard_name = 'api'`. All Spatie roles/permissions are also created under the `api` guard — see `database/seeders/RolePermissionSeeder.php`, which is the canonical list. Tokens are Sanctum personal access tokens, issued by `AuthController::login` with 60-day expiry.
 
-**Swagger UI:** `http://localhost:8080/api/documentation`
-**API base:** `http://localhost:8080/api/v1`
+### Key patterns
+
+**Cursor pagination.** `SlotController::index` uses `cursorPaginate(20)` — not standard pagination — because slot lists are large. Follow this for similar high-cardinality listings.
+
+**Slot response enrichment.** Slot endpoints (`index`, `show`, `byIds`, `getByExternalId`) join in `GameExtra` (RTP, volatility, min_bet) and `PortalGame` (gameTypeName) keyed by `provider_game_id` / `external_id`. Changes to the Slot payload should be applied consistently across all four.
+
+**`ParseJsonFormData` middleware** (`app/Http/Middleware/ParseJsonFormData.php`) decodes JSON strings embedded inside multipart FormData requests (e.g. `translations[0][media]='{"desktop":"..."}'`). Runs on every POST/PUT/PATCH with a body; recursive, opt-out by validating types downstream.
+
+**`FileUploadService`** (`app/Services/FileUploadService.php`) handles S3 uploads for banners/slots/categories. Uses static methods; pass the `UploadedFile` and it returns a public S3 URL. Always call `deleteImageByUrl()` before replacing an existing image to avoid orphans. `CarouselSlideUploadService` is a related service for carousel slide assets.
+
+**External portal sync.** `App\Services\BaseApi\BasePortalApiClient` wraps the external Portal HTTP API (configured via `services.base_api` → `BASE_API_URL`, `BASE_API_KEY`, `BASE_PORTAL_ID`). `PortalGamesSyncService`, `CategorySyncService`, and `ProviderSyncService` use it and do bulk upserts keyed by `external_id`. Long-running syncs dispatch through Horizon jobs (`SyncCategoriesJob`, `SyncProvidersJob`) and the client polls `GET /sync-jobs/{syncJob}` (backed by the `SyncJob` model) for status.
+
+**Scheduled background jobs.** `PublishScheduledBannersJob` flips scheduled banners to `published` once `publish_at <= now()`. `SendPlayerEarningsEmailJob` drives per-player dispatch of the annual earnings email (see `app/Mail/AnnualEarningsReportMail.php` and `EarningsReportService`). All jobs run via Horizon.
+
+**Earnings reporting.** `EarningsReportService` + `ProductIncomeService` read the bundled XLSX sources and produce per-player summaries; results are tracked via `EarningsReportLog`. Custom artisan command `SendAnnualEarningsReports` kicks off the batch.
+
+**OpenAPI annotations** live directly in controllers (`@OA\...` docblocks); the root spec is `app/OpenApi/OpenApiSpec.php` with shared schemas under `app/OpenApi/Schemas/`. Run `php artisan l5-swagger:generate` after any annotation change (or set `L5_SWAGGER_GENERATE_ALWAYS=true` in `.env` for auto-regen).
+
+**Custom artisan commands** live in `app/Console/Commands/` — they handle one-off imports and data migrations (`ImportCategories`, `ImportGameExtras`, `ImportEarningsLogHistory`, `MigrateImagesToS3`, `CleanupSlotsCommand`, `FixCategoryTypes`, `SyncProvidersVerticalsCommand`, `UpdateProvidersFromGames`, `SendAnnualEarningsReports`, `EarningsEmailStatus`). Prefer adding new one-offs here rather than ad-hoc scripts.
+
+### Endpoints
+
+- **API base:** `http://localhost:8080/api/v1`
+- **Swagger UI:** `http://localhost:8080/api/documentation`
+- **Spec JSON:** `http://localhost:8080/api-docs/api-docs.json`
+- **Horizon (local/staging only):** `http://localhost:8080/horizon`
